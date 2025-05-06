@@ -1,5 +1,5 @@
 <template>
-  <RouterLink to="/about">ABOUT</RouterLink>
+  <div></div>
 </template>
 
 <script setup lang="ts"></script>

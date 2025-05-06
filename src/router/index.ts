@@ -12,6 +12,21 @@ const routes: Array<RouteRecordRaw> = [
     name: 'Login',
     component: () => import('@/views/LoginView.vue'),
   },
+  {
+    path: '/auths/forgot-password',
+    name: 'ForgotPassword',
+    component: () => import('@/views/ForgotPasswordView.vue'),
+  },
+  {
+    path: '/auths/register',
+    name: 'Register',
+    component: () => import('@/views/RegisterView.vue'),
+  },
+  {
+    path: '/auths/set-password',
+    name: 'SetPassword',
+    component: () => import('@/views/SetPasswordView.vue'),
+  },
 ];
 
 const router = createRouter({

@@ -15,7 +15,7 @@ export default class AxiosHttpClient {
     timeoutErrorMessage: '요청 시간이 초과되었습니다.',
   });
 
-  private async request(config: HttpRequestConfig) {
+  public async request(config: HttpRequestConfig) {
     return this.client
       .request({
         method: config.method,
@@ -29,25 +29,5 @@ export default class AxiosHttpClient {
       .catch((error: AxiosError) => {
         return Promise.reject(new HttpError(error));
       });
-  }
-
-  public async get(config: HttpRequestConfig) {
-    return this.request({ ...config, method: 'GET' });
-  }
-
-  public async post(config: HttpRequestConfig) {
-    return this.request({ ...config, method: 'POST' });
-  }
-
-  public async put(config: HttpRequestConfig) {
-    return this.request({ ...config, method: 'PUT' });
-  }
-
-  public async delete(config: HttpRequestConfig) {
-    return this.request({ ...config, method: 'DELETE' });
-  }
-
-  public async patch(config: HttpRequestConfig) {
-    return this.request({ ...config, method: 'PATCH' });
   }
 }

@@ -23,7 +23,7 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('@/views/RegisterView.vue'),
   },
   {
-    path: '/auths/set-password',
+    path: '/auths/initialize',
     name: 'SetPassword',
     component: () => import('@/views/SetPasswordView.vue'),
   },

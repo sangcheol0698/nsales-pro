@@ -20,7 +20,12 @@
                 <FormItem>
                   <FormLabel>이메일</FormLabel>
                   <FormControl>
-                    <Input id="email" type="email" placeholder="email@iabacus.co.kr" v-bind="field" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="email@iabacus.co.kr"
+                      v-bind="field"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -45,11 +50,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'vue-router';
 import { useToast } from '@/composables';
-import AxiosHttpClient from '@/http/AxiosHttpClient.ts';
 import type HttpError from '@/http/HttpError.ts';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
+import AuthRepository from '@/repository/AuthRepository.ts';
 
 // 비밀번호 찾기 폼 검증 스키마 정의
 const forgotPasswordSchema = toTypedSchema(
@@ -66,7 +78,7 @@ const router = useRouter();
 const toast = useToast();
 
 function handleForgotPassword(values: { email: string }) {
-  const httpClient = new AxiosHttpClient();
+  const AUTH_REPOSITORY = new AuthRepository();
 
   httpClient
     .post({

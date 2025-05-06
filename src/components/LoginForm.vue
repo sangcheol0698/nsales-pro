@@ -93,8 +93,9 @@ const loginSchema = toTypedSchema(
 
 const router = useRouter();
 const toast = useToast();
+const AUTH_REPOSITORY = new AuthRepository();
 
-function handleLogin(values: { username: string; password: string }) {
+function handleLogin(values: Login) {
   const httpClient = new AxiosHttpClient();
 
   httpClient

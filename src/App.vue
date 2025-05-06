@@ -1,9 +1,11 @@
 <template>
-  <Button>Hello</Button>
+  <div class="min-h-screen w-full">
+    <RouterView />
+  </div>
 </template>
 
 <script setup lang="ts">
-import { Button } from '@/components/ui/button';
+import { RouterView } from 'vue-router';
 </script>
 
 <style scoped></style>

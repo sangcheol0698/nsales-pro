@@ -6,31 +6,44 @@
         <CardDescription> 새 비밀번호를 입력하세요. </CardDescription>
       </CardHeader>
       <CardContent>
-        <form @submit.prevent>
+        <Form :validation-schema="passwordSchema" @submit="handleSetPassword" v-slot="{ errors }">
           <div class="grid gap-6">
             <div class="grid gap-6">
-              <div class="grid gap-2">
-                <Label html-for="password">비밀번호</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="새 비밀번호"
-                  v-model="state.setPassword.newPassword"
-                />
-              </div>
-              <div class="grid gap-2">
-                <Label html-for="confirmPassword">비밀번호 확인</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="비밀번호 확인"
-                  v-model="state.setPassword.newPasswordConfirm"
-                />
-              </div>
-              <Button class="w-full" @click="handleSetPassword"> 비밀번호 설정 </Button>
+              <FormField name="newPassword" v-slot="{ field }">
+                <FormItem>
+                  <FormLabel>비밀번호</FormLabel>
+                  <FormDescription>
+                    비밀번호는 대문자, 소문자, 숫자를 포함하여 8자 이상이어야 합니다.
+                  </FormDescription>
+                  <FormControl>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="새 비밀번호"
+                      v-bind="field"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              </FormField>
+              <FormField name="newPasswordConfirm" v-slot="{ field }">
+                <FormItem>
+                  <FormLabel>비밀번호 확인</FormLabel>
+                  <FormControl>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="비밀번호 확인"
+                      v-bind="field"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              </FormField>
+              <Button class="w-full" type="submit" :disabled="Object.keys(errors).length > 0"> 비밀번호 설정 </Button>
             </div>
           </div>
-        </form>
+        </Form>
       </CardContent>
     </Card>
   </div>
@@ -39,56 +52,66 @@
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { onMounted, ref } from 'vue';
-import SetPassword from '@/enity/member/SetPassword.ts';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from '@/composables';
 import AxiosHttpClient from '@/http/AxiosHttpClient.ts';
 import type HttpError from '@/http/HttpError.ts';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { toTypedSchema } from '@vee-validate/zod';
+import * as z from 'zod';
 
-const state = ref({
-  setPassword: new SetPassword(),
-});
+// 토큰 상태 관리
+const token = ref('');
 
 const router = useRouter();
 const route = useRoute();
 const toast = useToast();
 
+// 비밀번호 설정 폼 검증 스키마 정의
+const passwordSchema = toTypedSchema(
+  z.object({
+    newPassword: z.string({
+      required_error: '비밀번호를 입력해주세요.',
+    })
+    .min(8, '비밀번호는 최소 8자 이상이어야 합니다.')
+    .regex(/[A-Z]/, '비밀번호에는 대문자가 포함되어야 합니다.')
+    .regex(/[a-z]/, '비밀번호에는 소문자가 포함되어야 합니다.')
+    .regex(/[0-9]/, '비밀번호에는 숫자가 포함되어야 합니다.'),
+    newPasswordConfirm: z.string({
+      required_error: '비밀번호 확인을 입력해주세요.',
+    }),
+  })
+  .refine((data) => data.newPassword === data.newPasswordConfirm, {
+    message: '비밀번호와 비밀번호 확인이 일치하지 않습니다.',
+    path: ['newPasswordConfirm'],
+  })
+);
+
 onMounted(() => {
   // Get token from route params
-  const token = route.query.token as string;
-  if (!token) {
+  const routeToken = route.query.token as string;
+  if (!routeToken) {
     toast.error('유효하지 않은 링크', { description: '비밀번호 설정 링크가 유효하지 않습니다.' });
     router.push('/auths/login');
     return;
   }
 
-  state.value.setPassword.token = token;
+  token.value = routeToken;
 });
 
-function handleSetPassword() {
-  // Validate passwords match
-  if (state.value.setPassword.newPassword !== state.value.setPassword.newPasswordConfirm) {
-    toast.error('비밀번호 불일치', {
-      description: '비밀번호와 비밀번호 확인이 일치하지 않습니다.',
-    });
-    return;
-  }
-
-  // Validate password length
-  if (state.value.setPassword.newPassword.length < 8) {
-    toast.error('비밀번호 오류', { description: '비밀번호는 최소 8자 이상이어야 합니다.' });
-    return;
-  }
-
+function handleSetPassword(values: { newPassword: string; newPasswordConfirm: string }) {
   const httpClient = new AxiosHttpClient();
 
   httpClient
     .patch({
       path: '/api/v1/auths/initialize',
-      body: state.value.setPassword,
+      body: {
+        newPassword: values.newPassword,
+        newPasswordConfirm: values.newPasswordConfirm,
+        token: token.value,
+      },
     })
     .then(() => {
       toast.success('비밀번호 설정 성공', {

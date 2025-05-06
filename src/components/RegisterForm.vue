@@ -6,30 +6,40 @@
         <CardDescription> 이름과 회사 이메일을 입력하세요. </CardDescription>
       </CardHeader>
       <CardContent>
-        <form @submit.prevent>
+        <Form :validation-schema="registerSchema" @submit="handleRegister" v-slot="{ errors }">
           <div class="grid gap-6">
             <div class="grid gap-6">
-              <div class="grid gap-2">
-                <Label html-for="name">이름</Label>
-                <Input id="name" type="text" placeholder="홍길동" v-model="state.register.name" />
-              </div>
-              <div class="grid gap-2">
-                <Label html-for="email">이메일</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="email@iabacus.co.kr"
-                  v-model="state.register.email"
-                />
-              </div>
-              <Button class="w-full" @click="handleRegister"> 회원 등록 </Button>
+              <FormField name="name" v-slot="{ field }">
+                <FormItem>
+                  <FormLabel>이름</FormLabel>
+                  <FormControl>
+                    <Input id="name" type="text" placeholder="홍길동" v-bind="field" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              </FormField>
+              <FormField name="email" v-slot="{ field }">
+                <FormItem>
+                  <FormLabel>이메일</FormLabel>
+                  <FormControl>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="email@iabacus.co.kr"
+                      v-bind="field"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              </FormField>
+              <Button class="w-full" type="submit" :disabled="Object.keys(errors).length > 0"> 회원 등록 </Button>
             </div>
             <div class="text-center text-sm">
               이미 계정이 있으신가요?
               <a href="/auths/login" class="underline underline-offset-4"> 로그인 </a>
             </div>
           </div>
-        </form>
+        </Form>
       </CardContent>
     </Card>
   </div>
@@ -38,29 +48,37 @@
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { ref } from 'vue';
-import Register from '@/enity/member/Register.ts';
 import { useRouter } from 'vue-router';
 import { useToast } from '@/composables';
 import AxiosHttpClient from '@/http/AxiosHttpClient.ts';
 import type HttpError from '@/http/HttpError.ts';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { toTypedSchema } from '@vee-validate/zod';
+import * as z from 'zod';
 
-const state = ref({
-  register: new Register(),
-});
+// 회원 등록 폼 검증 스키마 정의
+const registerSchema = toTypedSchema(
+  z.object({
+    name: z.string({
+      required_error: '이름을 입력해주세요.',
+    }),
+    email: z.string({
+      required_error: '이메일을 입력해주세요.',
+    }).email('유효한 이메일 주소를 입력해주세요.'),
+  })
+);
 
 const router = useRouter();
 const toast = useToast();
 
-function handleRegister() {
+function handleRegister(values: { name: string; email: string }) {
   const httpClient = new AxiosHttpClient();
 
   httpClient
     .post({
       path: '/api/v1/auths/register',
-      body: state.value.register,
+      body: values,
     })
     .then(() => {
       toast.success('회원 등록 성공', {

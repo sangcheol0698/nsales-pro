@@ -6,38 +6,55 @@
         <CardDescription> 이메일과 비밀번호를 입력하세요. </CardDescription>
       </CardHeader>
       <CardContent>
-        <form @submit.prevent>
+        <Form :validation-schema="loginSchema" @submit="handleLogin" v-slot="{ errors }">
           <div class="grid gap-6">
             <div class="grid gap-6">
-              <div class="grid gap-2">
-                <Label html-for="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="email@iabacus.co.kr"
-                  v-model="state.login.username"
-                />
-              </div>
-              <div class="grid gap-2">
-                <div class="flex items-center">
-                  <Label html-for="password">Password</Label>
-                  <a
-                    href="/auths/forgot-password"
-                    class="ml-auto text-sm underline-offset-4 hover:underline"
-                  >
-                    비밀번호를 잊으셨나요?
-                  </a>
-                </div>
-                <Input id="password" type="password" v-model="state.login.password" />
-              </div>
-              <Button class="w-full" @click="handleLogin"> Login </Button>
+              <FormField name="username" v-slot="{ field }">
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="email@iabacus.co.kr"
+                      v-bind="field"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              </FormField>
+              <FormField name="password" v-slot="{ field }">
+                <FormItem>
+                  <div class="flex items-center">
+                    <FormLabel>Password</FormLabel>
+                    <a
+                      href="/auths/forgot-password"
+                      class="ml-auto text-sm underline-offset-4 hover:underline"
+                    >
+                      비밀번호를 잊으셨나요?
+                    </a>
+                  </div>
+                  <FormControl>
+                    <Input id="password" type="password" v-bind="field" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              </FormField>
+              <Button
+                class="w-full"
+                type="submit"
+                :disabled="Object.keys(errors).length > 0"
+                @click="handleLogin"
+              >
+                Login
+              </Button>
             </div>
             <div class="text-center text-sm">
               계정이 없으신가요?
               <a href="/auths/register" class="underline underline-offset-4"> 회원등록 </a>
             </div>
           </div>
-        </form>
+        </Form>
       </CardContent>
     </Card>
   </div>
@@ -46,29 +63,44 @@
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { ref } from 'vue';
-import Login from '@/enity/member/Login.ts';
 import { useRouter } from 'vue-router';
 import { useToast } from '@/composables';
 import AxiosHttpClient from '@/http/AxiosHttpClient.ts';
 import type HttpError from '@/http/HttpError.ts';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { toTypedSchema } from '@vee-validate/zod';
+import * as z from 'zod';
 
-const state = ref({
-  login: new Login(),
-});
+// 로그인 폼 검증 스키마 정의
+const loginSchema = toTypedSchema(
+  z.object({
+    username: z.string({
+      required_error: '이메일을 입력해주세요.',
+    }),
+    password: z.string({
+      required_error: '비밀번호를 입력해주세요.',
+    }),
+  })
+);
 
 const router = useRouter();
 const toast = useToast();
 
-function handleLogin() {
+function handleLogin(values: { username: string; password: string }) {
   const httpClient = new AxiosHttpClient();
 
   httpClient
     .post({
       path: '/api/v1/auths/login',
-      body: state.value.login,
+      body: values,
     })
     .then(() => {
       toast.success('로그인 성공', { description: '환영합니다! 로그인에 성공했습니다.' });

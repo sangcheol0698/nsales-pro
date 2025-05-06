@@ -60,3 +60,62 @@ npm run format:check
 # 특정 파일 포맷팅 (예: main.ts)
 npm run format:main
 ```
+
+## 테스트
+
+이 프로젝트는 다음과 같은 테스트 프레임워크를 사용합니다:
+
+1. **Vitest**: 단위 테스트 및 컴포넌트 테스트용
+2. **Cypress**: 엔드 투 엔드(E2E) 테스트용
+
+### Vitest 설정
+
+Vitest는 Vite와 통합된 빠른 테스트 러너로, 단위 테스트와 컴포넌트 테스트에 사용됩니다.
+
+주요 특징:
+- Jest와 유사한 API
+- Vite의 변환 파이프라인 활용
+- 빠른 HMR(Hot Module Replacement) 지원
+- TypeScript 및 JSX 지원
+- 코드 커버리지 보고서 생성
+
+테스트 파일은 `src/test` 디렉토리에 위치하며 다음과 같은 구조로 구성됩니다:
+- `src/test/unit`: 단위 테스트
+- `src/test/components`: 컴포넌트 테스트
+
+### Cypress 설정
+
+Cypress는 현대적인 웹 애플리케이션을 위한 엔드 투 엔드 테스트 프레임워크입니다.
+
+주요 특징:
+- 실시간 리로딩
+- 시간 여행 디버깅
+- 자동 대기
+- 네트워크 트래픽 제어
+- 스크린샷 및 비디오 녹화
+
+Cypress 테스트 파일은 `e2e/specs` 디렉토리에 위치하며 `.cy.ts` 확장자를 사용합니다.
+
+### 테스트 실행하기
+
+다음 npm 스크립트를 사용하여 테스트를 실행할 수 있습니다:
+
+```bash
+# Vitest로 모든 테스트 실행
+npm run test
+
+# Vitest 감시 모드로 테스트 실행 (파일 변경 시 자동 재실행)
+npm run test:watch
+
+# 코드 커버리지 보고서 생성
+npm run test:coverage
+
+# Vitest UI로 테스트 실행
+npm run test:ui
+
+# Cypress로 E2E 테스트 실행 (헤드리스 모드)
+npm run test:e2e
+
+# Cypress 개발 모드로 E2E 테스트 실행 (브라우저 인터페이스)
+npm run test:e2e:dev
+```

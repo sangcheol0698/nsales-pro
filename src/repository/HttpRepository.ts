@@ -1,11 +1,9 @@
 import AxiosHttpClient, { type HttpRequestConfig } from '@/http/AxiosHttpClient.ts';
+import { inject, singleton } from 'tsyringe';
 
+@singleton()
 export default class HttpRepository {
-  private readonly httpClient: AxiosHttpClient;
-
-  constructor(httpClient: AxiosHttpClient = new AxiosHttpClient()) {
-    this.httpClient = httpClient;
-  }
+  constructor(@inject(AxiosHttpClient) private readonly httpClient: AxiosHttpClient) {}
 
   public async get(config: HttpRequestConfig) {
     return this.httpClient.request({ ...config, method: 'GET' });

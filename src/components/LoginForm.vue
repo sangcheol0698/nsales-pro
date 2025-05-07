@@ -69,11 +69,12 @@ import {
 } from '@/components/ui/form';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
-import AuthRepository from '@/repository/AuthRepository.ts';
 import type Login from '@/enity/auth/Login.ts';
 import { useRouter } from 'vue-router';
 import type HttpError from '@/http/HttpError.ts';
 import { useToast } from '@/composables';
+import { container } from 'tsyringe';
+import AuthRepository from '@/repository/AuthRepository.ts';
 
 // 로그인 폼 검증 스키마 정의
 const loginSchema = toTypedSchema(
@@ -90,7 +91,7 @@ const loginSchema = toTypedSchema(
 const toast = useToast();
 const router = useRouter();
 
-const AUTH_REPOSITORY = new AuthRepository();
+const AUTH_REPOSITORY = container.resolve(AuthRepository);
 
 async function handleLogin(values: Login) {
   await AUTH_REPOSITORY.login(values)

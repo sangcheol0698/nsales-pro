@@ -2,7 +2,7 @@
   <div class="flex flex-col gap-6">
     <Card>
       <CardHeader class="flex flex-col gap-1">
-        <CardTitle class="text-xl"> 비밀번호 찾기 </CardTitle>
+        <CardTitle class="text-xl"> 비밀번호 찾기</CardTitle>
         <CardDescription>
           가입한 이메일을 입력하세요.<br />
           비밀번호 재설정 링크를 보내드립니다.
@@ -63,6 +63,7 @@ import type ForgotPassword from '@/enity/auth/ForgotPassword.ts';
 import type HttpError from '@/http/HttpError.ts';
 import { useRouter } from 'vue-router';
 import { useToast } from '@/composables';
+import { container } from 'tsyringe';
 
 // 비밀번호 찾기 폼 검증 스키마 정의
 const forgotPasswordSchema = toTypedSchema(
@@ -78,7 +79,7 @@ const forgotPasswordSchema = toTypedSchema(
 const router = useRouter();
 const toast = useToast();
 
-const AUTH_REPOSITORY = new AuthRepository();
+const AUTH_REPOSITORY = container.resolve(AuthRepository);
 
 async function handleForgotPassword(values: ForgotPassword) {
   await AUTH_REPOSITORY.forgotPassword(values)

@@ -1,5 +1,6 @@
 import axios, { type AxiosError, type AxiosInstance, type AxiosResponse } from 'axios';
 import HttpError from '@/http/HttpError.ts';
+import { singleton } from 'tsyringe';
 
 export type HttpRequestConfig = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -8,6 +9,7 @@ export type HttpRequestConfig = {
   body?: any;
 };
 
+@singleton()
 export default class AxiosHttpClient {
   private readonly client: AxiosInstance = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL,

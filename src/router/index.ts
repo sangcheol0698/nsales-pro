@@ -344,11 +344,11 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach((to, from, next) => {
-  // if (memberStore.isAuthenticated === null && !to.fullPath.startsWith('/auths')) {
-  //   next({ name: 'login' });
-  // }
-  next();
-});
+// router.beforeEach((to, from, next) => {
+//   // if (memberStore.isAuthenticated === null && !to.fullPath.startsWith('/auths')) {
+//   //   next({ name: 'login' });
+//   // }
+//   next();
+// });
 
 export default router;

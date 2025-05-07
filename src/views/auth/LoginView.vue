@@ -1,11 +1,11 @@
 <template>
-  <AuthLayout logoHref="/auths/register">
-    <RegisterForm />
+  <AuthLayout logoHref="/auths/login">
+    <LoginForm />
   </AuthLayout>
 </template>
 
 <script setup lang="ts">
-import RegisterForm from '@/components/RegisterForm.vue';
+import LoginForm from '@/components/auth/LoginForm.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 </script>
 

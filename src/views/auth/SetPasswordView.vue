@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import SetPasswordForm from '@/components/SetPasswordForm.vue';
+import SetPasswordForm from '@/components/auth/SetPasswordForm.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 </script>
 

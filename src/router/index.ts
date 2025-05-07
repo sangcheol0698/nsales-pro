@@ -18,22 +18,22 @@ const routes = [
   {
     path: '/auths/initialize',
     name: 'initialize',
-    component: () => import('@/views/SetPasswordView.vue'),
+    component: () => import('@/views/auth/SetPasswordView.vue'),
   },
   {
     path: '/auths/register',
     name: 'register',
-    component: () => import('@/views/RegisterView.vue'),
+    component: () => import('@/views/auth/RegisterView.vue'),
   },
   {
     path: '/auths/login',
     name: 'login',
-    component: () => import('@/views/LoginView.vue'),
+    component: () => import('@/views/auth/LoginView.vue'),
   },
   {
     path: '/auths/forgot-password',
     name: 'findPassword',
-    component: () => import('@/views/ForgotPasswordView.vue'),
+    component: () => import('@/views/auth/ForgotPasswordView.vue'),
   },
   {
     path: '/projects',

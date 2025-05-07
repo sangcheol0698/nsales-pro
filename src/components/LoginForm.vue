@@ -2,8 +2,8 @@
   <div class="flex flex-col gap-6">
     <Card>
       <CardHeader class="flex flex-col gap-1">
-        <CardTitle class="text-xl"> 로그인 </CardTitle>
-        <CardDescription> 이메일과 비밀번호를 입력하세요. </CardDescription>
+        <CardTitle class="text-xl"> 로그인</CardTitle>
+        <CardDescription> 이메일과 비밀번호를 입력하세요.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form :validation-schema="loginSchema" @submit="handleLogin" v-slot="{ errors }">
@@ -40,12 +40,7 @@
                   <FormMessage />
                 </FormItem>
               </FormField>
-              <Button
-                class="w-full"
-                type="submit"
-                :disabled="Object.keys(errors).length > 0"
-                @click="handleLogin"
-              >
+              <Button class="w-full" type="submit" :disabled="Object.keys(errors).length > 0">
                 Login
               </Button>
             </div>
@@ -64,10 +59,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useRouter } from 'vue-router';
-import { useToast } from '@/composables';
-import AxiosHttpClient from '@/http/AxiosHttpClient.ts';
-import type HttpError from '@/http/HttpError.ts';
 import {
   Form,
   FormControl,
@@ -78,6 +69,11 @@ import {
 } from '@/components/ui/form';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
+import AuthRepository from '@/repository/AuthRepository.ts';
+import type Login from '@/enity/auth/Login.ts';
+import { useRouter } from 'vue-router';
+import type HttpError from '@/http/HttpError.ts';
+import { useToast } from '@/composables';
 
 // 로그인 폼 검증 스키마 정의
 const loginSchema = toTypedSchema(
@@ -91,21 +87,16 @@ const loginSchema = toTypedSchema(
   })
 );
 
-const router = useRouter();
 const toast = useToast();
+const router = useRouter();
+
 const AUTH_REPOSITORY = new AuthRepository();
 
-function handleLogin(values: Login) {
-  const httpClient = new AxiosHttpClient();
-
-  httpClient
-    .post({
-      path: '/api/v1/auths/login',
-      body: values,
-    })
+async function handleLogin(values: Login) {
+  await AUTH_REPOSITORY.login(values)
     .then(() => {
       toast.success('로그인 성공', { description: '환영합니다! 로그인에 성공했습니다.' });
-      router.push('/');
+      router.push({ path: '/' });
     })
     .catch((e: HttpError) => {
       toast.error('로그인 실패', { description: e.getMessage() });

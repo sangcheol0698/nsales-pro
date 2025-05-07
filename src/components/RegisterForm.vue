@@ -32,7 +32,7 @@
                   <FormMessage />
                 </FormItem>
               </FormField>
-              <Button class="w-full" type="submit" :disabled="Object.keys(errors).length > 0"> 회원 등록 </Button>
+              <Button class="w-full" type="submit" :disabled="Object.keys(errors).length > 0"> 이메일 링크 발송 </Button>
             </div>
             <div class="text-center text-sm">
               이미 계정이 있으신가요?
@@ -51,11 +51,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'vue-router';
 import { useToast } from '@/composables';
-import AxiosHttpClient from '@/http/AxiosHttpClient.ts';
 import type HttpError from '@/http/HttpError.ts';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
+import AuthRepository from '@/repository/AuthRepository.ts';
+import type Register from '@/enity/auth/Register.ts';
 
 // 회원 등록 폼 검증 스키마 정의
 const registerSchema = toTypedSchema(
@@ -72,14 +73,10 @@ const registerSchema = toTypedSchema(
 const router = useRouter();
 const toast = useToast();
 
-function handleRegister(values: { name: string; email: string }) {
-  const httpClient = new AxiosHttpClient();
+const AUTH_REPOSITORY = new AuthRepository();
 
-  httpClient
-    .post({
-      path: '/api/v1/auths/register',
-      body: values,
-    })
+async function handleRegister(values: Register) {
+  await AUTH_REPOSITORY.register(values)
     .then(() => {
       toast.success('회원 등록 성공', {
         description: '이메일로 비밀번호 설정 링크가 전송되었습니다. 이메일을 확인해주세요.',

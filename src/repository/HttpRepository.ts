@@ -2,9 +2,11 @@ import AxiosHttpClient, { type HttpRequestConfig } from '@/http/AxiosHttpClient.
 
 export default class HttpRepository {
   private readonly httpClient: AxiosHttpClient;
-  constructor(httpClient: AxiosHttpClient) {
-    this.httpClient = httpClient ?? new AxiosHttpClient();
+
+  constructor(httpClient: AxiosHttpClient = new AxiosHttpClient()) {
+    this.httpClient = httpClient;
   }
+
   public async get(config: HttpRequestConfig) {
     return this.httpClient.request({ ...config, method: 'GET' });
   }

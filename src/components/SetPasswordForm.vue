@@ -56,11 +56,12 @@ import { Input } from '@/components/ui/input';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from '@/composables';
-import AxiosHttpClient from '@/http/AxiosHttpClient.ts';
 import type HttpError from '@/http/HttpError.ts';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
+import AuthRepository from '@/repository/AuthRepository.ts';
+import type SetPassword from '@/enity/auth/SetPassword.ts';
 
 // 토큰 상태 관리
 const token = ref('');
@@ -68,6 +69,8 @@ const token = ref('');
 const router = useRouter();
 const route = useRoute();
 const toast = useToast();
+
+const AUTH_REPOSITORY = new AuthRepository();
 
 // 비밀번호 설정 폼 검증 스키마 정의
 const passwordSchema = toTypedSchema(
@@ -101,18 +104,9 @@ onMounted(() => {
   token.value = routeToken;
 });
 
-function handleSetPassword(values: { newPassword: string; newPasswordConfirm: string }) {
-  const httpClient = new AxiosHttpClient();
-
-  httpClient
-    .patch({
-      path: '/api/v1/auths/initialize',
-      body: {
-        newPassword: values.newPassword,
-        newPasswordConfirm: values.newPasswordConfirm,
-        token: token.value,
-      },
-    })
+async function handleSetPassword(values: SetPassword) {
+  values.token = token.value;
+  await AUTH_REPOSITORY.setPassword(values)
     .then(() => {
       toast.success('비밀번호 설정 성공', {
         description: '비밀번호가 성공적으로 설정되었습니다. 이제 로그인할 수 있습니다.',

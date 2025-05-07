@@ -48,9 +48,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useRouter } from 'vue-router';
-import { useToast } from '@/composables';
-import type HttpError from '@/http/HttpError.ts';
 import {
   Form,
   FormControl,
@@ -62,6 +59,10 @@ import {
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
 import AuthRepository from '@/repository/AuthRepository.ts';
+import type ForgotPassword from '@/enity/auth/ForgotPassword.ts';
+import type HttpError from '@/http/HttpError.ts';
+import { useRouter } from 'vue-router';
+import { useToast } from '@/composables';
 
 // 비밀번호 찾기 폼 검증 스키마 정의
 const forgotPasswordSchema = toTypedSchema(
@@ -77,23 +78,18 @@ const forgotPasswordSchema = toTypedSchema(
 const router = useRouter();
 const toast = useToast();
 
-function handleForgotPassword(values: { email: string }) {
-  const AUTH_REPOSITORY = new AuthRepository();
+const AUTH_REPOSITORY = new AuthRepository();
 
-  httpClient
-    .post({
-      path: '/api/v1/auths/find-password',
-      body: { email: values.email },
-    })
+async function handleForgotPassword(values: ForgotPassword) {
+  await AUTH_REPOSITORY.forgotPassword(values)
     .then(() => {
-      toast.success('비밀번호 찾기 요청 성공', {
-        description:
-          '입력하신 이메일로 비밀번호 재설정 링크가 전송되었습니다. 이메일을 확인해주세요.',
+      toast.success('비밀번호 찾기 성공', {
+        description: '이메일로 비밀번호 재설정 링크가 전송되었습니다. 이메일을 확인해주세요.',
       });
       router.push('/auths/login');
     })
     .catch((e: HttpError) => {
-      toast.error('비밀번호 찾기 요청 실패', { description: e.getMessage() });
+      toast.error('비밀번호 찾기 실패', { description: e.getMessage() });
     });
 }
 </script>

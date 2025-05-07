@@ -15,6 +15,7 @@ export default class AxiosHttpClient {
     baseURL: import.meta.env.VITE_API_BASE_URL,
     timeout: import.meta.env.VITE_API_BASE_TIMEOUT,
     timeoutErrorMessage: '요청 시간이 초과되었습니다.',
+    withCredentials: true,
   });
 
   public async request(config: HttpRequestConfig) {

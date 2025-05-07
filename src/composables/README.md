@@ -2,6 +2,89 @@
 
 This directory contains reusable Vue composables for the project.
 
+## useAlertDialog
+
+A composable for programmatically displaying alert dialogs.
+
+### Usage
+
+```typescript
+import { useAlertDialog } from '@/composables';
+
+// In your component setup
+const alertDialog = useAlertDialog();
+
+// Open a basic dialog
+alertDialog.open({
+  title: 'Basic Dialog',
+  description: 'This is a basic dialog example.',
+  confirmText: 'Confirm',
+  cancelText: 'Cancel',
+  onConfirm: () => {
+    console.log('Confirm button clicked');
+  },
+  onCancel: () => {
+    console.log('Cancel button clicked');
+  },
+});
+
+// Open an alert dialog (only confirm button)
+alertDialog.alert(
+  'Alert',
+  'This is an alert dialog example.',
+  () => {
+    console.log('Confirm button clicked');
+  }
+);
+
+// Open a confirm dialog (confirm and cancel buttons)
+alertDialog.confirm(
+  'Confirmation Required',
+  'Are you sure you want to perform this action?',
+  () => {
+    console.log('Confirm button clicked');
+  },
+  () => {
+    console.log('Cancel button clicked');
+  }
+);
+
+// Close the dialog programmatically
+alertDialog.close();
+
+// Check if the dialog is open
+console.log(alertDialog.isOpen.value);
+```
+
+### API
+
+The `useAlertDialog` composable returns an object with the following methods:
+
+- `open(options: AlertDialogOptions)`: Open a dialog with custom options
+- `close()`: Close the dialog
+- `alert(title: string, description?: string, onConfirm?: () => void)`: Open an alert dialog with only a confirm button
+- `confirm(title: string, description?: string, onConfirm?: () => void, onCancel?: () => void)`: Open a confirm dialog with confirm and cancel buttons
+- `isOpen`: A ref indicating whether the dialog is currently open
+
+### Options
+
+The `open` method accepts an options object with the following properties:
+
+```typescript
+interface AlertDialogOptions {
+  title?: string;              // Dialog title
+  description?: string;        // Dialog description
+  confirmText?: string;        // Text for the confirm button (default: "확인")
+  cancelText?: string;         // Text for the cancel button (default: "취소")
+  onConfirm?: () => void;      // Callback when confirm button is clicked
+  onCancel?: () => void;       // Callback when cancel button is clicked
+}
+```
+
+### Example Component
+
+See `src/examples/AlertDialogExample.vue` for a complete example of using the `useAlertDialog` composable.
+
 ## useToast
 
 A composable for easier usage of toast notifications using vue-sonner.

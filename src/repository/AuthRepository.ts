@@ -7,12 +7,11 @@ import { inject, singleton } from 'tsyringe';
 
 @singleton()
 export default class AuthRepository {
-
   constructor(@inject(HttpRepository) private readonly httpRepository: HttpRepository) {}
 
-  public async login(data: Login) {
+  public async login(data: Login, remember: boolean) {
     await this.httpRepository.post({
-      path: '/api/v1/auths/login',
+      path: '/api/v1/auths/login?remember=' + remember,
       body: data,
     });
   }
@@ -35,6 +34,12 @@ export default class AuthRepository {
     await this.httpRepository.patch({
       path: '/api/v1/auths/initialize',
       body: data,
+    });
+  }
+
+  public async logout() {
+    await this.httpRepository.post({
+      path: '/api/v1/auths/logout',
     });
   }
 }

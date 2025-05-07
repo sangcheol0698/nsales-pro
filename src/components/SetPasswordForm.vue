@@ -77,7 +77,6 @@ const route = useRoute();
 const toast = useToast();
 
 // 비밀번호 설정 폼 검증 스키마 정의
-
 const passwordSchema = toTypedSchema(
   z
     .object({
@@ -98,16 +97,6 @@ const passwordSchema = toTypedSchema(
       path: ['newPasswordConfirm'],
     })
 );
-onMounted(() => {
-  // Get token from route params
-  const routeToken = route.query.token as string;
-  if (!routeToken) {
-    toast.error('유효하지 않은 링크', { description: '비밀번호 설정 링크가 유효하지 않습니다.' });
-    router.push('/auths/login');
-    return;
-  }
-  token.value = routeToken;
-});
 
 const AUTH_REPOSITORY = container.resolve(AuthRepository);
 
@@ -124,4 +113,15 @@ async function handleSetPassword(values: SetPassword) {
       toast.error('비밀번호 설정 실패', { description: e.getMessage() });
     });
 }
+
+onMounted(() => {
+  // Get token from route params
+  const routeToken = route.query.token as string;
+  if (!routeToken) {
+    toast.error('유효하지 않은 링크', { description: '비밀번호 설정 링크가 유효하지 않습니다.' });
+    router.push('/auths/login');
+    return;
+  }
+  token.value = routeToken;
+});
 </script>

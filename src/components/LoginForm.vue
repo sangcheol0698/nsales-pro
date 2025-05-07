@@ -11,7 +11,7 @@
             <div class="grid gap-6">
               <FormField name="username" v-slot="{ field }">
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>이메일</FormLabel>
                   <FormControl>
                     <Input
                       id="email"
@@ -26,7 +26,7 @@
               <FormField name="password" v-slot="{ field }">
                 <FormItem>
                   <div class="flex items-center">
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>비밀번호</FormLabel>
                     <a
                       href="/auths/forgot-password"
                       class="ml-auto text-sm underline-offset-4 hover:underline"
@@ -38,6 +38,16 @@
                     <Input id="password" type="password" v-bind="field" />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              </FormField>
+              <FormField name="remember">
+                <FormItem>
+                  <div class="flex justify-end space-x-2">
+                    <FormControl>
+                      <Checkbox id="remember" type="checkbox" v-model="remember" />
+                      <Label for="remember">로그인 상태 유지</Label>
+                    </FormControl>
+                  </div>
                 </FormItem>
               </FormField>
               <Button class="w-full" type="submit" :disabled="Object.keys(errors).length > 0">
@@ -75,6 +85,9 @@ import type HttpError from '@/http/HttpError.ts';
 import { useToast } from '@/composables';
 import { container } from 'tsyringe';
 import AuthRepository from '@/repository/AuthRepository.ts';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ref } from 'vue';
 
 // 로그인 폼 검증 스키마 정의
 const loginSchema = toTypedSchema(
@@ -91,12 +104,17 @@ const loginSchema = toTypedSchema(
 const toast = useToast();
 const router = useRouter();
 
+const remember = ref(false);
+
 const AUTH_REPOSITORY = container.resolve(AuthRepository);
 
 async function handleLogin(values: Login) {
-  await AUTH_REPOSITORY.login(values)
+  await AUTH_REPOSITORY.login(values, remember.value)
     .then(() => {
-      toast.success('로그인 성공', { description: '환영합니다! 로그인에 성공했습니다.' });
+      toast.info('로그인 성공', {
+        description: '환영합니다! 로그인에 성공했습니다.',
+        position: 'bottom-right',
+      });
       router.push({ path: '/' });
     })
     .catch((e: HttpError) => {

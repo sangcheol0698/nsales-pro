@@ -33,8 +33,8 @@
                 </FormItem>
               </FormField>
               <Button class="w-full" type="submit" :disabled="Object.keys(errors).length > 0">
-                이메일 링크 발송</Button
-              >
+                이메일 링크 발송
+              </Button>
             </div>
             <div class="text-center text-sm">
               이미 계정이 있으신가요?

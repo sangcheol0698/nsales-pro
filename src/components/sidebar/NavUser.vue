@@ -109,25 +109,25 @@ const alertDialog = useAlertDialog();
 
 const AUTH_REPOSITORY = container.resolve(AuthRepository);
 const handleLogout = async () => {
-  await AUTH_REPOSITORY.logout()
-    .then(() => {
-      alertDialog.open({
-        title: '로그아웃',
-        description: '정말 로그아웃 하시겠습니까?',
-        confirmText: '로그아웃',
-        cancelText: '취소',
-        onConfirm: () => {
+  alertDialog.open({
+    title: '로그아웃',
+    description: '정말 로그아웃 하시겠습니까?',
+    confirmText: '로그아웃',
+    cancelText: '취소',
+    onConfirm: () => {
+      AUTH_REPOSITORY.logout()
+        .then(() => {
           toast.info('로그아웃', {
             description: '로그아웃 되었습니다!',
             position: 'bottom-right',
           });
           router.push('/auths/login');
-        },
-      });
-    })
-    .catch((e: HttpError) => {
-      toast.error('로그아웃 실패', { description: e.getMessage() });
-    });
+        })
+        .catch((e: HttpError) => {
+          toast.error('로그아웃 실패', { description: e.getMessage() });
+        });
+    },
+  });
 };
 
 const { isMobile } = useSidebar();

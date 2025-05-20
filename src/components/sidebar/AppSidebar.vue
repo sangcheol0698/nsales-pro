@@ -1,5 +1,5 @@
 <template>
-  <Sidebar v-bind="props">
+  <Sidebar v-bind="props" variant="floating">
     <SidebarHeader>
       <SidebarMenu>
         <SidebarMenuItem>
@@ -12,7 +12,7 @@
               </div>
               <div class="flex flex-col gap-0.5 leading-none">
                 <span class="font-semibold">Abacus - 매출 관리</span>
-                <span class="">v1.0.0</span>
+                <span class="text-xs text-muted-foreground"> Abacus Inc </span>
               </div>
             </a>
           </SidebarMenuButton>

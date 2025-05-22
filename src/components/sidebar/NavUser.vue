@@ -57,6 +57,33 @@
               <Bell />
               Notifications
             </DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Sun v-if="theme !== 'system' && effectiveTheme === 'light'" />
+                <Moon v-if="theme !== 'system' && effectiveTheme === 'dark'" />
+                <Monitor v-if="theme === 'system'" />
+                테마 설정
+              </DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem @click="setTheme('light')" :class="{ 'bg-accent': theme === 'light' }">
+                    <Sun class="mr-2 h-4 w-4" />
+                    <span>라이트 모드</span>
+                    <Check v-if="theme === 'light'" class="ml-auto h-4 w-4" />
+                  </DropdownMenuItem>
+                  <DropdownMenuItem @click="setTheme('dark')" :class="{ 'bg-accent': theme === 'dark' }">
+                    <Moon class="mr-2 h-4 w-4" />
+                    <span>다크 모드</span>
+                    <Check v-if="theme === 'dark'" class="ml-auto h-4 w-4" />
+                  </DropdownMenuItem>
+                  <DropdownMenuItem @click="setTheme('system')" :class="{ 'bg-accent': theme === 'system' }">
+                    <Monitor class="mr-2 h-4 w-4" />
+                    <span>시스템 설정</span>
+                    <Check v-if="theme === 'system'" class="ml-auto h-4 w-4" />
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem @click="handleLogout">
@@ -67,7 +94,6 @@
       </DropdownMenu>
     </SidebarMenuItem>
   </SidebarMenu>
-  <button></button>
 </template>
 
 <script setup lang="ts">
@@ -79,7 +105,11 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPortal,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -88,12 +118,12 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { BadgeCheck, Bell, ChevronsUpDown, CreditCard, LogOut, Sparkles } from 'lucide-vue-next';
+import { BadgeCheck, Bell, Check, ChevronsUpDown, CreditCard, LogOut, Monitor, Moon, Sparkles, Sun } from 'lucide-vue-next';
 import { container } from 'tsyringe';
 import AuthRepository from '@/repository/AuthRepository.ts';
 import { useRouter } from 'vue-router';
 import type HttpError from '@/http/HttpError.ts';
-import { useAlertDialog, useToast } from '@/composables';
+import { useAlertDialog, useTheme, useToast } from '@/composables';
 
 const props = defineProps<{
   user: {
@@ -106,6 +136,7 @@ const props = defineProps<{
 const router = useRouter();
 const toast = useToast();
 const alertDialog = useAlertDialog();
+const { theme, effectiveTheme, setTheme, toggleTheme } = useTheme();
 
 const AUTH_REPOSITORY = container.resolve(AuthRepository);
 const handleLogout = async () => {

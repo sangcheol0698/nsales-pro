@@ -56,7 +56,6 @@ const props = withDefaults(defineProps<SidebarProps>(), {
   collapsible: 'icon',
 });
 
-// This is sample data.
 const data = {
   user: {
     name: 'shadcn',

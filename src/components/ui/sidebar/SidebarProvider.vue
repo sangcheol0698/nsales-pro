@@ -2,8 +2,8 @@
 import { cn } from '@/lib/utils'
 import { useEventListener, useMediaQuery, useVModel } from '@vueuse/core'
 import { TooltipProvider } from 'reka-ui'
-import { computed, type HTMLAttributes, type Ref, ref } from 'vue'
-import { provideSidebarContext, SIDEBAR_COOKIE_MAX_AGE, SIDEBAR_COOKIE_NAME, SIDEBAR_KEYBOARD_SHORTCUT, SIDEBAR_WIDTH, SIDEBAR_WIDTH_ICON } from './utils'
+import { computed, onMounted, type HTMLAttributes, type Ref, ref } from 'vue'
+import { provideSidebarContext, SIDEBAR_STORAGE_KEY, SIDEBAR_KEYBOARD_SHORTCUT, SIDEBAR_WIDTH, SIDEBAR_WIDTH_ICON } from './utils'
 
 const props = withDefaults(defineProps<{
   defaultOpen?: boolean
@@ -29,8 +29,8 @@ const open = useVModel(props, 'open', emits, {
 function setOpen(value: boolean) {
   open.value = value // emits('update:open', value)
 
-  // This sets the cookie to keep the sidebar state.
-  document.cookie = `${SIDEBAR_COOKIE_NAME}=${open.value}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+  // Store the sidebar state in localStorage
+  localStorage.setItem(SIDEBAR_STORAGE_KEY, value.toString())
 }
 
 function setOpenMobile(value: boolean) {
@@ -52,6 +52,14 @@ useEventListener('keydown', (event: KeyboardEvent) => {
 // We add a state so that we can do data-state="expanded" or "collapsed".
 // This makes it easier to style the sidebar with Tailwind classes.
 const state = computed(() => open.value ? 'expanded' : 'collapsed')
+
+// Read the stored sidebar state from localStorage when the component is mounted
+onMounted(() => {
+  const storedState = localStorage.getItem(SIDEBAR_STORAGE_KEY)
+  if (storedState !== null) {
+    open.value = storedState === 'true'
+  }
+})
 
 provideSidebarContext({
   state,

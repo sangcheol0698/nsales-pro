@@ -1,6 +1,6 @@
 <template>
   <SidebarLayout>
-    <main class="flex flex-col w-full h-full p-4">
+    <main class="flex flex-col w-full h-full p-4 overflow-x-hidden">
       <div class="w-full">
         <div class="flex items-center py-4">
           <Input
@@ -30,7 +30,7 @@
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        <div class="rounded-md border">
+        <div class="rounded-md border overflow-auto">
           <div v-if="pagination.loading" class="flex justify-center items-center p-8">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>

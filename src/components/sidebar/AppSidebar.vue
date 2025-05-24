@@ -21,7 +21,6 @@
     </SidebarHeader>
     <SidebarContent>
       <NavMain :items="data.navMain" />
-      <NavProjects :projects="data.projects" />
     </SidebarContent>
     <SidebarFooter>
       <NavUser :user="data.user" />
@@ -43,17 +42,14 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar';
 import {
-  BookOpen,
-  Bot,
-  Frame,
+  Building2,
+  FileText,
   GalleryVerticalEnd,
-  Map,
-  PieChart,
-  Settings2,
-  SquareTerminal,
+  LayoutDashboard,
+  Users,
+  Wallet,
 } from 'lucide-vue-next';
 import NavMain from './NavMain.vue';
-import NavProjects from './NavProjects.vue';
 import NavUser from './NavUser.vue';
 
 const props = withDefaults(defineProps<SidebarProps>(), {
@@ -76,109 +72,29 @@ const data = {
   ],
   navMain: [
     {
+      title: '대시보드',
+      url: '/',
+      icon: LayoutDashboard,
+    },
+    {
       title: '프로젝트',
       url: '/projects',
-      icon: SquareTerminal,
-      isActive: true,
-      items: [
-        {
-          title: '프로젝트 관리',
-          url: '/projects',
-        },
-      ],
+      icon: FileText,
     },
     {
       title: '구성원',
-      url: '#',
-      icon: Bot,
-      items: [
-        {
-          title: '구성원 관리',
-          url: '#',
-        },
-        {
-          title: 'Explorer',
-          url: '#',
-        },
-        {
-          title: 'Quantum',
-          url: '#',
-        },
-      ],
+      url: '/employees',
+      icon: Users,
     },
     {
       title: '협력사',
-      url: '#',
-      icon: BookOpen,
-      items: [
-        {
-          title: 'Introduction',
-          url: '#',
-        },
-        {
-          title: 'Get Started',
-          url: '#',
-        },
-        {
-          title: 'Tutorials',
-          url: '#',
-        },
-        {
-          title: 'Changelog',
-          url: '#',
-        },
-      ],
+      url: '/partners',
+      icon: Building2,
     },
     {
       title: '매출',
-      url: '#',
-      icon: Settings2,
-      items: [
-        {
-          title: 'General',
-          url: '#',
-        },
-        {
-          title: 'Team',
-          url: '#',
-        },
-        {
-          title: 'Billing',
-          url: '#',
-        },
-        {
-          title: 'Limits',
-          url: '#',
-        },
-      ],
-    },
-    {
-      title: '권한',
-      url: '#',
-      icon: Settings2,
-      items: [
-        {
-          title: 'General',
-          url: '#',
-        },
-      ],
-    },
-  ],
-  projects: [
-    {
-      name: 'Design Engineering',
-      url: '#',
-      icon: Frame,
-    },
-    {
-      name: 'Sales & Marketing',
-      url: '#',
-      icon: PieChart,
-    },
-    {
-      name: 'Travel',
-      url: '#',
-      icon: Map,
+      url: '/sales',
+      icon: Wallet,
     },
   ],
 };

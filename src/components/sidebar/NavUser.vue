@@ -58,25 +58,28 @@
               Notifications
             </DropdownMenuItem>
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <Sun v-if="theme !== 'system' && effectiveTheme === 'light'" />
-                <Moon v-if="theme !== 'system' && effectiveTheme === 'dark'" />
-                <Monitor v-if="theme === 'system'" />
-                테마 설정
-              </DropdownMenuSubTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
-                  <DropdownMenuItem @click="setTheme('light')" :class="{ 'bg-accent': theme === 'light' }">
+                  <DropdownMenuItem
+                    @click="setTheme('light')"
+                    :class="{ 'bg-accent': theme === 'light' }"
+                  >
                     <Sun class="mr-2 h-4 w-4" />
                     <span>라이트 모드</span>
                     <Check v-if="theme === 'light'" class="ml-auto h-4 w-4" />
                   </DropdownMenuItem>
-                  <DropdownMenuItem @click="setTheme('dark')" :class="{ 'bg-accent': theme === 'dark' }">
+                  <DropdownMenuItem
+                    @click="setTheme('dark')"
+                    :class="{ 'bg-accent': theme === 'dark' }"
+                  >
                     <Moon class="mr-2 h-4 w-4" />
                     <span>다크 모드</span>
                     <Check v-if="theme === 'dark'" class="ml-auto h-4 w-4" />
                   </DropdownMenuItem>
-                  <DropdownMenuItem @click="setTheme('system')" :class="{ 'bg-accent': theme === 'system' }">
+                  <DropdownMenuItem
+                    @click="setTheme('system')"
+                    :class="{ 'bg-accent': theme === 'system' }"
+                  >
                     <Monitor class="mr-2 h-4 w-4" />
                     <span>시스템 설정</span>
                     <Check v-if="theme === 'system'" class="ml-auto h-4 w-4" />
@@ -109,7 +112,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -118,7 +120,18 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { BadgeCheck, Bell, Check, ChevronsUpDown, CreditCard, LogOut, Monitor, Moon, Sparkles, Sun } from 'lucide-vue-next';
+import {
+  BadgeCheck,
+  Bell,
+  Check,
+  ChevronsUpDown,
+  CreditCard,
+  LogOut,
+  Monitor,
+  Moon,
+  Sparkles,
+  Sun,
+} from 'lucide-vue-next';
 import { container } from 'tsyringe';
 import AuthRepository from '@/repository/AuthRepository.ts';
 import { useRouter } from 'vue-router';

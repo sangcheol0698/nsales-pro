@@ -50,7 +50,13 @@
 </template>
 
 <script setup lang="ts">
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/core/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/core/components/ui/card';
 import { Button } from '@/core/components/ui/button';
 import { Input } from '@/core/components/ui/input';
 import {
@@ -66,7 +72,7 @@ import * as z from 'zod';
 import type Register from '@/features/auth/entity/Register.ts';
 import { useRouter } from 'vue-router';
 import type HttpError from '@/core/http/HttpError.ts';
-import { useToast } from '@/composables';
+import { useToast } from '@/core/composables';
 import { container } from 'tsyringe';
 import AuthRepository from '@/features/auth/repository/AuthRepository.ts';
 import AuthLayout from '@/core/layouts/AuthLayout.vue';

@@ -7,7 +7,11 @@
           <CardDescription>가입한 이메일을 입력하세요.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Form :validation-schema="forgotPasswordSchema" @submit="handleForgotPassword" v-slot="{ errors }">
+          <Form
+            :validation-schema="forgotPasswordSchema"
+            @submit="handleForgotPassword"
+            v-slot="{ errors }"
+          >
             <div class="grid gap-6">
               <div class="grid gap-6">
                 <FormField name="email" v-slot="{ field }">
@@ -29,7 +33,9 @@
                 </Button>
               </div>
               <div class="text-center text-sm">
-                <a href="/auths/login" class="underline underline-offset-4"> 로그인으로 돌아가기 </a>
+                <a href="/auths/login" class="underline underline-offset-4">
+                  로그인으로 돌아가기
+                </a>
               </div>
             </div>
           </Form>
@@ -40,7 +46,13 @@
 </template>
 
 <script setup lang="ts">
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/core/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/core/components/ui/card';
 import { Button } from '@/core/components/ui/button';
 import { Input } from '@/core/components/ui/input';
 import {
@@ -56,7 +68,7 @@ import * as z from 'zod';
 import type ForgotPassword from '@/features/auth/entity/ForgotPassword.ts';
 import { useRouter } from 'vue-router';
 import type HttpError from '@/core/http/HttpError.ts';
-import { useToast } from '@/composables';
+import { useToast } from '@/core/composables';
 import { container } from 'tsyringe';
 import AuthRepository from '@/features/auth/repository/AuthRepository.ts';
 import AuthLayout from '@/core/layouts/AuthLayout.vue';

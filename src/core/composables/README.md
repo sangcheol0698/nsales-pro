@@ -9,7 +9,7 @@ A composable for programmatically displaying alert dialogs.
 ### Usage
 
 ```typescript
-import { useAlertDialog } from '@/composables';
+import { useAlertDialog } from '@/core/composables';
 
 // In your component setup
 const alertDialog = useAlertDialog();
@@ -92,7 +92,7 @@ A composable for easier usage of toast notifications using vue-sonner.
 ### Usage
 
 ```typescript
-import { useToast } from '@/composables';
+import { useToast } from '@/core/composables';
 
 // In your component setup
 const toast = useToast();

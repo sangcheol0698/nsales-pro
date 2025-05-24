@@ -3,7 +3,7 @@
     <AppSidebar />
     <SidebarInset>
       <header
-        class="flex h-16 shrink-0 items-center gap-2 border-b dark:border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12"
+        class="flex h-16 shrink-0 items-center gap-2 border-b dark:border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-300 ease-in-out sticky top-0 z-10"
       >
         <div class="flex items-center gap-2 px-4">
           <SidebarTrigger class="-ml-1" />
@@ -49,14 +49,12 @@
             <Bell class="h-5 w-5" />
             <span class="sr-only">Notifications</span>
           </Button>
-          <Button variant="outline" size="icon" @click="isCommandDialogOpen = true">
-            <Search class="h-5 w-5" />
-            <span class="sr-only">Search</span>
-          </Button>
           <ThemeToggle />
         </div>
       </header>
-      <slot></slot>
+      <main class="flex-1 p-4 transition-all duration-300 ease-in-out">
+        <slot></slot>
+      </main>
     </SidebarInset>
   </SidebarProvider>
 </template>
@@ -73,7 +71,7 @@ import {
   BreadcrumbSeparator,
 } from '@/core/components/ui/breadcrumb';
 import { Button } from '@/core/components/ui/button';
-import { Bell, Search } from 'lucide-vue-next';
+import { Bell } from 'lucide-vue-next';
 import AppSidebar from '@/shared/components/sidebar/AppSidebar.vue';
 import { ThemeToggle } from '@/core/components/theme';
 import { useRoute } from 'vue-router';

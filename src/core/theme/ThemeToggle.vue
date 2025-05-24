@@ -2,8 +2,14 @@
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
       <Button variant="outline" size="icon" class="relative">
-        <Sun v-if="theme !== 'system'" class="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-        <Moon v-if="theme !== 'system'" class="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+        <Sun
+          v-if="theme !== 'system'"
+          class="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0"
+        />
+        <Moon
+          v-if="theme !== 'system'"
+          class="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
+        />
         <Monitor v-if="theme === 'system'" class="h-[1.2rem] w-[1.2rem] transition-all" />
         <span class="sr-only">테마 변경</span>
       </Button>
@@ -36,8 +42,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/core/components/ui/dropdown-menu';
-import { Check, Moon, Monitor, Sun } from 'lucide-vue-next';
-import { useTheme } from '@/composables';
+import { Check, Monitor, Moon, Sun } from 'lucide-vue-next';
+import { useTheme } from '@/core/composables';
 
 const { theme, setTheme } = useTheme();
 </script>

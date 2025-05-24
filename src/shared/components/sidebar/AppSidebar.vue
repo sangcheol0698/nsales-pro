@@ -41,13 +41,13 @@ import {
   type SidebarProps,
   SidebarRail,
 } from '@/core/components/ui/sidebar';
-import { 
-  Building2, 
-  FileText, 
-  GalleryVerticalEnd, 
-  LayoutDashboard, 
-  Users, 
-  Wallet 
+import {
+  Building2,
+  FileText,
+  GalleryVerticalEnd,
+  LayoutDashboard,
+  Users,
+  Wallet,
 } from 'lucide-vue-next';
 import NavMain from '@/shared/components/sidebar/NavMain.vue';
 import NavUser from '@/shared/components/sidebar/NavUser.vue';

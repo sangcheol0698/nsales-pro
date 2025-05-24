@@ -107,7 +107,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { container } from 'tsyringe';
 import ProjectRepository from '@/features/project/repository/ProjectRepository';
 import type { ProjectSearch } from '@/features/project/entity/ProjectSearch';
-import { useToast } from '@/composables';
+import { useToast } from '@/core/composables';
 
 const route = useRoute();
 const router = useRouter();
@@ -147,7 +147,7 @@ const fetchProject = async () => {
         clientCompany: '클라이언트 회사',
         status: '진행중',
         createdAt: '2022-12-15',
-        updatedAt: '2023-01-01'
+        updatedAt: '2023-01-01',
       };
       loading.value = false;
     }, 1000);

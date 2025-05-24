@@ -7,7 +7,11 @@
           <CardDescription>새로운 비밀번호를 설정해주세요.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Form :validation-schema="setPasswordSchema" @submit="handleSetPassword" v-slot="{ errors }">
+          <Form
+            :validation-schema="setPasswordSchema"
+            @submit="handleSetPassword"
+            v-slot="{ errors }"
+          >
             <div class="grid gap-6">
               <div class="grid gap-6">
                 <FormField name="newPassword" v-slot="{ field }">
@@ -41,7 +45,13 @@
 </template>
 
 <script setup lang="ts">
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/core/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/core/components/ui/card';
 import { Button } from '@/core/components/ui/button';
 import { Input } from '@/core/components/ui/input';
 import {
@@ -55,9 +65,9 @@ import {
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
 import type SetPassword from '@/features/auth/entity/SetPassword.ts';
-import { useRouter, useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import type HttpError from '@/core/http/HttpError.ts';
-import { useToast } from '@/composables';
+import { useToast } from '@/core/composables';
 import { container } from 'tsyringe';
 import AuthRepository from '@/features/auth/repository/AuthRepository.ts';
 import AuthLayout from '@/core/layouts/AuthLayout.vue';
@@ -65,21 +75,22 @@ import { onMounted, ref } from 'vue';
 
 // 비밀번호 설정 폼 검증 스키마 정의
 const setPasswordSchema = toTypedSchema(
-  z.object({
-    newPassword: z
-      .string({
-        required_error: '비밀번호를 입력해주세요.',
-      })
-      .min(8, '비밀번호는 최소 8자 이상이어야 합니다.'),
-    newPasswordConfirm: z.string({
-      required_error: '비밀번호 확인을 입력해주세요.',
-    }),
-    token: z.string(),
-  })
-  .refine((data) => data.newPassword === data.newPasswordConfirm, {
-    message: '비밀번호가 일치하지 않습니다.',
-    path: ['newPasswordConfirm'],
-  })
+  z
+    .object({
+      newPassword: z
+        .string({
+          required_error: '비밀번호를 입력해주세요.',
+        })
+        .min(8, '비밀번호는 최소 8자 이상이어야 합니다.'),
+      newPasswordConfirm: z.string({
+        required_error: '비밀번호 확인을 입력해주세요.',
+      }),
+      token: z.string(),
+    })
+    .refine((data) => data.newPassword === data.newPasswordConfirm, {
+      message: '비밀번호가 일치하지 않습니다.',
+      path: ['newPasswordConfirm'],
+    })
 );
 
 const toast = useToast();

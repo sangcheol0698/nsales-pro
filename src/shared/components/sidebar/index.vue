@@ -33,18 +33,8 @@
           </div>
         </div>
         <div class="ml-auto flex items-center gap-2 px-4">
-          <CommandDialog modal :open="isCommandDialogOpen" @open-change="setIsCommandDialogOpen">
-            <CommandInput placeholder="Type a command or search..." />
-            <CommandList>
-              <CommandEmpty>No results found.</CommandEmpty>
-              <CommandGroup heading="Suggestions">
-                <CommandItem>Calendar</CommandItem>
-                <CommandItem>Search</CommandItem>
-                <CommandItem>Projects</CommandItem>
-                <CommandItem>Settings</CommandItem>
-              </CommandGroup>
-            </CommandList>
-          </CommandDialog>
+          <SearchComponent />
+
           <Button variant="outline" size="icon">
             <Bell class="h-5 w-5" />
             <span class="sr-only">Notifications</span>
@@ -75,17 +65,8 @@ import { Bell } from 'lucide-vue-next';
 import AppSidebar from '@/shared/components/sidebar/AppSidebar.vue';
 import { ThemeToggle } from '@/core/components/theme';
 import { useRoute } from 'vue-router';
-import { computed, ref } from 'vue';
-import { useEventListener } from '@vueuse/core';
-import {
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/core/components/ui/command';
-
+import { computed } from 'vue';
+import SearchComponent from '@/shared/components/search/SearchComponent.vue';
 const route = useRoute();
 
 // Get the current route's title
@@ -103,18 +84,4 @@ const breadcrumbs = computed(() => {
   return (route.meta.breadcrumbs || []) as Breadcrumb[];
 });
 
-// Command dialog state
-const isCommandDialogOpen = ref(false);
-
-const setIsCommandDialogOpen = (open: boolean) => {
-  isCommandDialogOpen.value = open;
-};
-
-// Keyboard shortcut for command dialog (Cmd/Ctrl + K)
-useEventListener('keydown', (e: KeyboardEvent) => {
-  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-    e.preventDefault();
-    isCommandDialogOpen.value = !isCommandDialogOpen.value;
-  }
-});
 </script>

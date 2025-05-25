@@ -117,7 +117,7 @@ export default class NoticeRepository extends HttpRepository {
     };
   }
 
-  async deleteNotice(id: string): Promise<void> {
+  async deleteNotice(): Promise<void> {
     // 실제 애플리케이션에서는 API 호출이 이루어질 것입니다.
     // 지금은 반환만 합니다.
     return;

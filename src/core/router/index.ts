@@ -16,6 +16,111 @@ const routes = [
     },
   },
   {
+    path: '/notices',
+    name: 'notices',
+    component: () => import('@/features/notice/views/NoticeView.vue'),
+    meta: {
+      menu: true,
+      activeIndex: 5,
+      title: '공지사항',
+      breadcrumbs: [
+        {
+          title: '홈',
+          disabled: false,
+          to: '/',
+        },
+        {
+          title: '공지사항',
+          disabled: true,
+        },
+      ],
+    },
+  },
+  {
+    path: '/notices/new',
+    name: 'noticeCreate',
+    component: () => import('@/features/notice/views/NoticeFormView.vue'),
+    meta: {
+      menu: false,
+      activeIndex: 5,
+      title: '공지사항 등록',
+      breadcrumbs: [
+        {
+          title: '홈',
+          disabled: false,
+          to: '/',
+        },
+        {
+          title: '공지사항',
+          disabled: false,
+          to: '/notices',
+        },
+        {
+          title: '공지사항 등록',
+          disabled: true,
+        },
+      ],
+    },
+  },
+  {
+    path: '/notices/:id',
+    name: 'noticeDetail',
+    component: () => import('@/features/notice/views/NoticeDetailView.vue'),
+    meta: {
+      menu: false,
+      activeIndex: 5,
+      title: '공지사항 상세',
+      breadcrumbs: [
+        {
+          title: '홈',
+          disabled: false,
+          to: '/',
+        },
+        {
+          title: '공지사항',
+          disabled: false,
+          to: '/notices',
+        },
+        {
+          title: '공지사항 상세',
+          disabled: true,
+        },
+      ],
+    },
+  },
+  {
+    path: '/notices/:id/edit',
+    name: 'noticeEdit',
+    component: () => import('@/features/notice/views/NoticeFormView.vue'),
+    meta: {
+      menu: false,
+      activeIndex: 5,
+      title: '공지사항 수정',
+      breadcrumbs: [
+        {
+          title: '홈',
+          disabled: false,
+          to: '/',
+        },
+        {
+          title: '공지사항',
+          disabled: false,
+          to: '/notices',
+        },
+        {
+          title: '공지사항 상세',
+          disabled: false,
+          to: (route: { params: { id: string | number } }) => `/notices/${route.params.id}`,
+        },
+        {
+          title: '공지사항 수정',
+
+          disabled: true,
+        },
+      ],
+    },
+  },
+  {
     path: '/auths/initialize',
     name: 'initialize',
     component: () => import('@/features/auth/views/SetPasswordView.vue'),

@@ -21,6 +21,7 @@
     </SidebarHeader>
     <SidebarContent>
       <NavMain :items="data.navMain" />
+      <NavNotices :items="data.navNotices" />
     </SidebarContent>
     <SidebarFooter>
       <NavUser :user="data.user" />
@@ -48,8 +49,10 @@ import {
   LayoutDashboard,
   Users,
   Wallet,
+  Bell,
 } from 'lucide-vue-next';
 import NavMain from '@/shared/components/sidebar/NavMain.vue';
+import NavNotices from '@/shared/components/sidebar/NavNotices.vue';
 import NavUser from '@/shared/components/sidebar/NavUser.vue';
 
 const props = withDefaults(defineProps<SidebarProps>(), {
@@ -94,6 +97,13 @@ const data = {
       title: '매출',
       url: '/sales',
       icon: Wallet,
+    },
+  ],
+  navNotices: [
+    {
+      title: '공지사항',
+      url: '/notices',
+      icon: Bell,
     },
   ],
 };

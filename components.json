@@ -12,6 +12,7 @@
   "aliases": {
     "utils": "@/shared/utils",
     "ui": "@/core/components/ui",
+    "components": "@/core/components"
   },
   "iconLibrary": "lucide"
 }

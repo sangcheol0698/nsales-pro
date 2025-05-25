@@ -1,7 +1,7 @@
 <template>
   <Toaster />
 
-  <div class="min-h-screen w-full">
+  <div>
     <RouterView />
   </div>
 </template>

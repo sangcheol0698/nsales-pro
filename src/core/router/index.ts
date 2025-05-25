@@ -51,7 +51,7 @@ const routes = [
         },
         {
           title: '프로젝트 관리',
-          disabled: false,
+          disabled: true,
         },
       ],
     },

@@ -11,7 +11,7 @@
                 <GalleryVerticalEnd class="size-4" />
               </div>
               <div class="flex flex-col gap-0.5 leading-none">
-                <span class="font-semibold">Abacus - 매출 관리</span>
+                <span class="font-semibold">ABACUS</span>
                 <span class="text-xs text-muted-foreground"> Abacus Inc </span>
               </div>
             </router-link>

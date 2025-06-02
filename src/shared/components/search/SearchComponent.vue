@@ -60,15 +60,6 @@
           </template>
         </CommandGroup>
       </CommandList>
-
-      <!-- Close button -->
-      <DialogClose
-        class="absolute top-2 right-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
-        @click="open = false"
-      >
-        <X class="h-4 w-4" />
-        <span class="sr-only">Close</span>
-      </DialogClose>
     </CommandDialog>
   </div>
 </template>
@@ -95,10 +86,8 @@ import {
   Search,
   Users,
   Wallet,
-  X,
 } from 'lucide-vue-next';
 import { Button } from '@/core/components/ui/button';
-import { DialogClose } from '@/core/components/ui/dialog';
 import { useRouter } from 'vue-router';
 import { container } from 'tsyringe';
 import ProjectRepository from '@/features/project/repository/ProjectRepository';

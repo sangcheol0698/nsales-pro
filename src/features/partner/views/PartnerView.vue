@@ -202,71 +202,50 @@ const columns: ColumnDef<PartnerSearch>[] = [
     cell: ({ row }) => {
       return h('div', { class: 'flex flex-col' }, [
         h('span', { class: 'font-medium' }, row.getValue('name') || '-'),
-        h('span', { class: 'text-xs text-muted-foreground' }, row.original.code || '')
+        h('span', { class: 'text-xs text-muted-foreground' }, row.original.address || '')
       ])
     },
   },
   {
-    accessorKey: 'businessNumber',
-    header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['사업자번호', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
-    },
-    cell: ({ row }) => h('div', {}, row.getValue('businessNumber') || '-'),
-  },
-  {
-    accessorKey: 'representative',
+    accessorKey: 'ceoName',
     header: ({ column }) => {
       return h(Button, {
         variant: 'ghost',
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
       }, () => ['대표자', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
     },
-    cell: ({ row }) => h('div', {}, row.getValue('representative') || '-'),
+    cell: ({ row }) => h('div', {}, row.getValue('ceoName') || '-'),
   },
   {
-    accessorKey: 'contactPerson',
+    accessorKey: 'salesRepName',
     header: ({ column }) => {
       return h(Button, {
         variant: 'ghost',
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['담당자', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
+      }, () => ['영업대표', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
     },
-    cell: ({ row }) => h('div', {}, row.getValue('contactPerson') || '-'),
+    cell: ({ row }) => h('div', {}, row.getValue('salesRepName') || '-'),
   },
   {
-    accessorKey: 'contactEmail',
-    header: '이메일',
-    cell: ({ row }) => h('div', {}, row.getValue('contactEmail') || '-'),
-  },
-  {
-    accessorKey: 'contactPhone',
-    header: '연락처',
-    cell: ({ row }) => h('div', {}, row.getValue('contactPhone') || '-'),
-  },
-  {
-    accessorKey: 'status',
+    accessorKey: 'salesRepPhone',
     header: ({ column }) => {
       return h(Button, {
         variant: 'ghost',
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['상태', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
+      }, () => ['영업대표 연락처', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
     },
-    cell: ({ row }) => h('div', { class: 'capitalize' }, row.getValue('status') || '-'),
+    // Use a custom cell renderer to format the phone number
+    cell: ({ row }) => h('div', {}, row.getValue('salesRepPhone') || '-'),
   },
   {
-    id: 'actions',
-    enableHiding: false,
-    cell: ({ row }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => row.toggleExpanded(!row.getIsExpanded()),
-      }, () => ['상세', h(ChevronDown, {
-        class: `ml-2 h-4 w-4 transition-transform ${row.getIsExpanded() ? 'rotate-180' : ''}`
-      })])
-    },
+    accessorKey: 'salesRepEmail',
+    header: '영업대표 이메일',
+    cell: ({ row }) => h('div', {}, row.getValue('salesRepEmail') || '-'),
+  },
+  {
+    accessorKey: 'grade',
+    header: '등급',
+    cell: ({ row }) => h('div', {}, row.getValue('grade') || '-'),
   },
 ]
 

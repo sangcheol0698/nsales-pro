@@ -206,35 +206,35 @@ const columns: ColumnDef<EmployeeSearch>[] = [
       ])
     },
   },
+  // {
+  //   accessorKey: 'email',
+  //   header: ({ column }) => {
+  //     return h(Button, {
+  //       variant: 'ghost',
+  //       onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+  //     }, () => ['이메일', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
+  //   },
+  //   cell: ({ row }) => h('div', {}, row.getValue('email') || '-'),
+  // },
   {
-    accessorKey: 'email',
-    header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['이메일', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
-    },
-    cell: ({ row }) => h('div', {}, row.getValue('email') || '-'),
-  },
-  {
-    accessorKey: 'department',
+    accessorKey: 'teamName',
     header: ({ column }) => {
       return h(Button, {
         variant: 'ghost',
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
       }, () => ['부서', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
     },
-    cell: ({ row }) => h('div', {}, row.getValue('department') || '-'),
+    cell: ({ row }) => h('div', {}, row.getValue('teamName') || '-'),
   },
   {
-    accessorKey: 'position',
+    accessorKey: 'rank',
     header: ({ column }) => {
       return h(Button, {
         variant: 'ghost',
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
       }, () => ['직급', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
     },
-    cell: ({ row }) => h('div', {}, row.getValue('position') || '-'),
+    cell: ({ row }) => h('div', {}, row.getValue('rank') || '-'),
   },
   {
     accessorKey: 'joinDate',

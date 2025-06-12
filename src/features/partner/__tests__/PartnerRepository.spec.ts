@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import PartnerRepository from '../repository/PartnerRepository';
 
 describe('PartnerRepository', () => {
@@ -8,15 +8,13 @@ describe('PartnerRepository', () => {
   beforeEach(() => {
     // HttpRepository 모킹
     mockHttpRepository = {
-      get: vi.fn().mockResolvedValue({ 
+      get: vi.fn().mockResolvedValue({
         data: {
-          content: [
-            { id: 1, name: '테스트 협력사', ceoName: '홍길동' }
-          ],
+          content: [{ id: 1, name: '테스트 협력사', ceoName: '홍길동' }],
           totalPages: 1,
-          totalElements: 1
-        }
-      })
+          totalElements: 1,
+        },
+      }),
     };
 
     // 모킹된 객체로 리포지토리 생성
@@ -33,7 +31,7 @@ describe('PartnerRepository', () => {
     // 검증
     expect(mockHttpRepository.get).toHaveBeenCalledWith({
       path: '/api/v1/partners',
-      params
+      params,
     });
   });
 
@@ -45,12 +43,10 @@ describe('PartnerRepository', () => {
     const result = await partnerRepository.getPartners(params);
 
     // 검증
-    expect(result).toEqual({
-      content: [
-        { id: 1, name: '테스트 협력사', ceoName: '홍길동' }
-      ],
+    expect(result.data).toEqual({
+      content: [{ id: 1, name: '테스트 협력사', ceoName: '홍길동' }],
       totalPages: 1,
-      totalElements: 1
+      totalElements: 1,
     });
   });
 

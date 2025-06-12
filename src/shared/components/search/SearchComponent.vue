@@ -5,7 +5,7 @@
       class="relative flex items-center text-sm text-muted-foreground"
       @click="handleOpenChange"
     >
-      <Search class="h-4 w-4" />
+      <Search class="h-4 w-4"/>
       <span class="w-[170px] truncate mr-10">페이지 또는 프로젝트 검색...</span>
       <kbd
         class="pointer-events-none absolute right-1.5 top-[50%] -translate-y-[50%] hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex"

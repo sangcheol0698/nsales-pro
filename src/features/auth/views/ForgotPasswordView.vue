@@ -65,7 +65,7 @@ import {
 } from '@/core/components/ui/form';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
-import type ForgotPassword from '@/features/auth/entity/ForgotPassword.ts';
+import type FindPassword from '@/features/auth/entity/FindPassword.ts';
 import { useRouter } from 'vue-router';
 import type HttpError from '@/core/http/HttpError.ts';
 import { useToast } from '@/core/composables';
@@ -89,8 +89,8 @@ const router = useRouter();
 
 const AUTH_REPOSITORY = container.resolve(AuthRepository);
 
-async function handleForgotPassword(values: ForgotPassword) {
-  await AUTH_REPOSITORY.forgotPassword(values)
+async function handleForgotPassword(values: FindPassword) {
+  await AUTH_REPOSITORY.findPassword(values)
     .then(() => {
       toast.info('이메일 전송 완료', {
         description: '비밀번호 재설정 링크가 이메일로 전송되었습니다.',

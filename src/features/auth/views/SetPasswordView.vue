@@ -85,7 +85,7 @@ const setPasswordSchema = toTypedSchema(
       newPasswordConfirm: z.string({
         required_error: '비밀번호 확인을 입력해주세요.',
       }),
-      token: z.string(),
+      // token: z.string(),
     })
     .refine((data) => data.newPassword === data.newPasswordConfirm, {
       message: '비밀번호가 일치하지 않습니다.',

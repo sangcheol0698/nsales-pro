@@ -1,7 +1,7 @@
 import HttpRepository from '@/core/http/HttpRepository.ts';
 import type Login from '@/features/auth/entity/Login.ts';
 import type Register from '@/features/auth/entity/Register.ts';
-import type ForgotPassword from '@/features/auth/entity/ForgotPassword.ts';
+import type FindPassword from '@/features/auth/entity/FindPassword.ts';
 import type SetPassword from '@/features/auth/entity/SetPassword.ts';
 import { inject, singleton } from 'tsyringe';
 
@@ -23,9 +23,9 @@ export default class AuthRepository {
     });
   }
 
-  public async forgotPassword(data: ForgotPassword) {
+  public async findPassword(data: FindPassword) {
     await this.httpRepository.post({
-      path: '/api/v1/auths/forgot-password',
+      path: '/api/v1/auths/find-password',
       body: data,
     });
   }

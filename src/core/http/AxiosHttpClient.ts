@@ -3,7 +3,6 @@ import HttpError from '@/core/http/HttpError.ts';
 import { singleton } from 'tsyringe';
 import router from '@/core/router';
 import { useToast } from '@/core/composables';
-
 export type HttpRequestConfig = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   path: string;
@@ -18,6 +17,8 @@ export default class AxiosHttpClient {
     timeout: import.meta.env.VITE_API_BASE_TIMEOUT,
     timeoutErrorMessage: '요청 시간이 초과되었습니다.',
     withCredentials: true,
+    xsrfCookieName: 'XSRF-TOKEN',
+    xsrfHeaderName: 'X-XSRF-TOKEN',
   });
 
   constructor() {
@@ -25,6 +26,27 @@ export default class AxiosHttpClient {
   }
 
   private setupInterceptors() {
+    // 요청 인터셉터 추가 - XSRF 토큰을 쿠키에서 가져와 헤더에 설정
+    this.client.interceptors.request.use(
+      (config) => {
+        // 쿠키에서 XSRF-TOKEN 값을 추출하는 함수
+        const getCookieValue = (name: string): string | null => {
+          const match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
+          return match ? decodeURIComponent(match[3]) : null;
+        };
+
+        const xsrfToken = getCookieValue('XSRF-TOKEN');
+        if (xsrfToken) {
+          config.headers['X-XSRF-TOKEN'] = xsrfToken;
+        }
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
+
+    // 응답 인터셉터
     this.client.interceptors.response.use(
       (response) => response,
       (error: AxiosError) => {

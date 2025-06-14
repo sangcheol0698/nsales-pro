@@ -16,6 +16,26 @@ const routes = [
     },
   },
   {
+    path: '/my-page',
+    name: 'myPage',
+    component: () => import('@/features/member/views/MyPageView.vue'),
+    meta: {
+      menu: false,
+      title: '내 프로필',
+      breadcrumbs: [
+        {
+          title: '홈',
+          disabled: false,
+          to: '/',
+        },
+        {
+          title: '내 프로필',
+          disabled: true,
+        },
+      ],
+    },
+  },
+  {
     path: '/notices',
     name: 'notices',
     component: () => import('@/features/notice/views/NoticeView.vue'),

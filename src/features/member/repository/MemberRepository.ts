@@ -1,6 +1,7 @@
 import HttpRepository from '@/core/http/HttpRepository.ts';
 import { inject, singleton } from 'tsyringe';
 import type Member from '@/features/member/entity/Member';
+import type PasswordChange from '@/features/member/entity/PasswordChange';
 
 @singleton()
 export default class MemberRepository {
@@ -9,6 +10,13 @@ export default class MemberRepository {
   public async getMyInfo(): Promise<Member> {
     return await this.httpRepository.get({
       path: '/api/v1/members/my',
+    });
+  }
+
+  public async changePassword(passwordChange: PasswordChange): Promise<void> {
+    await this.httpRepository.patch({
+      path: '/api/v1/members/password',
+      body: passwordChange,
     });
   }
 }

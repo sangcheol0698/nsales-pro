@@ -40,28 +40,28 @@
           <DropdownMenuGroup>
             <DropdownMenuItem>
               <Sparkles />
-              Upgrade to Pro
+              프로 업그레이드
             </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <DropdownMenuItem>
+            <DropdownMenuItem @click="router.push('/my-page')">
               <BadgeCheck />
-              Account
+              내 프로필
             </DropdownMenuItem>
             <DropdownMenuItem>
               <CreditCard />
-              Billing
+              결제 정보
             </DropdownMenuItem>
             <DropdownMenuItem>
               <Bell />
-              Notifications
+              알림
             </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem @click="handleLogout">
             <LogOut />
-            Log out
+            로그아웃
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

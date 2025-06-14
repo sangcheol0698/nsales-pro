@@ -41,5 +41,8 @@ export default class AuthRepository {
     await this.httpRepository.post({
       path: '/api/v1/auths/logout',
     });
+
+    // 로그아웃 시 localStorage에서 사용자 정보 제거
+    localStorage.removeItem('user');
   }
 }

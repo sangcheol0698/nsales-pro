@@ -94,7 +94,7 @@ import AuthRepository from '@/features/auth/repository/AuthRepository.ts';
 import MemberRepository from '@/features/member/repository/MemberRepository.ts';
 import { Label } from '@/core/components/ui/label';
 import { Checkbox } from '@/core/components/ui/checkbox';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 
 // 로그인 폼 검증 스키마 정의
 const loginSchema = toTypedSchema(
@@ -112,6 +112,23 @@ const toast = useToast();
 const router = useRouter();
 
 const remember = ref(false);
+
+// 컴포넌트 마운트 시 세션 만료 확인
+onMounted(() => {
+  // URL 쿼리 파라미터에서 세션 만료 여부 확인
+  const expired = router.currentRoute.value.query.expired === 'true';
+
+  // 세션 만료로 인한 리다이렉트인 경우 메시지 표시
+  if (expired) {
+    toast.error('세션 만료', {
+      description: '로그인 세션이 만료되었습니다. 다시 로그인해주세요.',
+      position: 'bottom-right',
+    });
+
+    // 쿼리 파라미터 제거 (새로고침 시 메시지가 다시 표시되지 않도록)
+    router.replace({ name: 'login', query: {} });
+  }
+});
 
 const AUTH_REPOSITORY = container.resolve(AuthRepository);
 const MEMBER_REPOSITORY = container.resolve(MemberRepository);

@@ -13,8 +13,15 @@ export default class HttpError {
   constructor(error: AxiosError) {
     // response.data를 ApiErrorResponse 타입으로 캐스팅
     const errorData = error.response?.data as ApiErrorResponse;
-    this.code = errorData?.code ?? '500';
-    this.message = errorData?.message ?? '서버와의 연결이 원활하지 않습니다.';
+
+    // 401 에러인 경우 세션 만료 메시지 설정
+    if (error.response?.status === 401) {
+      this.code = '401';
+      this.message = '로그인 세션이 만료되었습니다. 다시 로그인해주세요.';
+    } else {
+      this.code = errorData?.code ?? '500';
+      this.message = errorData?.message ?? '서버와의 연결이 원활하지 않습니다.';
+    }
   }
 
   public getCode() {
@@ -23,5 +30,9 @@ export default class HttpError {
 
   public getMessage() {
     return this.message;
+  }
+
+  public isSessionExpired() {
+    return this.code === '401';
   }
 }

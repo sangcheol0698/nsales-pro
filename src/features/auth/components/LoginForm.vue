@@ -91,6 +91,7 @@ import type HttpError from '@/core/http/HttpError.ts';
 import { useToast } from '@/core/composables';
 import { container } from 'tsyringe';
 import AuthRepository from '@/features/auth/repository/AuthRepository.ts';
+import MemberRepository from '@/features/member/repository/MemberRepository.ts';
 import { Label } from '@/core/components/ui/label';
 import { Checkbox } from '@/core/components/ui/checkbox';
 import { ref } from 'vue';
@@ -113,18 +114,27 @@ const router = useRouter();
 const remember = ref(false);
 
 const AUTH_REPOSITORY = container.resolve(AuthRepository);
+const MEMBER_REPOSITORY = container.resolve(MemberRepository);
 
 async function handleLogin(values: Login) {
-  await AUTH_REPOSITORY.login(values, remember.value)
-    .then(() => {
-      toast.info('로그인 성공', {
-        description: '환영합니다! 로그인에 성공했습니다.',
-        position: 'bottom-right',
-      });
-      router.push({ path: '/' });
-    })
-    .catch((e: HttpError) => {
-      toast.error('로그인 실패', { description: e.getMessage() });
+  try {
+    // 로그인 시도
+    await AUTH_REPOSITORY.login(values, remember.value);
+
+    // 로그인 성공 후 사용자 정보 가져오기
+    const myInfo = await MEMBER_REPOSITORY.getMyInfo();
+
+    // 사용자 정보를 localStorage에 저장
+    localStorage.setItem('user', JSON.stringify(myInfo));
+
+    toast.info('로그인 성공', {
+      description: '환영합니다! 로그인에 성공했습니다.',
+      position: 'bottom-right',
     });
+
+    router.push({ path: '/' });
+  } catch (e) {
+    toast.error('로그인 실패', { description: (e as HttpError).getMessage() });
+  }
 }
 </script>

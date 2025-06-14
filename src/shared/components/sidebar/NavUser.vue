@@ -93,14 +93,42 @@ import AuthRepository from '@/features/auth/repository/AuthRepository.ts';
 import { useRouter } from 'vue-router';
 import type HttpError from '@/core/http/HttpError.ts';
 import { useAlertDialog, useToast } from '@/core/composables';
+import { computed, ref } from 'vue';
+import type Member from '@/features/member/entity/Member';
 
+// 기존 props 정의는 유지하되 선택적으로 변경
 const props = defineProps<{
-  user: {
+  user?: {
     name: string;
     email: string;
     avatar: string;
   };
 }>();
+
+// localStorage에서 사용자 정보 가져오기
+const storedUser = ref<Member | null>(null);
+
+// 컴포넌트 마운트 시 localStorage에서 사용자 정보 로드
+try {
+  const userStr = localStorage.getItem('user');
+  if (userStr) {
+    storedUser.value = JSON.parse(userStr);
+  }
+} catch (error) {
+  console.error('Failed to parse user from localStorage:', error);
+}
+
+// props로 전달된 사용자 정보와 localStorage의 사용자 정보를 합쳐서 사용
+const user = computed(() => {
+  if (storedUser.value) {
+    return {
+      name: storedUser.value.name,
+      email: storedUser.value.username, // Member 엔티티의 username은 이메일
+      avatar: props.user?.avatar || '', // avatar는 localStorage에 없으므로 props에서 가져오거나 빈 문자열 사용
+    };
+  }
+  return props.user || { name: '', email: '', avatar: '' };
+});
 
 const router = useRouter();
 const toast = useToast();

@@ -257,11 +257,21 @@ const router = createRouter({
   routes,
 });
 
-// router.beforeEach((to, from, next) => {
-//   // if (memberStore.isAuthenticated === null && !to.fullPath.startsWith('/auths')) {
-//   //   next({ name: 'login' });
-//   // }
-//   next();
-// });
+router.beforeEach((to, from, next) => {
+  // 인증이 필요하지 않은 경로 목록
+  const publicPaths = ['/auths/login', '/auths/register', '/auths/forgot-password', '/auths/initialize'];
+
+  // localStorage에서 사용자 정보 가져오기
+  const userStr = localStorage.getItem('user');
+
+  // 로그인이 필요한 페이지에 접근하려고 하는데 사용자 정보가 없는 경우
+  if (!userStr && !publicPaths.includes(to.path)) {
+    // 로그인 페이지로 리다이렉트
+    next({ name: 'login' });
+  } else {
+    // 그 외의 경우 정상적으로 라우팅
+    next();
+  }
+});
 
 export default router;

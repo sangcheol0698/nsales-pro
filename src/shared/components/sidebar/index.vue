@@ -3,13 +3,13 @@
     <AppSidebar />
     <SidebarInset>
       <header
-        class="flex h-16 shrink-0 items-center gap-2 border-b dark:border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-300 ease-in-out sticky top-0 z-10"
+        class="flex h-14 md:h-16 shrink-0 items-center gap-1 md:gap-2 border-b dark:border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-300 ease-in-out sticky top-0 z-10"
       >
-        <div class="flex items-center gap-2 px-4">
+        <div class="flex items-center gap-1 md:gap-2 px-2 md:px-4">
           <SidebarTrigger class="-ml-1" />
-          <Separator orientation="vertical" class="mr-2 h-4" />
+          <Separator orientation="vertical" class="mr-1 md:mr-2 h-4" />
           <div class="flex flex-col">
-            <h1 class="text-lg font-semibold">{{ pageTitle }}</h1>
+            <h1 class="text-base md:text-lg lg:text-xl font-semibold">{{ pageTitle }}</h1>
             <Breadcrumb>
               <BreadcrumbList>
                 <template v-for="(crumb, index) in breadcrumbs" :key="index">
@@ -32,11 +32,11 @@
             </Breadcrumb>
           </div>
         </div>
-        <div class="ml-auto flex items-center gap-2 px-4">
-          <SearchComponent />
+        <div class="ml-auto flex items-center gap-1 md:gap-2 px-2 md:px-4">
+          <SearchComponent class="hidden sm:block" />
 
-          <Button variant="outline" size="icon">
-            <Bell class="h-5 w-5" />
+          <Button variant="outline" size="icon" class="h-8 w-8 md:h-9 md:w-9">
+            <Bell class="h-4 w-4 md:h-5 md:w-5" />
             <span class="sr-only">Notifications</span>
           </Button>
           <ThemeToggle />

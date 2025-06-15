@@ -1,21 +1,15 @@
 import { ref, onMounted, computed } from 'vue';
 
 // Define the available themes
-export type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light' | 'dark';
 
 export function useTheme() {
   // Create a ref to store the current theme
-  const storedTheme = ref<Theme>('system');
+  const storedTheme = ref<Theme>('light');
 
-  // Track system preference separately
-  const systemPrefersDark = ref(false);
-
-  // Computed property for the effective theme
+  // Computed property for the effective theme (same as storedTheme in this case)
   const effectiveTheme = computed<'light' | 'dark'>(() => {
-    if (storedTheme.value === 'system') {
-      return systemPrefersDark.value ? 'dark' : 'light';
-    }
-    return storedTheme.value as 'light' | 'dark';
+    return storedTheme.value;
   });
 
   // Function to apply the theme to the document
@@ -39,25 +33,10 @@ export function useTheme() {
     localStorage.setItem('theme', newTheme);
   };
 
-  // Function to toggle between light and dark (not system)
+  // Function to toggle between light and dark
   const toggleTheme = () => {
-    // If current theme is system, switch to the opposite of system preference
-    if (storedTheme.value === 'system') {
-      setTheme(systemPrefersDark.value ? 'light' : 'dark');
-    } else {
-      // Otherwise toggle between light and dark
-      setTheme(storedTheme.value === 'light' ? 'dark' : 'light');
-    }
-  };
-
-  // Function to update system preference
-  const updateSystemPreference = () => {
-    systemPrefersDark.value = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-    // If theme is set to system, apply the system preference
-    if (storedTheme.value === 'system') {
-      applyTheme(systemPrefersDark.value);
-    }
+    // Toggle between light and dark
+    setTheme(storedTheme.value === 'light' ? 'dark' : 'light');
   };
 
   // Initialize theme on component mount
@@ -65,31 +44,13 @@ export function useTheme() {
     // Check for saved theme in localStorage
     const savedTheme = localStorage.getItem('theme') as Theme | null;
 
-    // Update system preference
-    updateSystemPreference();
-
     // Set initial theme
-    if (savedTheme) {
+    if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
       storedTheme.value = savedTheme;
     }
 
     // Apply the effective theme
     applyTheme(effectiveTheme.value === 'dark');
-
-    // Watch for changes in system preference
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-    const handleChange = () => {
-      updateSystemPreference();
-    };
-
-    // Add event listener
-    mediaQuery.addEventListener('change', handleChange);
-
-    // Clean up
-    return () => {
-      mediaQuery.removeEventListener('change', handleChange);
-    };
   });
 
   return {

@@ -129,7 +129,7 @@ async function handlePasswordChange(values: PasswordChange) {
     emit('password-changed');
     updateOpen(false);
   } catch (e) {
-    toast.error('비밀번호 변경 실패', { 
+    toast.error('비밀번호 변경 실패', {
       description: (e as HttpError).getMessage(),
       position: 'bottom-right',
     });

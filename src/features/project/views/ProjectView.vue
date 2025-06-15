@@ -12,7 +12,8 @@
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
               <Button variant="outline" class="ml-auto">
-                컬럼 <ChevronDown class="ml-2 h-4 w-4" />
+                컬럼
+                <ChevronDown class="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -21,9 +22,11 @@
                 :key="column.id"
                 class="capitalize"
                 :model-value="column.getIsVisible()"
-                @update:model-value="(value) => {
-                  column.toggleVisibility(!!value)
-                }"
+                @update:model-value="
+                  (value) => {
+                    column.toggleVisibility(!!value);
+                  }
+                "
               >
                 {{ getColumnLabel(column.id) }}
               </DropdownMenuCheckboxItem>
@@ -38,7 +41,11 @@
             <TableHeader>
               <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
                 <TableHead v-for="header in headerGroup.headers" :key="header.id">
-                  <FlexRender v-if="!header.isPlaceholder" :render="header.column.columnDef.header" :props="header.getContext()" />
+                  <FlexRender
+                    v-if="!header.isPlaceholder"
+                    :render="header.column.columnDef.header"
+                    :props="header.getContext()"
+                  />
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -73,9 +80,7 @@
 
         <div class="flex items-center justify-between space-x-2 py-4">
           <div class="flex items-center space-x-2">
-            <p class="text-sm text-muted-foreground">
-              페이지당 행 수
-            </p>
+            <p class="text-sm text-muted-foreground">페이지당 행 수</p>
             <Select
               :model-value="params.limit.toString()"
               @update:model-value="onPageSizeChange(Number($event))"
@@ -94,8 +99,8 @@
 
           <div class="flex-1 text-sm text-muted-foreground text-center">
             {{ table.getFilteredSelectedRowModel().rows.length }} /
-            {{ pagination.totalElements }} 행 선택됨 |
-            {{ params.page }} / {{ pagination.totalPages }} 페이지
+            {{ pagination.totalElements }} 행 선택됨 | {{ params.page }} /
+            {{ pagination.totalPages }} 페이지
           </div>
 
           <div class="flex items-center space-x-2">
@@ -129,7 +134,7 @@ import type {
   ExpandedState,
   SortingState,
   VisibilityState,
-} from '@tanstack/vue-table'
+} from '@tanstack/vue-table';
 import {
   FlexRender,
   getCoreRowModel,
@@ -137,25 +142,25 @@ import {
   getFilteredRowModel,
   getSortedRowModel,
   useVueTable,
-} from '@tanstack/vue-table'
-import { ArrowUpDown, ChevronDown } from 'lucide-vue-next'
-import { h, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { valueUpdater } from '@/core/components/ui/table/utils'
-import { container } from 'tsyringe'
-import ProjectRepository from '@/features/project/repository/ProjectRepository.ts'
-import type { ProjectSearch } from '@/features/project/entity/ProjectSearch.ts'
-import { SidebarLayout } from '@/shared/components/sidebar'
+} from '@tanstack/vue-table';
+import { ArrowUpDown, ChevronDown } from 'lucide-vue-next';
+import { h, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { valueUpdater } from '@/core/components/ui/table/utils';
+import { container } from 'tsyringe';
+import ProjectRepository from '@/features/project/repository/ProjectRepository.ts';
+import type { ProjectSearch } from '@/features/project/entity/ProjectSearch.ts';
+import { SidebarLayout } from '@/shared/components/sidebar';
 
-import { Button } from '@/core/components/ui/button'
-import { Checkbox } from '@/core/components/ui/checkbox'
+import { Button } from '@/core/components/ui/button';
+import { Checkbox } from '@/core/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from '@/core/components/ui/dropdown-menu'
-import { Input } from '@/core/components/ui/input'
+} from '@/core/components/ui/dropdown-menu';
+import { Input } from '@/core/components/ui/input';
 import {
   Table,
   TableBody,
@@ -164,58 +169,69 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/core/components/ui/table'
-import { Skeleton } from '@/core/components/ui/skeleton/Skeleton'
+} from '@/core/components/ui/table';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/core/components/ui/select'
+} from '@/core/components/ui/select';
 
-const router = useRouter()
-const PROJECT_REPOSITORY = container.resolve(ProjectRepository)
-const data = ref<ProjectSearch[]>([])
+const router = useRouter();
+const PROJECT_REPOSITORY = container.resolve(ProjectRepository);
+const data = ref<ProjectSearch[]>([]);
 
 const columns: ColumnDef<ProjectSearch>[] = [
   {
     id: 'select',
-    header: ({ table }) => h(Checkbox, {
-      'modelValue': table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate'),
-      'onUpdate:modelValue': value => table.toggleAllPageRowsSelected(!!value),
-      'ariaLabel': '모두 선택',
-    }),
-    cell: ({ row }) => h(Checkbox, {
-      'modelValue': row.getIsSelected(),
-      'onUpdate:modelValue': value => row.toggleSelected(!!value),
-      'ariaLabel': '행 선택',
-    }),
+    header: ({ table }) =>
+      h(Checkbox, {
+        modelValue:
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && 'indeterminate'),
+        'onUpdate:modelValue': (value) => table.toggleAllPageRowsSelected(!!value),
+        ariaLabel: '모두 선택',
+      }),
+    cell: ({ row }) =>
+      h(Checkbox, {
+        modelValue: row.getIsSelected(),
+        'onUpdate:modelValue': (value) => row.toggleSelected(!!value),
+        ariaLabel: '행 선택',
+      }),
     enableSorting: false,
     enableHiding: false,
   },
   {
     accessorKey: 'name',
     header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['프로젝트', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
+      return h(
+        Button,
+        {
+          variant: 'ghost',
+          onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+        },
+        () => ['프로젝트', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })]
+      );
     },
     cell: ({ row }) => {
       return h('div', { class: 'flex flex-col' }, [
         h('span', { class: 'font-medium' }, row.getValue('name') || '-'),
-        h('span', { class: 'text-xs text-muted-foreground' }, row.original.code || '')
-      ])
+        h('span', { class: 'text-xs text-muted-foreground' }, row.original.code || ''),
+      ]);
     },
   },
   {
     accessorKey: 'type',
     header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['유형', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
+      return h(
+        Button,
+        {
+          variant: 'ghost',
+          onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+        },
+        () => ['유형', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })]
+      );
     },
     cell: ({ row }) => h('div', {}, row.getValue('type') || '-'),
   },
@@ -223,36 +239,44 @@ const columns: ColumnDef<ProjectSearch>[] = [
     accessorKey: 'period',
     header: '기간',
     cell: ({ row }) => {
-      const startDate = row.original.startDate || '-'
-      const endDate = row.original.endDate || ''
-      const separator = startDate !== '-' && endDate ? ' ~ ' : ''
+      const startDate = row.original.startDate || '-';
+      const endDate = row.original.endDate || '';
+      const separator = startDate !== '-' && endDate ? ' ~ ' : '';
 
-      return h('div', {}, startDate + separator + endDate)
+      return h('div', {}, startDate + separator + endDate);
     },
   },
   {
     accessorKey: 'contractDate',
     header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['계약일', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
+      return h(
+        Button,
+        {
+          variant: 'ghost',
+          onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+        },
+        () => ['계약일', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })]
+      );
     },
     cell: ({ row }) => h('div', {}, row.getValue('contractDate') || '-'),
   },
   {
     accessorKey: 'contractAmount',
     header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['계약금액', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
+      return h(
+        Button,
+        {
+          variant: 'ghost',
+          onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+        },
+        () => ['계약금액', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })]
+      );
     },
     cell: ({ row }) => {
-      const amount = row.getValue('contractAmount') as number
-      if (!amount) return h('div', {}, '-')
+      const amount = row.getValue('contractAmount') as number;
+      if (!amount) return h('div', {}, '-');
 
-      return h('div', {}, amount.toLocaleString() + '원')
+      return h('div', {}, amount.toLocaleString() + '원');
     },
   },
   {
@@ -268,10 +292,14 @@ const columns: ColumnDef<ProjectSearch>[] = [
   {
     accessorKey: 'status',
     header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['상태', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
+      return h(
+        Button,
+        {
+          variant: 'ghost',
+          onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+        },
+        () => ['상태', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })]
+      );
     },
     cell: ({ row }) => h('div', { class: 'capitalize' }, row.getValue('status') || '-'),
   },
@@ -279,144 +307,172 @@ const columns: ColumnDef<ProjectSearch>[] = [
     id: 'actions',
     enableHiding: false,
     cell: ({ row }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => {
-          // Navigate to project detail view
-          router.push(`/projects/${row.original.id}`);
+      return h(
+        Button,
+        {
+          variant: 'ghost',
+          onClick: () => {
+            // Navigate to project detail view
+            router.push(`/projects/${row.original.id}`);
+          },
         },
-      }, () => ['상세', h(ChevronDown, {
-        class: 'ml-2 h-4 w-4'
-      })])
+        () => [
+          '상세',
+          h(ChevronDown, {
+            class: 'ml-2 h-4 w-4',
+          }),
+        ]
+      );
     },
   },
-]
+];
 
-const sorting = ref<SortingState>([])
-const columnFilters = ref<ColumnFiltersState>([])
-const columnVisibility = ref<VisibilityState>({})
-const rowSelection = ref({})
-const expanded = ref<ExpandedState>({})
+const sorting = ref<SortingState>([]);
+const columnFilters = ref<ColumnFiltersState>([]);
+const columnVisibility = ref<VisibilityState>({});
+const rowSelection = ref({});
+const expanded = ref<ExpandedState>({});
 
 const table = useVueTable({
-  get data() { return data.value },
+  get data() {
+    return data.value;
+  },
   columns,
   manualPagination: true,
   getCoreRowModel: getCoreRowModel(),
   getSortedRowModel: getSortedRowModel(),
   getFilteredRowModel: getFilteredRowModel(),
   getExpandedRowModel: getExpandedRowModel(),
-  onSortingChange: updaterOrValue => {
-    valueUpdater(updaterOrValue, sorting)
+  onSortingChange: (updaterOrValue) => {
+    valueUpdater(updaterOrValue, sorting);
 
     // Update params with sorting information
     if (sorting.value.length > 0) {
-      const sort = sorting.value[0]
+      const sort = sorting.value[0];
       params.value = {
         ...params.value,
         sort: sort.id,
-        direction: sort.desc ? 'desc' : 'asc'
-      }
+        direction: sort.desc ? 'desc' : 'asc',
+      };
     } else if (params.value.sort) {
       // Remove sorting if not present
-      const { sort, direction, ...rest } = params.value
-      params.value = rest
+      const { sort, direction, ...rest } = params.value;
+      params.value = rest;
     }
 
     // Fetch data with new sorting
-    fetchProjects()
+    fetchProjects();
   },
-  onColumnFiltersChange: updaterOrValue => {
-    valueUpdater(updaterOrValue, columnFilters)
+  onColumnFiltersChange: (updaterOrValue) => {
+    valueUpdater(updaterOrValue, columnFilters);
 
     // Get the name filter value
-    const nameFilter = columnFilters.value.find(filter => filter.id === 'name')?.value as string
+    const nameFilter = columnFilters.value.find((filter) => filter.id === 'name')?.value as string;
 
     // Update params with the name filter
     if (nameFilter) {
-      params.value = { ...params.value, name: nameFilter }
+      params.value = { ...params.value, name: nameFilter };
     } else if (params.value.name) {
       // Remove the name filter if it's not present
-      const { name, ...rest } = params.value
-      params.value = rest
+      const { name, ...rest } = params.value;
+      params.value = rest;
     }
 
     // Reset to first page and fetch data
-    params.value.page = 1
-    fetchProjects()
+    params.value.page = 1;
+    fetchProjects();
   },
-  onColumnVisibilityChange: updaterOrValue => valueUpdater(updaterOrValue, columnVisibility),
-  onRowSelectionChange: updaterOrValue => valueUpdater(updaterOrValue, rowSelection),
-  onExpandedChange: updaterOrValue => valueUpdater(updaterOrValue, expanded),
+  onColumnVisibilityChange: (updaterOrValue) => valueUpdater(updaterOrValue, columnVisibility),
+  onRowSelectionChange: (updaterOrValue) => valueUpdater(updaterOrValue, rowSelection),
+  onExpandedChange: (updaterOrValue) => valueUpdater(updaterOrValue, expanded),
   state: {
-    get sorting() { return sorting.value },
-    get columnFilters() { return columnFilters.value },
-    get columnVisibility() { return columnVisibility.value },
-    get rowSelection() { return rowSelection.value },
-    get expanded() { return expanded.value },
+    get sorting() {
+      return sorting.value;
+    },
+    get columnFilters() {
+      return columnFilters.value;
+    },
+    get columnVisibility() {
+      return columnVisibility.value;
+    },
+    get rowSelection() {
+      return rowSelection.value;
+    },
+    get expanded() {
+      return expanded.value;
+    },
   },
-})
+});
 
 function getColumnLabel(columnId: string): string {
   switch (columnId) {
-    case 'name': return '프로젝트'
-    case 'type': return '유형'
-    case 'period': return '기간'
-    case 'contractDate': return '계약일'
-    case 'contractAmount': return '계약금액'
-    case 'mainCompany': return '주관사'
-    case 'clientCompany': return '고객사'
-    case 'status': return '상태'
-    default: return columnId
+    case 'name':
+      return '프로젝트';
+    case 'type':
+      return '유형';
+    case 'period':
+      return '기간';
+    case 'contractDate':
+      return '계약일';
+    case 'contractAmount':
+      return '계약금액';
+    case 'mainCompany':
+      return '주관사';
+    case 'clientCompany':
+      return '고객사';
+    case 'status':
+      return '상태';
+    default:
+      return columnId;
   }
 }
 
 const params = ref({
   page: 1,
   limit: 10,
-})
+});
 
 const pagination = ref({
   totalPages: 0,
   totalElements: 0,
   loading: false,
-})
+});
 
 function fetchProjects() {
-  pagination.value.loading = true
-  console.log('Fetching projects with params:', params.value)
+  pagination.value.loading = true;
+  console.log('Fetching projects with params:', params.value);
 
   PROJECT_REPOSITORY.getProjects(params.value)
     .then((response) => {
-      data.value = response.content
-      pagination.value.totalPages = response.totalPages
-      pagination.value.totalElements = response.totalElements
-      console.log('Projects loaded:', data.value)
+      data.value = response.content;
+      pagination.value.totalPages = response.totalPages;
+      pagination.value.totalElements = response.totalElements;
+      console.log('Projects loaded:', data.value);
     })
     .catch((error) => {
-      console.error('Error loading projects:', error)
+      console.error('Error loading projects:', error);
       // Show error message to user
-      alert('프로젝트를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.')
+      alert('프로젝트를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     })
     .finally(() => {
-      pagination.value.loading = false
-    })
+      pagination.value.loading = false;
+    });
 }
 
 function onPageChange(page: number) {
-  params.value.page = page
-  fetchProjects()
+  params.value.page = page;
+  fetchProjects();
 }
 
 function onPageSizeChange(size: number) {
-  params.value.limit = size
-  params.value.page = 1 // Reset to first page when changing page size
-  fetchProjects()
+  params.value.limit = size;
+  params.value.page = 1; // Reset to first page when changing page size
+  fetchProjects();
 }
 
 onMounted(() => {
-  fetchProjects()
-})
+  fetchProjects();
+});
 </script>
 
 <style scoped></style>

@@ -9,9 +9,10 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router';
 import { Toaster } from '@/core/components/ui/sonner';
-import { useAlertDialog, useTheme } from '@/core/composables';
+import { useAlertDialog, useTheme, useFont } from '@/core/composables';
 
 useTheme();
+useFont();
 useAlertDialog();
 </script>
 

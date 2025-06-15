@@ -45,7 +45,7 @@
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <DropdownMenuItem @click="router.push('/my-page')">
+            <DropdownMenuItem @click="router.push('/my-page/profile')">
               <BadgeCheck />
               내 프로필
             </DropdownMenuItem>

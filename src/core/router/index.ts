@@ -18,7 +18,8 @@ const routes = [
   {
     path: '/my-page',
     name: 'myPage',
-    component: () => import('@/features/member/views/MyPageView.vue'),
+    component: () => import('@/features/member/views/MyPageParentView.vue'),
+    redirect: '/my-page/profile',
     meta: {
       menu: false,
       title: '내 프로필',
@@ -34,6 +35,48 @@ const routes = [
         },
       ],
     },
+    children: [
+      {
+        path: 'profile',
+        name: 'myPageProfile',
+        component: () => import('@/features/member/views/ProfileView.vue'),
+        meta: {
+          title: '프로필',
+        },
+      },
+      {
+        path: 'account',
+        name: 'myPageAccount',
+        component: () => import('@/features/member/views/AccountView.vue'),
+        meta: {
+          title: '내 계정 정보',
+        },
+      },
+      {
+        path: 'appearance',
+        name: 'myPageAppearance',
+        component: () => import('@/features/member/views/AppearanceView.vue'),
+        meta: {
+          title: '환경 설정',
+        },
+      },
+      {
+        path: 'security',
+        name: 'myPageSecurity',
+        component: () => import('@/features/member/views/SecurityView.vue'),
+        meta: {
+          title: '보안 설정',
+        },
+      },
+      {
+        path: 'activity',
+        name: 'myPageActivity',
+        component: () => import('@/features/member/views/ActivityView.vue'),
+        meta: {
+          title: '활동 내역',
+        },
+      },
+    ],
   },
   {
     path: '/notices',

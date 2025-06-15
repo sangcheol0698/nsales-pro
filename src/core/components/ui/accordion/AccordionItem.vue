@@ -3,7 +3,11 @@ import { cn } from '@/shared/utils/utils.ts'
 import { AccordionItem, type AccordionItemProps, useForwardProps } from 'reka-ui'
 import { computed, type HTMLAttributes } from 'vue'
 
-const props = defineProps<AccordionItemProps & { class?: HTMLAttributes['class'] }>()
+interface ExtendedAccordionItemProps extends AccordionItemProps {
+  class?: HTMLAttributes['class']
+}
+
+const props = defineProps<ExtendedAccordionItemProps>()
 
 const delegatedProps = computed(() => {
   const { class: _, ...delegated } = props

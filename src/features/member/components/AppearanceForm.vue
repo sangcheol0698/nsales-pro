@@ -37,9 +37,6 @@
           <label class="text-sm font-medium leading-none">테마</label>
           <p class="text-sm text-muted-foreground">대시보드의 테마를 선택합니다.</p>
         </div>
-        <div class="text-sm font-medium">
-          현재: <span class="capitalize">{{ effectiveTheme === 'light' ? '라이트' : '다크' }}</span>
-        </div>
       </div>
       <div class="grid max-w-md grid-cols-2 gap-8 pt-2 items-stretch">
         <!-- Light -->

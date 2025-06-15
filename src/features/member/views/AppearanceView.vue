@@ -2,7 +2,7 @@
   <MyPageLayout :loading="loading">
     <div class="space-y-6">
       <div class="space-y-2">
-        <h3 class="text-lg font-medium">환경 설정</h3>
+        <h3 class="text-lg font-medium">화면 설정</h3>
         <p class="text-sm text-muted-foreground">
           앱의 테마 및 폰트 설정을 관리합니다.
         </p>

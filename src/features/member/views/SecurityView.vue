@@ -47,11 +47,7 @@
     </div>
   </MyPageLayout>
 
-  <PasswordChangeDialog
-    :open="isPasswordDialogOpen"
-    @update:open="isPasswordDialogOpen = $event"
-    @password-changed="handlePasswordChanged"
-  />
+  <PasswordChangeDialog :open="isPasswordDialogOpen" @update:open="isPasswordDialogOpen = $event" />
 </template>
 
 <script setup lang="ts">
@@ -61,14 +57,8 @@ import Input from '@/core/components/ui/input/Input.vue';
 import Label from '@/core/components/ui/label/Label.vue';
 import Separator from '@/core/components/ui/separator/Separator.vue';
 import Switch from '@/core/components/ui/switch/Switch.vue';
-import { useToast } from '@/core/composables';
-import { container } from 'tsyringe';
-import MemberRepository from '@/features/member/repository/MemberRepository.ts';
 import PasswordChangeDialog from '@/features/member/components/PasswordChangeDialog.vue';
 import MyPageLayout from '@/features/member/layouts/MyPageLayout.vue';
-
-const toast = useToast();
-const MEMBER_REPOSITORY = container.resolve(MemberRepository);
 
 const loading = ref(false);
 const isPasswordDialogOpen = ref(false);
@@ -78,13 +68,13 @@ function handleChangePassword() {
   isPasswordDialogOpen.value = true;
 }
 
-// 비밀번호 변경 완료 후 처리
-function handlePasswordChanged() {
-  toast.success('비밀번호 변경 완료', {
-    description: '비밀번호가 성공적으로 변경되었습니다.',
-    position: 'bottom-right',
-  });
-}
+// // 비밀번호 변경 완료 후 처리
+// function handlePasswordChanged() {
+//   toast.success('비밀번호 변경 완료', {
+//     description: '비밀번호가 성공적으로 변경되었습니다.',
+//     position: 'bottom-right',
+//   });
+// }
 </script>
 
 <style scoped></style>

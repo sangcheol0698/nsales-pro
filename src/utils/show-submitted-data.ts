@@ -12,7 +12,7 @@ export function showSubmittedData(data: Record<string, any>) {
 
   // Show a toast notification
   const toast = useToast();
-  toast.success('환경설정이 업데이트되었습니다', {
+  toast.success('화면 설정이 업데이트되었습니다', {
     description: `테마: ${themeDisplay}, 폰트: ${data.font}`,
     position: 'bottom-right',
   });

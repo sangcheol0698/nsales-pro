@@ -49,7 +49,7 @@ const routes = [
         name: 'myPageAccount',
         component: () => import('@/features/member/views/AccountView.vue'),
         meta: {
-          title: '내 계정 정보',
+          title: '계정 정보',
         },
       },
       {
@@ -57,7 +57,7 @@ const routes = [
         name: 'myPageAppearance',
         component: () => import('@/features/member/views/AppearanceView.vue'),
         meta: {
-          title: '환경 설정',
+          title: '화면 설정',
         },
       },
       {

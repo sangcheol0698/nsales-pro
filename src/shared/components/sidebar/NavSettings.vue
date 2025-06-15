@@ -1,10 +1,14 @@
 <template>
   <SidebarGroup>
-    <SidebarGroupLabel>메뉴</SidebarGroupLabel>
+    <SidebarGroupLabel>설정</SidebarGroupLabel>
     <SidebarMenu>
       <SidebarMenuItem v-for="item in items" :key="item.title">
         <SidebarMenuButton as-child :tooltip="item.title" :isActive="isActiveRoute(item.url)">
-          <router-link :to="item.url" @click.prevent.stop="navigateTo(item.url)" class="flex items-center gap-2">
+          <router-link
+            :to="item.url"
+            @click.prevent.stop="navigateTo(item.url)"
+            class="flex items-center gap-2"
+          >
             <component :is="item.icon" v-if="item.icon" class="size-4" />
             <span>{{ item.title }}</span>
           </router-link>
@@ -39,7 +43,7 @@ const router = useRouter();
 
 // Check if the current route path matches the menu item's URL
 const isActiveRoute = (url: string) => {
-  return route.path === url;
+  return route.path === url || route.path.startsWith(`${url}/`);
 };
 
 // Function to navigate to a URL

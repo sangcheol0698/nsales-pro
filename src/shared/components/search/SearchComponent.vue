@@ -2,13 +2,13 @@
   <div>
     <Button
       variant="outline"
-      class="relative flex items-center text-sm text-muted-foreground"
+      :class="'bg-muted/25 text-muted-foreground hover:bg-muted/50 relative  w-full flex-1 justify-start rounded-md text-sm font-normal shadow-none sm:pr-12 md:w-40 md:flex-none lg:w-56 xl:w-64'"
       @click="handleOpenChange"
     >
-      <Search class="h-4 w-4" />
-      <span class="w-[170px] truncate mr-10">검색</span>
+      <Search aria-hidden="true" class="absolute top-1/2 left-1.5 -translate-y-1/2 h-4 w-4" />
+      <span class="ml-3">검색</span>
       <kbd
-        class="pointer-events-none absolute right-1.5 top-[50%] -translate-y-[50%] hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex"
+        class="bg-muted pointer-events-none absolute top-[0.3rem] right-[0.3rem] hidden h-6 items-center gap-1 rounded border px-1.5 font-mono text-[10px] font-medium opacity-100 select-none sm:flex"
       >
         <span class="text-xs">{{ isMac ? '⌘' : 'Ctrl' }}</span
         >K

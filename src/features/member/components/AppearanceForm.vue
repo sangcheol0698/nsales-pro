@@ -103,7 +103,7 @@
       type="submit"
       class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
     >
-      환경설정 업데이트
+      화면 설정 업데이트
     </button>
   </form>
 </template>

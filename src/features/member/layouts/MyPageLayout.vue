@@ -4,7 +4,7 @@
       <div class="w-full">
         <div class="mb-6">
           <h1 class="text-xl font-semibold">설정</h1>
-          <p class="text-sm text-muted-foreground">계정 설정 및 이메일 환경설정을 관리합니다.</p>
+          <p class="text-sm text-muted-foreground">계정 설정 및 화면 설정을 관리합니다.</p>
         </div>
         <div v-if="loading" class="flex justify-center items-center p-8">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -32,7 +32,7 @@
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 ]"
               >
-                내 계정 정보
+                계정 정보
               </router-link>
               <router-link
                 to="/my-page/appearance"
@@ -43,7 +43,7 @@
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 ]"
               >
-                환경 설정
+                화면 설정
               </router-link>
               <router-link
                 to="/my-page/security"
@@ -54,7 +54,7 @@
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 ]"
               >
-                보안설정
+                보안 설정
               </router-link>
               <router-link
                 to="/my-page/activity"

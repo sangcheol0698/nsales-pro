@@ -2,8 +2,8 @@
   <MyPageLayout :loading="loading">
     <div class="space-y-6">
       <div class="space-y-2">
-        <h3 class="text-lg font-medium">내 계정 정보</h3>
-        <p class="text-sm text-muted-foreground">내 계정 정보를 확인하고 관리할 수 있습니다.</p>
+        <h3 class="text-lg font-medium">계정 정보</h3>
+        <p class="text-sm text-muted-foreground">계정 정보를 확인하고 관리할 수 있습니다.</p>
       </div>
 
       <div class="space-y-6">

@@ -22,6 +22,7 @@
     <SidebarContent>
       <NavMain :items="data.navMain" />
       <NavNotices :items="data.navNotices" />
+      <NavSettings :items="data.navSettings" />
     </SidebarContent>
     <SidebarFooter>
       <NavUser :user="data.user" />
@@ -50,9 +51,15 @@ import {
   Users,
   Wallet,
   Bell,
+  BadgeCheck,
+  CreditCard,
+  Sun,
+  Shield,
+  Clock,
 } from 'lucide-vue-next';
 import NavMain from '@/shared/components/sidebar/NavMain.vue';
 import NavNotices from '@/shared/components/sidebar/NavNotices.vue';
+import NavSettings from '@/shared/components/sidebar/NavSettings.vue';
 import NavUser from '@/shared/components/sidebar/NavUser.vue';
 
 const props = withDefaults(defineProps<SidebarProps>(), {
@@ -104,6 +111,33 @@ const data = {
       title: '공지사항',
       url: '/notices',
       icon: Bell,
+    },
+  ],
+  navSettings: [
+    {
+      title: '프로필',
+      url: '/my-page/profile',
+      icon: BadgeCheck,
+    },
+    {
+      title: '계정 정보',
+      url: '/my-page/account',
+      icon: CreditCard,
+    },
+    {
+      title: '화면 설정',
+      url: '/my-page/appearance',
+      icon: Sun,
+    },
+    {
+      title: '보안 설정',
+      url: '/my-page/security',
+      icon: Shield,
+    },
+    {
+      title: '활동 내역',
+      url: '/my-page/activity',
+      icon: Clock,
     },
   ],
 };

@@ -1,16 +1,30 @@
 <template>
   <SidebarGroup>
-    <SidebarGroupLabel>설정</SidebarGroupLabel>
+    <SidebarGroupLabel class="px-2 text-xs font-semibold text-muted-foreground group-data-[collapsible=icon]:hidden">설정</SidebarGroupLabel>
     <SidebarMenu>
       <SidebarMenuItem v-for="item in items" :key="item.title">
         <SidebarMenuButton as-child :tooltip="item.title" :isActive="isActiveRoute(item.url)">
           <router-link
             :to="item.url"
             @click.prevent.stop="navigateTo(item.url)"
-            class="flex items-center gap-2"
+            class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+            :class="[
+              isActiveRoute(item.url) 
+                ? 'bg-accent text-accent-foreground' 
+                : 'text-muted-foreground'
+            ]"
           >
-            <component :is="item.icon" v-if="item.icon" class="size-4" />
-            <span>{{ item.title }}</span>
+            <component 
+              :is="item.icon" 
+              v-if="item.icon" 
+              class="size-4" 
+              :class="[
+                isActiveRoute(item.url) 
+                  ? 'text-primary' 
+                  : 'text-muted-foreground'
+              ]"
+            />
+            <span class="group-data-[collapsible=icon]:hidden">{{ item.title }}</span>
           </router-link>
         </SidebarMenuButton>
       </SidebarMenuItem>

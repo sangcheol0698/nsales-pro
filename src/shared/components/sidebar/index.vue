@@ -1,5 +1,5 @@
 <template>
-  <SidebarProvider>
+  <div class="flex min-h-svh w-full">
     <AppSidebar />
     <SidebarInset>
       <header
@@ -46,11 +46,11 @@
         <slot></slot>
       </main>
     </SidebarInset>
-  </SidebarProvider>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/core/components/ui/sidebar';
+import { SidebarInset, SidebarTrigger } from '@/core/components/ui/sidebar';
 import { Separator } from '@/core/components/ui/separator';
 import {
   Breadcrumb,
@@ -67,6 +67,7 @@ import { ThemeToggle } from '@/core/components/theme';
 import { useRoute } from 'vue-router';
 import { computed } from 'vue';
 import SearchComponent from '@/shared/components/search/SearchComponent.vue';
+
 const route = useRoute();
 
 // Get the current route's title
@@ -83,5 +84,4 @@ type Breadcrumb = {
 const breadcrumbs = computed(() => {
   return (route.meta.breadcrumbs || []) as Breadcrumb[];
 });
-
 </script>

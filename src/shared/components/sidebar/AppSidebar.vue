@@ -21,7 +21,6 @@
     </SidebarHeader>
     <SidebarContent>
       <NavMain :items="data.navMain" />
-      <NavNotices :items="data.navNotices" />
       <NavSettings :items="data.navSettings" />
     </SidebarContent>
     <SidebarFooter>
@@ -44,21 +43,20 @@ import {
   SidebarRail,
 } from '@/core/components/ui/sidebar';
 import {
+  BadgeCheck,
+  Bell,
   Building2,
+  Clock,
+  CreditCard,
   FileText,
   GalleryVerticalEnd,
   LayoutDashboard,
+  Shield,
+  Sun,
   Users,
   Wallet,
-  Bell,
-  BadgeCheck,
-  CreditCard,
-  Sun,
-  Shield,
-  Clock,
 } from 'lucide-vue-next';
 import NavMain from '@/shared/components/sidebar/NavMain.vue';
-import NavNotices from '@/shared/components/sidebar/NavNotices.vue';
 import NavSettings from '@/shared/components/sidebar/NavSettings.vue';
 import NavUser from '@/shared/components/sidebar/NavUser.vue';
 

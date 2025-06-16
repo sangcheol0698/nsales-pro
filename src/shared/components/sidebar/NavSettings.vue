@@ -7,7 +7,7 @@
           <router-link
             :to="item.url"
             @click.prevent.stop="navigateTo(item.url)"
-            class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+            class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all duration-300 ease-in-out hover:bg-accent hover:text-accent-foreground"
             :class="[
               isActiveRoute(item.url) 
                 ? 'bg-accent text-accent-foreground' 
@@ -17,14 +17,14 @@
             <component 
               :is="item.icon" 
               v-if="item.icon" 
-              class="size-4" 
+              class="size-4 transition-all duration-300 ease-in-out" 
               :class="[
                 isActiveRoute(item.url) 
                   ? 'text-primary' 
                   : 'text-muted-foreground'
               ]"
             />
-            <span class="group-data-[collapsible=icon]:hidden">{{ item.title }}</span>
+            <span class="group-data-[collapsible=icon]:hidden transition-all duration-300 ease-in-out">{{ item.title }}</span>
           </router-link>
         </SidebarMenuButton>
       </SidebarMenuItem>

@@ -1,56 +1,58 @@
 <template>
-  <div class="flex min-h-svh w-full">
-    <AppSidebar />
-    <SidebarInset>
-      <header
-        class="flex h-14 md:h-16 shrink-0 items-center gap-1 md:gap-2 border-b dark:border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-300 ease-in-out sticky top-0 z-10"
-      >
-        <div class="flex items-center gap-1 md:gap-2 px-2 md:px-4">
-          <SidebarTrigger class="-ml-1" />
-          <Separator orientation="vertical" class="mr-1 md:mr-2 h-4" />
-          <div class="flex flex-col">
-            <h1 class="text-base md:text-lg lg:text-xl font-semibold">{{ pageTitle }}</h1>
-            <Breadcrumb>
-              <BreadcrumbList>
-                <template v-for="(crumb, index) in breadcrumbs" :key="index">
-                  <BreadcrumbItem class="hidden md:block">
-                    <template v-if="crumb.disabled">
-                      <BreadcrumbPage>{{ crumb.title }}</BreadcrumbPage>
-                    </template>
-                    <template v-else>
-                      <BreadcrumbLink as-child>
-                        <router-link :to="crumb.to">{{ crumb.title }}</router-link>
-                      </BreadcrumbLink>
-                    </template>
-                  </BreadcrumbItem>
-                  <BreadcrumbSeparator
-                    v-if="index < breadcrumbs.length - 1"
-                    class="hidden md:block"
-                  />
-                </template>
-              </BreadcrumbList>
-            </Breadcrumb>
+  <SidebarProvider>
+    <div class="flex min-h-svh w-full">
+      <AppSidebar />
+      <SidebarInset>
+        <header
+          class="flex h-14 md:h-16 shrink-0 items-center gap-1 md:gap-2 border-b dark:border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-300 ease-in-out sticky top-0 z-10"
+        >
+          <div class="flex items-center gap-1 md:gap-2 px-2 md:px-4">
+            <SidebarTrigger class="-ml-1" />
+            <Separator orientation="vertical" class="mr-1 md:mr-2 h-4" />
+            <div class="flex flex-col">
+              <h1 class="text-base md:text-lg lg:text-xl font-semibold">{{ pageTitle }}</h1>
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <template v-for="(crumb, index) in breadcrumbs" :key="index">
+                    <BreadcrumbItem class="hidden md:block">
+                      <template v-if="crumb.disabled">
+                        <BreadcrumbPage>{{ crumb.title }}</BreadcrumbPage>
+                      </template>
+                      <template v-else>
+                        <BreadcrumbLink as-child>
+                          <router-link :to="crumb.to">{{ crumb.title }}</router-link>
+                        </BreadcrumbLink>
+                      </template>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator
+                      v-if="index < breadcrumbs.length - 1"
+                      class="hidden md:block"
+                    />
+                  </template>
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
           </div>
-        </div>
-        <div class="ml-auto flex items-center gap-1 md:gap-2 px-2 md:px-4">
-          <SearchComponent class="hidden sm:block" />
+          <div class="ml-auto flex items-center gap-1 md:gap-2 px-2 md:px-4">
+            <SearchComponent class="hidden sm:block" />
 
-          <Button variant="outline" size="icon" class="h-8 w-8 md:h-9 md:w-9">
-            <Bell class="h-4 w-4 md:h-5 md:w-5" />
-            <span class="sr-only">Notifications</span>
-          </Button>
-          <ThemeToggle />
-        </div>
-      </header>
-      <main class="flex-1 p-4 transition-all duration-300 ease-in-out">
-        <slot></slot>
-      </main>
-    </SidebarInset>
-  </div>
+            <Button variant="outline" size="icon" class="h-8 w-8 md:h-9 md:w-9">
+              <Bell class="h-4 w-4 md:h-5 md:w-5" />
+              <span class="sr-only">Notifications</span>
+            </Button>
+            <ThemeToggle />
+          </div>
+        </header>
+        <main class="flex-1 p-4 transition-all duration-300 ease-in-out">
+          <slot></slot>
+        </main>
+      </SidebarInset>
+    </div>
+  </SidebarProvider>
 </template>
 
 <script setup lang="ts">
-import { SidebarInset, SidebarTrigger } from '@/core/components/ui/sidebar';
+import { SidebarInset, SidebarTrigger, SidebarProvider } from '@/core/components/ui/sidebar';
 import { Separator } from '@/core/components/ui/separator';
 import {
   Breadcrumb,

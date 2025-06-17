@@ -1,12 +1,18 @@
 <template>
-  <SidebarProvider>
+  <Toaster />
+  <div>
     <RouterView />
-  </SidebarProvider>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { RouterView } from 'vue-router';
-import { SidebarProvider } from '@/core/components/ui/sidebar';
+import { Toaster } from '@/core/components/ui/sonner';
+import { useAlertDialog, useFont, useTheme } from '@/core/composables';
+
+useTheme();
+useFont();
+useAlertDialog();
 </script>
 
 <style></style>

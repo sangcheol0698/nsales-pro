@@ -146,6 +146,7 @@ import EmployeeRepository from '@/features/employee/repository/EmployeeRepositor
 import EmployeeSearch from '@/features/employee/entity/EmployeeSearch.ts'
 import PageResponse from '@/core/common/PageResponse.ts'
 import { SidebarLayout } from '@/shared/components/sidebar'
+import { useToast } from '@/core/composables'
 
 import { Button } from '@/core/components/ui/button'
 import { Checkbox } from '@/core/components/ui/checkbox'
@@ -173,6 +174,7 @@ import {
   SelectValue,
 } from '@/core/components/ui/select'
 
+const toast = useToast()
 const EMPLOYEE_REPOSITORY = container.resolve(EmployeeRepository)
 const data = ref<EmployeeSearch[]>([])
 
@@ -385,7 +387,10 @@ function fetchEmployees() {
     .catch((error) => {
       console.error('Error loading employees:', error)
       // Show error message to user
-      alert('구성원을 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.')
+      toast.error('구성원 로드 실패', {
+        description: '구성원을 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.',
+        position: 'bottom-right',
+      })
     })
     .finally(() => {
       pagination.value.loading = false

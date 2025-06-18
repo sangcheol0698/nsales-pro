@@ -150,6 +150,7 @@ import { container } from 'tsyringe';
 import PartnerRepository from '@/features/partner/repository/PartnerRepository.ts';
 import type { PartnerSearch } from '@/features/partner/entity/PartnerSearch.ts';
 import { SidebarLayout } from '@/shared/components/sidebar';
+import { useToast } from '@/core/composables';
 
 import { Button } from '@/core/components/ui/button';
 import { Checkbox } from '@/core/components/ui/checkbox';
@@ -177,6 +178,7 @@ import {
   SelectValue,
 } from '@/core/components/ui/select';
 
+const toast = useToast();
 const PARTNER_REPOSITORY = container.resolve(PartnerRepository);
 const data = ref<PartnerSearch[]>([]);
 
@@ -396,7 +398,10 @@ function fetchPartners() {
     })
     .catch((error) => {
       console.error('Error loading partners:', error);
-      alert('협력사를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
+      toast.error('협력사 로드 실패', {
+        description: '협력사를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.',
+        position: 'bottom-right',
+      });
     })
     .finally(() => {
       pagination.value.loading = false;

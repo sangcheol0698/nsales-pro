@@ -145,6 +145,7 @@ import { container } from 'tsyringe'
 import SalesRepository from '@/features/sales/repository/SalesRepository.ts'
 import type { SalesSearch } from '@/features/sales/entity/SalesSearch.ts'
 import { SidebarLayout } from '@/shared/components/sidebar'
+import { useToast } from '@/core/composables'
 
 import { Button } from '@/core/components/ui/button'
 import { Checkbox } from '@/core/components/ui/checkbox'
@@ -172,6 +173,7 @@ import {
   SelectValue,
 } from '@/core/components/ui/select'
 
+const toast = useToast()
 const SALES_REPOSITORY = container.resolve(SalesRepository)
 const data = ref<SalesSearch[]>([])
 
@@ -392,7 +394,10 @@ function fetchSales() {
     .catch((error) => {
       console.error('Error loading sales:', error)
       // Show error message to user
-      alert('매출 데이터를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.')
+      toast.error('매출 데이터 로드 실패', {
+        description: '매출 데이터를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.',
+        position: 'bottom-right',
+      })
     })
     .finally(() => {
       pagination.value.loading = false

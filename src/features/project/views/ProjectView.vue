@@ -152,6 +152,7 @@ import ProjectRepository from '@/features/project/repository/ProjectRepository.t
 import ProjectSearch from '@/features/project/entity/ProjectSearch.ts';
 import PageResponse from '@/core/common/PageResponse.ts';
 import { SidebarLayout } from '@/shared/components/sidebar';
+import { useToast } from '@/core/composables';
 
 import { Button } from '@/core/components/ui/button';
 import { Checkbox } from '@/core/components/ui/checkbox';
@@ -180,6 +181,7 @@ import {
 } from '@/core/components/ui/select';
 
 const router = useRouter();
+const toast = useToast();
 const PROJECT_REPOSITORY = container.resolve(ProjectRepository);
 const data = ref<ProjectSearch[]>([]);
 
@@ -465,7 +467,10 @@ function fetchProjects() {
     .catch((error) => {
       console.error('Error loading projects:', error);
       // Show error message to user
-      alert('프로젝트를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
+      toast.error('프로젝트 로드 실패', {
+        description: '프로젝트를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.',
+        position: 'bottom-right',
+      });
     })
     .finally(() => {
       pagination.value.loading = false;

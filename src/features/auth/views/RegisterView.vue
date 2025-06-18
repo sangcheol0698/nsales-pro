@@ -3,8 +3,8 @@
     <div class="flex flex-col gap-6">
       <Card>
         <CardHeader class="flex flex-col gap-1">
-          <CardTitle class="text-xl">회원가입</CardTitle>
-          <CardDescription>이름과 이메일을 입력하세요.</CardDescription>
+          <CardTitle class="text-xl">회원등록</CardTitle>
+          <CardDescription>이름과 회사 이메일을 입력하세요.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form :validation-schema="registerSchema" @submit="handleRegister" v-slot="{ errors }">
@@ -34,7 +34,7 @@
                   </FormItem>
                 </FormField>
                 <Button class="w-full" type="submit" :disabled="Object.keys(errors).length > 0">
-                  회원가입
+                  비밀번호 설정 링크 전송
                 </Button>
               </div>
               <div class="text-center text-sm">
@@ -99,7 +99,7 @@ const AUTH_REPOSITORY = container.resolve(AuthRepository);
 async function handleRegister(values: Register) {
   await AUTH_REPOSITORY.register(values)
     .then(() => {
-      toast.info('회원가입 성공', {
+      toast.success('회원가입 성공', {
         description: '회원가입이 완료되었습니다. 이메일을 확인해주세요.',
         position: 'bottom-right',
       });

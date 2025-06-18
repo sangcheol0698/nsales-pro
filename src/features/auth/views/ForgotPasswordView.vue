@@ -92,7 +92,7 @@ const AUTH_REPOSITORY = container.resolve(AuthRepository);
 async function handleForgotPassword(values: FindPassword) {
   await AUTH_REPOSITORY.findPassword(values)
     .then(() => {
-      toast.info('이메일 전송 완료', {
+      toast.success('이메일 전송 완료', {
         description: '비밀번호 재설정 링크가 이메일로 전송되었습니다.',
         position: 'bottom-right',
       });

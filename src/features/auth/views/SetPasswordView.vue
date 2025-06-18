@@ -85,10 +85,7 @@ const setPasswordSchema = toTypedSchema(
         .regex(/[A-Z]/, '비밀번호에는 최소 1개의 대문자가 포함되어야 합니다.')
         .regex(/[a-z]/, '비밀번호에는 최소 1개의 소문자가 포함되어야 합니다.')
         .regex(/[0-9]/, '비밀번호에는 최소 1개의 숫자가 포함되어야 합니다.')
-        .regex(
-          /[!@#$%^&*(),.?":{}|<>]/,
-          '비밀번호에는 최소 1개의 특수문자가 포함되어야 합니다.'
-        ),
+        .regex(/[!@#$%^&*(),.?":{}|<>]/, '비밀번호에는 최소 1개의 특수문자가 포함되어야 합니다.'),
       newPasswordConfirm: z.string({
         required_error: '비밀번호 확인을 입력해주세요.',
       }),
@@ -111,7 +108,7 @@ async function handleSetPassword(values: SetPassword) {
   values.token = token.value;
   await AUTH_REPOSITORY.setPassword(values)
     .then(() => {
-      toast.info('비밀번호 설정 성공', {
+      toast.success('비밀번호 설정 성공', {
         description: '비밀번호가 성공적으로 설정되었습니다. 로그인해주세요.',
         position: 'bottom-right',
       });

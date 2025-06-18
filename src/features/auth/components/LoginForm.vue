@@ -51,7 +51,7 @@
                 </FormItem>
               </FormField>
               <Button class="w-full" type="submit" :disabled="Object.keys(errors).length > 0">
-                Login
+                로그인
               </Button>
             </div>
             <div class="text-center text-sm">
@@ -94,7 +94,7 @@ import AuthRepository from '@/features/auth/repository/AuthRepository.ts';
 import MemberRepository from '@/features/member/repository/MemberRepository.ts';
 import { Label } from '@/core/components/ui/label';
 import { Checkbox } from '@/core/components/ui/checkbox';
-import { ref, onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
 
 // 로그인 폼 검증 스키마 정의
 const loginSchema = toTypedSchema(
@@ -144,12 +144,12 @@ async function handleLogin(values: Login) {
     // 사용자 정보를 localStorage에 저장
     localStorage.setItem('user', JSON.stringify(myInfo));
 
-    toast.info('로그인 성공', {
+    toast.success('로그인 성공', {
       description: '환영합니다! 로그인에 성공했습니다.',
       position: 'bottom-right',
     });
 
-    router.push({ path: '/' });
+    await router.push({ path: '/' });
   } catch (e) {
     toast.error('로그인 실패', { description: (e as HttpError).getMessage() });
   }

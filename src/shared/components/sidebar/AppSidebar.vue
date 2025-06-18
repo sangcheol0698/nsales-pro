@@ -8,9 +8,11 @@
               <div
                 class="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground transition-all duration-300"
               >
-                <GalleryVerticalEnd class="size-4" />
+                <img src="@/assets/main_logo.png" alt="ABACUS Logo" class="size-8" />
               </div>
-              <div class="flex flex-col gap-0.5 leading-none transition-all duration-300 ease-in-out group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:overflow-hidden">
+              <div
+                class="flex flex-col gap-0.5 leading-none transition-all duration-300 ease-in-out group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:overflow-hidden"
+              >
                 <span class="font-semibold">ABACUS</span>
                 <span class="text-xs text-muted-foreground"> Abacus Inc </span>
               </div>

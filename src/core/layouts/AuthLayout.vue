@@ -5,7 +5,7 @@
         <div
           class="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground"
         >
-          <GalleryVerticalEnd class="size-4" />
+          <img src="@/assets/main_logo.png" alt="ABACUS Logo" class="size-6" />
         </div>
         Abacus Inc.
       </a>
@@ -24,20 +24,18 @@
 </template>
 
 <script setup lang="ts">
-import { GalleryVerticalEnd } from 'lucide-vue-next';
-
 // 로고 링크 경로를 위한 props
 defineProps({
   // 로고 클릭 시 이동할 경로
   logoHref: {
     type: String,
-    default: '/'
+    default: '/',
   },
   // 약관 동의 텍스트 표시 여부
   showTerms: {
     type: Boolean,
-    default: true
-  }
+    default: true,
+  },
 });
 </script>
 

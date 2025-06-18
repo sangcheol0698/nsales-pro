@@ -50,7 +50,13 @@
                   </div>
                 </FormItem>
               </FormField>
-              <Button class="w-full" type="submit" :disabled="Object.keys(errors).length > 0">
+              <Button 
+                class="w-full" 
+                type="submit" 
+                :disabled="Object.keys(errors).length > 0"
+                :loading="isLoading"
+                loading-text="로그인 중..."
+              >
                 로그인
               </Button>
             </div>
@@ -112,6 +118,7 @@ const toast = useToast();
 const router = useRouter();
 
 const remember = ref(false);
+const isLoading = ref(false);
 
 // 컴포넌트 마운트 시 세션 만료 확인
 onMounted(() => {
@@ -133,10 +140,12 @@ onMounted(() => {
 const AUTH_REPOSITORY = container.resolve(AuthRepository);
 const MEMBER_REPOSITORY = container.resolve(MemberRepository);
 
-async function handleLogin(values: Login) {
+async function handleLogin(values: any) {
   try {
+    isLoading.value = true;
+    
     // 로그인 시도
-    await AUTH_REPOSITORY.login(values, remember.value);
+    await AUTH_REPOSITORY.login(values as Login, remember.value);
 
     // 로그인 성공 후 사용자 정보 가져오기
     const myInfo = await MEMBER_REPOSITORY.getMyInfo();
@@ -152,6 +161,8 @@ async function handleLogin(values: Login) {
     await router.push({ path: '/' });
   } catch (e) {
     toast.error('로그인 실패', { description: (e as HttpError).getMessage() });
+  } finally {
+    isLoading.value = false;
   }
 }
 </script>

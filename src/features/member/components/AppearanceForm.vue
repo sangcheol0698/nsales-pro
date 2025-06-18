@@ -99,12 +99,9 @@
     </div>
 
     <!-- Submit Button -->
-    <button
-      type="submit"
-      class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-    >
+    <Button type="submit">
       화면 설정 업데이트
-    </button>
+    </Button>
   </form>
 </template>
 
@@ -113,6 +110,7 @@ import { onMounted, watch } from 'vue';
 import { z } from 'zod';
 import { useField, useForm } from 'vee-validate';
 import { toTypedSchema } from '@vee-validate/zod';
+import { Button } from '@/core/components/ui/button';
 
 import { type FontName, fonts } from '@/config/fonts';
 import { useFont, useTheme } from '@/core/composables';

@@ -28,7 +28,7 @@
             <div class="grid grid-cols-4 items-center gap-4">
               <Label class="text-right">전화번호</Label>
               <div class="col-span-3">
-                <Input disabled :value="member?.phone" placeholder="등록된 전화번호가 없습니다" />
+                <Input disabled :value="employeeInfo?.phone" placeholder="등록된 전화번호가 없습니다" />
               </div>
             </div>
 
@@ -37,7 +37,7 @@
               <div class="col-span-3">
                 <Input
                   disabled
-                  :value="member?.birthDate"
+                  :value="employeeInfo?.birthDate"
                   placeholder="등록된 생년월일이 없습니다"
                 />
               </div>
@@ -56,37 +56,23 @@
               <div class="col-span-3">
                 <Input
                   disabled
-                  :value="member?.departmentName"
+                  :value="employeeInfo?.teamName"
                   placeholder="등록된 부서가 없습니다"
                 />
               </div>
             </div>
 
             <div class="grid grid-cols-4 items-center gap-4">
-              <Label class="text-right">직급</Label>
+              <Label class="text-right">이메일</Label>
               <div class="col-span-3">
-                <Input disabled :value="member?.rank" placeholder="등록된 직급이 없습니다" />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-4 items-center gap-4">
-              <Label class="text-right">등급</Label>
-              <div class="col-span-3">
-                <Input disabled :value="member?.grade" placeholder="등록된 등급이 없습니다" />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-4 items-center gap-4">
-              <Label class="text-right">고용 형태</Label>
-              <div class="col-span-3">
-                <Input disabled :value="member?.type" placeholder="등록된 고용 형태가 없습니다" />
+                <Input disabled :value="employeeInfo?.email" placeholder="등록된 이메일이 없습니다" />
               </div>
             </div>
 
             <div class="grid grid-cols-4 items-center gap-4">
               <Label class="text-right">입사일</Label>
               <div class="col-span-3">
-                <Input disabled :value="member?.joinDate" placeholder="등록된 입사일이 없습니다" />
+                <Input disabled :value="employeeInfo?.joinDate" placeholder="등록된 입사일이 없습니다" />
               </div>
             </div>
           </div>
@@ -104,36 +90,40 @@ import Separator from '@/core/components/ui/separator/Separator.vue';
 import { useToast } from '@/core/composables';
 import { container } from 'tsyringe';
 import MemberRepository from '@/features/member/repository/MemberRepository.ts';
-import type Member from '@/features/member/entity/Member';
+import EmployeeRepository from '@/features/employee/repository/EmployeeRepository.ts';
+import Member from '@/features/member/entity/Member';
+import EmployeeMyInfo from '@/features/employee/entity/EmployeeMyInfo';
 import MyPageLayout from '@/features/member/layouts/MyPageLayout.vue';
 
 const toast = useToast();
 const MEMBER_REPOSITORY = container.resolve(MemberRepository);
+const EMPLOYEE_REPOSITORY = container.resolve(EmployeeRepository);
 
 const member = ref<Member | null>(null);
+const employeeInfo = ref<EmployeeMyInfo | null>(null);
 const loading = ref(false);
 
 // 사용자 정보 로드 함수
 async function loadUserInfo() {
   loading.value = true;
   try {
-    // 로컬 스토리지에서 사용자 정보 가져오기
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      member.value = JSON.parse(userStr);
-    }
+    // API에서 계정 정보 가져오기
+    const [memberData, employeeData] = await Promise.all([
+      MEMBER_REPOSITORY.getMyInfo(),
+      EMPLOYEE_REPOSITORY.getMyEmployee()
+    ]);
 
-    // API에서 최신 사용자 정보 가져오기
-    const myInfo = await MEMBER_REPOSITORY.getMyInfo();
-    member.value = myInfo;
+    member.value = memberData;
+    employeeInfo.value = employeeData;
 
-    // 로컬 스토리지 업데이트
-    localStorage.setItem('user', JSON.stringify(myInfo));
+    // 로컬 스토리지 업데이트 (계정 정보만)
+    localStorage.setItem('user', JSON.stringify(memberData));
   } catch (error) {
-    toast.error('프로필 정보 로드 실패', {
-      description: '사용자 정보를 불러오는데 실패했습니다. 다시 시도해주세요.',
+    toast.error('계정 정보 로드 실패', {
+      description: '계정 정보를 불러오는데 실패했습니다. 다시 시도해주세요.',
       position: 'bottom-right',
     });
+    console.error('Error loading user info:', error);
   } finally {
     loading.value = false;
   }

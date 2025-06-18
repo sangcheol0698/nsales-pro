@@ -1,16 +1,19 @@
-export default interface Member {
+export default class Member {
   name: string;
   username: string;
 
-  // 추가 정보 (옵션)
-  phone?: string;
-  birthDate?: string;
-  departmentName?: string;
-  departmentId?: number;
-  rank?: string;
-  grade?: string;
-  type?: string;
-  joinDate?: string;
-  annualSalary?: number;
-  hrStatus?: string;
+  constructor(data: {
+    name: string;
+    username: string;
+  }) {
+    this.name = data.name;
+    this.username = data.username;
+  }
+
+  static fromResponse(response: any): Member {
+    return new Member({
+      name: response.name || '',
+      username: response.username || '',
+    });
+  }
 }

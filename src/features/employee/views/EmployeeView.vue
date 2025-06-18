@@ -143,7 +143,8 @@ import { h, onMounted, ref } from 'vue'
 import { valueUpdater } from '@/core/components/ui/table/utils'
 import { container } from 'tsyringe'
 import EmployeeRepository from '@/features/employee/repository/EmployeeRepository.ts'
-import type { EmployeeSearch } from '@/features/employee/entity/EmployeeSearch.ts'
+import EmployeeSearch from '@/features/employee/entity/EmployeeSearch.ts'
+import PageResponse from '@/core/common/PageResponse.ts'
 import { SidebarLayout } from '@/shared/components/sidebar'
 
 import { Button } from '@/core/components/ui/button'
@@ -347,12 +348,24 @@ function getColumnLabel(columnId: string): string {
   }
 }
 
-const params = ref({
+interface EmployeeParams {
+  page: number;
+  limit: number;
+  [key: string]: any; // For additional filter parameters
+}
+
+interface PaginationState {
+  totalPages: number;
+  totalElements: number;
+  loading: boolean;
+}
+
+const params = ref<EmployeeParams>({
   page: 1,
   limit: 10,
 })
 
-const pagination = ref({
+const pagination = ref<PaginationState>({
   totalPages: 0,
   totalElements: 0,
   loading: false,
@@ -363,7 +376,7 @@ function fetchEmployees() {
   console.log('Fetching employees with params:', params.value)
 
   EMPLOYEE_REPOSITORY.getEmployees(params.value)
-    .then((response) => {
+    .then((response: PageResponse<EmployeeSearch>) => {
       data.value = response.content
       pagination.value.totalPages = response.totalPages
       pagination.value.totalElements = response.totalElements

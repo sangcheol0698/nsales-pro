@@ -1,6 +1,8 @@
 import { singleton } from 'tsyringe';
 import HttpRepository from '@/core/http/HttpRepository.ts';
-import type { Notice, NoticeSearch } from '@/features/notice/entity/Notice';
+import Notice from '@/features/notice/entity/Notice';
+import NoticeSearch from '@/features/notice/entity/NoticeSearch';
+import PageResponse from '@/core/common/PageResponse.ts';
 
 @singleton()
 export default class NoticeRepository extends HttpRepository {
@@ -8,10 +10,10 @@ export default class NoticeRepository extends HttpRepository {
 
   async getNotices(
     params: any
-  ): Promise<{ content: NoticeSearch[]; totalPages: number; totalElements: number }> {
+  ): Promise<PageResponse<NoticeSearch>> {
     // 실제 애플리케이션에서는 API 호출이 이루어질 것입니다
     // 현재는 목업 데이터를 반환합니다
-    const mockNotices: NoticeSearch[] = [
+    const mockNoticesData = [
       {
         id: '1',
         title: '시스템 점검 안내',
@@ -37,6 +39,9 @@ export default class NoticeRepository extends HttpRepository {
         updatedAt: '2023-05-05T11:15:00',
       },
     ];
+
+    // Convert raw data to NoticeSearch instances
+    const mockNotices = mockNoticesData.map((data: any) => NoticeSearch.fromResponse(data));
 
     // Simulate pagination
     const page = params.page || 1;
@@ -45,17 +50,19 @@ export default class NoticeRepository extends HttpRepository {
     const endIndex = startIndex + limit;
     const paginatedNotices = mockNotices.slice(startIndex, endIndex);
 
-    return {
-      content: paginatedNotices,
+    return new PageResponse<NoticeSearch>({
+      page: page,
+      size: limit,
       totalPages: Math.ceil(mockNotices.length / limit),
       totalElements: mockNotices.length,
-    };
+      content: paginatedNotices
+    });
   }
 
   async getNotice(id: string): Promise<Notice> {
     // 실제 애플리케이션에서는 API 호출이 이루어질 것입니다
     // 현재는 목업 데이터를 반환합니다
-    const mockNotices: Notice[] = [
+    const mockNoticesData = [
       {
         id: '1',
         title: '시스템 점검 안내',
@@ -81,6 +88,9 @@ export default class NoticeRepository extends HttpRepository {
         updatedAt: '2023-05-05T11:15:00',
       },
     ];
+
+    // Convert raw data to Notice instances
+    const mockNotices = mockNoticesData.map((data: any) => Notice.fromResponse(data));
 
     const notice = mockNotices.find((notice) => notice.id === id);
     if (!notice) {
@@ -93,12 +103,14 @@ export default class NoticeRepository extends HttpRepository {
   async createNotice(notice: Omit<Notice, 'id' | 'createdAt' | 'updatedAt'>): Promise<Notice> {
     // 실제 애플리케이션에서는 API 호출이 이루어질 것입니다
     // 현재는 목업 데이터를 반환합니다
-    return {
+    const responseData = {
       id: Math.random().toString(36).substring(2, 9),
       ...notice,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+
+    return Notice.fromResponse(responseData);
   }
 
   async updateNotice(
@@ -107,7 +119,7 @@ export default class NoticeRepository extends HttpRepository {
   ): Promise<Notice> {
     // 실제 애플리케이션에서는 API 호출이 이루어질 것입니다
     // 현재는 목업 데이터를 반환합니다
-    return {
+    const responseData = {
       id,
       title: notice.title || 'Default Title',
       content: notice.content || 'Default Content',
@@ -115,6 +127,8 @@ export default class NoticeRepository extends HttpRepository {
       createdAt: '2023-05-15T09:00:00',
       updatedAt: new Date().toISOString(),
     };
+
+    return Notice.fromResponse(responseData);
   }
 
   async deleteNotice(): Promise<void> {

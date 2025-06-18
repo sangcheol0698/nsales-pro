@@ -149,7 +149,8 @@ import { useRouter } from 'vue-router';
 import { valueUpdater } from '@/core/components/ui/table/utils';
 import { container } from 'tsyringe';
 import ProjectRepository from '@/features/project/repository/ProjectRepository.ts';
-import type { ProjectSearch } from '@/features/project/entity/ProjectSearch.ts';
+import ProjectSearch from '@/features/project/entity/ProjectSearch.ts';
+import PageResponse from '@/core/common/PageResponse.ts';
 import { SidebarLayout } from '@/shared/components/sidebar';
 
 import { Button } from '@/core/components/ui/button';
@@ -427,12 +428,24 @@ function getColumnLabel(columnId: string): string {
   }
 }
 
-const params = ref({
+interface ProjectParams {
+  page: number;
+  limit: number;
+  [key: string]: any; // For additional filter parameters
+}
+
+interface PaginationState {
+  totalPages: number;
+  totalElements: number;
+  loading: boolean;
+}
+
+const params = ref<ProjectParams>({
   page: 1,
   limit: 10,
 });
 
-const pagination = ref({
+const pagination = ref<PaginationState>({
   totalPages: 0,
   totalElements: 0,
   loading: false,
@@ -443,7 +456,7 @@ function fetchProjects() {
   console.log('Fetching projects with params:', params.value);
 
   PROJECT_REPOSITORY.getProjects(params.value)
-    .then((response) => {
+    .then((response: PageResponse<ProjectSearch>) => {
       data.value = response.content;
       pagination.value.totalPages = response.totalPages;
       pagination.value.totalElements = response.totalElements;

@@ -1,3 +1,5 @@
+import { formatPhoneNumber } from '@/core/common/PhoneUtils';
+
 export default class EmployeeMyInfo {
   name: string;
   teamName: string;
@@ -27,7 +29,7 @@ export default class EmployeeMyInfo {
       name: response.name || '',
       teamName: response.teamName || '',
       email: response.email || '',
-      phone: response.phone || '',
+      phone: formatPhoneNumber(response.phone),
       birthDate: response.birthDate || '',
       joinDate: response.joinDate || '',
     });

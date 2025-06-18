@@ -1,3 +1,5 @@
+import { formatPhoneNumber } from '@/core/common/PhoneUtils';
+
 export default class PartnerSearch {
   id: number;
   name: string;
@@ -40,7 +42,7 @@ export default class PartnerSearch {
       name: response.name || '',
       ceoName: response.ceoName || '',
       salesRepName: response.salesRepName || '',
-      salesRepPhone: response.salesRepPhone || '',
+      salesRepPhone: formatPhoneNumber(response.salesRepPhone),
       salesRepEmail: response.salesRepEmail || '',
       grade: response.grade || 'C',
       address: response.address || '',

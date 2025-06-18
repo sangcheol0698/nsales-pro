@@ -279,21 +279,6 @@
                     <Separator />
 
                     <div class="space-y-4">
-                      <div class="flex items-center justify-between">
-                        <div>
-                          <h4 class="text-sm font-medium">2단계 인증</h4>
-                          <p class="text-sm text-muted-foreground">
-                            계정 보안을 강화하기 위한 2단계 인증을 설정합니다.
-                          </p>
-                        </div>
-                        <Switch disabled />
-                      </div>
-                      <p class="text-xs text-muted-foreground">이 기능은 현재 개발 중입니다.</p>
-                    </div>
-
-                    <Separator />
-
-                    <div class="space-y-4">
                       <h4 class="text-sm font-medium">로그인 세션 관리</h4>
                       <p class="text-sm text-muted-foreground">
                         현재 활성화된 로그인 세션을 관리합니다.
@@ -378,7 +363,6 @@ import Button from '@/core/components/ui/button/Button.vue';
 import Input from '@/core/components/ui/input/Input.vue';
 import Label from '@/core/components/ui/label/Label.vue';
 import Separator from '@/core/components/ui/separator/Separator.vue';
-import Switch from '@/core/components/ui/switch/Switch.vue';
 import {
   Table,
   TableBody,

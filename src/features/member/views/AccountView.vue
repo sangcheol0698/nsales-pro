@@ -28,7 +28,11 @@
             <div class="grid grid-cols-4 items-center gap-4">
               <Label class="text-right">전화번호</Label>
               <div class="col-span-3">
-                <Input disabled :value="employeeInfo?.phone" placeholder="등록된 전화번호가 없습니다" />
+                <Input
+                  disabled
+                  :value="employeeInfo?.phone"
+                  placeholder="등록된 전화번호가 없습니다"
+                />
               </div>
             </div>
 
@@ -63,16 +67,13 @@
             </div>
 
             <div class="grid grid-cols-4 items-center gap-4">
-              <Label class="text-right">이메일</Label>
-              <div class="col-span-3">
-                <Input disabled :value="employeeInfo?.email" placeholder="등록된 이메일이 없습니다" />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-4 items-center gap-4">
               <Label class="text-right">입사일</Label>
               <div class="col-span-3">
-                <Input disabled :value="employeeInfo?.joinDate" placeholder="등록된 입사일이 없습니다" />
+                <Input
+                  disabled
+                  :value="employeeInfo?.joinDate"
+                  placeholder="등록된 입사일이 없습니다"
+                />
               </div>
             </div>
           </div>
@@ -110,7 +111,7 @@ async function loadUserInfo() {
     // API에서 계정 정보 가져오기
     const [memberData, employeeData] = await Promise.all([
       MEMBER_REPOSITORY.getMyInfo(),
-      EMPLOYEE_REPOSITORY.getMyEmployee()
+      EMPLOYEE_REPOSITORY.getMyEmployee(),
     ]);
 
     member.value = memberData;

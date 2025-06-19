@@ -12,8 +12,20 @@ interface DataTableColumnHeaderProps<TData, TValue> {
 
 const props = defineProps<DataTableColumnHeaderProps<any, any>>()
 
-function toggleSorting(column: Column<any, any>, desc?: boolean) {
-  column.toggleSorting(desc)
+function toggleSorting(column: Column<any, any>) {
+  // Cycle through three states: no sorting -> asc -> desc -> no sorting
+  const currentSortingState = column.getIsSorted()
+
+  if (currentSortingState === false) {
+    // Currently not sorted, set to ascending
+    column.toggleSorting(false)
+  } else if (currentSortingState === 'asc') {
+    // Currently ascending, set to descending
+    column.toggleSorting(true)
+  } else {
+    // Currently descending, clear sorting
+    column.clearSorting()
+  }
 }
 </script>
 
@@ -23,7 +35,7 @@ function toggleSorting(column: Column<any, any>, desc?: boolean) {
       variant="ghost"
       size="sm"
       class="-ml-3 h-8 data-[state=open]:bg-accent"
-      @click="toggleSorting(column, column.getIsSorted() === 'asc')"
+      @click="toggleSorting(column)"
     >
       <span>{{ title }}</span>
       <ArrowUpDown v-if="!column.getIsSorted()" class="ml-2 h-4 w-4" />

@@ -6,7 +6,7 @@
       <Select v-model="fontValue" :placeholder="fontValue">
         <FormControl>
           <SelectTrigger class="w-[200px] capitalize">
-            <SelectValue />
+            <SelectValue>{{ fontValue }}</SelectValue>
           </SelectTrigger>
         </FormControl>
         <SelectContent>

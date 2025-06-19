@@ -20,6 +20,7 @@ interface DataTableProps<TData, TValue> {
   emptyDescription?: string
   columnVisibility?: VisibilityState
   onColumnVisibilityChange?: (visibility: VisibilityState) => void
+  tableInstance?: any // Allow passing a table instance
 }
 
 const props = defineProps<DataTableProps<any, any>>()
@@ -30,8 +31,8 @@ const emit = defineEmits<{
 
 const columnVisibility = ref<VisibilityState>(props.columnVisibility || {})
 
-// Create a table instance
-const table = useVueTable({
+// Use provided table instance or create a new one
+const table = props.tableInstance || useVueTable({
   get data() { return props.data },
   get columns() { return props.columns },
   getCoreRowModel: getCoreRowModel(),
@@ -49,6 +50,12 @@ const table = useVueTable({
   state: {
     get columnVisibility() { return columnVisibility.value }
   },
+})
+
+// Log the table instance for debugging
+console.log('DataTable - table instance:', {
+  isProvidedInstance: !!props.tableInstance,
+  tableInstance: table
 })
 
 // Expose the table instance to the parent component

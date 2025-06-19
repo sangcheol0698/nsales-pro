@@ -12,18 +12,32 @@ interface DataTableColumnHeaderProps<TData, TValue> {
 
 const props = defineProps<DataTableColumnHeaderProps<any, any>>()
 
+// Log the column instance for debugging
+console.log('DataTableColumnHeader - column instance:', {
+  columnId: props.column.id,
+  columnDef: props.column.columnDef,
+  table: props.column.table
+})
+
 function toggleSorting(column: Column<any, any>) {
   // Cycle through three states: no sorting -> asc -> desc -> no sorting
   const currentSortingState = column.getIsSorted()
+  console.log('DataTableColumnHeader - toggleSorting called', { 
+    columnId: column.id, 
+    currentSortingState 
+  })
 
   if (currentSortingState === false) {
     // Currently not sorted, set to ascending
+    console.log('DataTableColumnHeader - Setting to ascending')
     column.toggleSorting(false)
   } else if (currentSortingState === 'asc') {
     // Currently ascending, set to descending
+    console.log('DataTableColumnHeader - Setting to descending')
     column.toggleSorting(true)
   } else {
     // Currently descending, clear sorting
+    console.log('DataTableColumnHeader - Clearing sorting')
     column.clearSorting()
   }
 }

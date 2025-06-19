@@ -44,6 +44,7 @@
   "devDependencies": {
     "@iconify-json/radix-icons": "^1.2.2",
     "@iconify/vue": "^5.0.0",
+    "@types/lodash-es": "^4.17.12",
     "@types/node": "^22.15.12",
     "@vitejs/plugin-vue": "^5.2.3",
     "@vitest/coverage-v8": "^1.4.0",

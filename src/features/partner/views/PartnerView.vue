@@ -77,7 +77,7 @@ const columns: ColumnDef<PartnerSearch>[] = [
   },
   {
     accessorKey: 'salesRepPhone',
-    header: ({ column }) => h(DataTableColumnHeader, { column, title: '영업대표 연락처' }),
+    header: '영업대표 연락처',
     cell: ({ row }) => h('div', {}, row.getValue('salesRepPhone') || '-'),
   },
   {
@@ -87,7 +87,7 @@ const columns: ColumnDef<PartnerSearch>[] = [
   },
   {
     accessorKey: 'grade',
-    header: '등급',
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '등급' }),
     cell: ({ row }) => h('div', {}, row.getValue('grade') || '-'),
   },
   {

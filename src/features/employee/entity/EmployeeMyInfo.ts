@@ -1,4 +1,4 @@
-import { formatPhoneNumber } from '@/core/common/PhoneUtils';
+import { formatPhoneNumber } from '@/core/utils/PhoneUtils.ts';
 
 export default class EmployeeMyInfo {
   name: string;

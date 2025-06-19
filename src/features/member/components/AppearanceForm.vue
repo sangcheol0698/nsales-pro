@@ -99,9 +99,7 @@
     </div>
 
     <!-- Submit Button -->
-    <Button type="submit">
-      화면 설정 업데이트
-    </Button>
+    <Button type="submit"> 화면 설정 업데이트 </Button>
   </form>
 </template>
 
@@ -115,7 +113,7 @@ import { Button } from '@/core/components/ui/button';
 import { type FontName, fonts } from '@/config/fonts';
 import { useFont, useTheme } from '@/core/composables';
 import type { Theme } from '@/core/composables/useTheme';
-import { showSubmittedData } from '@/utils/show-submitted-data';
+import { showSubmittedData } from '@/core/utils/show-submitted-data';
 
 const fontOptions = fonts;
 

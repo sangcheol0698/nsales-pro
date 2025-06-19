@@ -1,43 +1,28 @@
 <template>
-  <form @submit.prevent="onSubmit" class="space-y-8">
+  <Form @submit="onSubmit" class="space-y-8">
     <!-- Font Select -->
-    <div class="space-y-2">
-      <label
-        class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-      >
-        폰트
-      </label>
-      <div class="relative w-max">
-        <select
-          v-model="fontValue"
-          class="w-[200px] capitalize font-normal appearance-none border border-input bg-background px-3 py-2 text-sm rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
-        >
-          <option v-for="f in fontOptions" :key="f" :value="f">
+    <FormItem class="space-y-2">
+      <FormLabel>폰트</FormLabel>
+      <Select v-model="fontValue" :placeholder="fontValue">
+        <FormControl>
+          <SelectTrigger class="w-[200px] capitalize">
+            <SelectValue />
+          </SelectTrigger>
+        </FormControl>
+        <SelectContent>
+          <SelectItem v-for="f in fontOptions" :key="f" :value="f" class="capitalize">
             {{ f }}
-          </option>
-        </select>
-        <svg
-          class="absolute top-2.5 right-3 h-4 w-4 text-muted-foreground pointer-events-none"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          viewBox="0 0 24 24"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </div>
-      <p class="text-sm text-muted-foreground">대시보드에서 사용할 폰트를 설정합니다.</p>
-      <p class="text-sm text-destructive mt-1">{{ errors.font }}</p>
-    </div>
+          </SelectItem>
+        </SelectContent>
+      </Select>
+      <FormDescription>대시보드에서 사용할 폰트를 설정합니다.</FormDescription>
+      <FormMessage>{{ errors.font }}</FormMessage>
+    </FormItem>
 
     <!-- Theme Radios (Light & Dark) -->
-    <div class="space-y-2">
-      <div class="flex items-center justify-between">
-        <div>
-          <label class="text-sm font-medium leading-none">테마</label>
-          <p class="text-sm text-muted-foreground">대시보드의 테마를 선택합니다.</p>
-        </div>
-      </div>
+    <FormItem class="space-y-2">
+      <FormLabel>테마</FormLabel>
+      <FormDescription>대시보드의 테마를 선택합니다.</FormDescription>
       <div class="grid max-w-md grid-cols-2 gap-8 pt-2 items-stretch">
         <!-- Light -->
         <label
@@ -95,12 +80,12 @@
           <span class="block w-full p-2 text-center font-normal">다크 모드</span>
         </label>
       </div>
-      <p class="text-sm text-destructive mt-1">{{ errors.theme }}</p>
-    </div>
+      <FormMessage>{{ errors.theme }}</FormMessage>
+    </FormItem>
 
     <!-- Submit Button -->
-    <Button type="submit"> 화면 설정 업데이트 </Button>
-  </form>
+    <Button type="submit"> 화면 설정 업데이트</Button>
+  </Form>
 </template>
 
 <script setup lang="ts">
@@ -109,6 +94,21 @@ import { z } from 'zod';
 import { useField, useForm } from 'vee-validate';
 import { toTypedSchema } from '@vee-validate/zod';
 import { Button } from '@/core/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/core/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/core/components/ui/select';
 
 import { type FontName, fonts } from '@/config/fonts';
 import { useFont, useTheme } from '@/core/composables';
@@ -128,7 +128,7 @@ const schema = z.object({
 });
 
 const { font, setFont } = useFont();
-const { theme, effectiveTheme, setTheme } = useTheme();
+const { theme, setTheme } = useTheme();
 
 const { handleSubmit, errors, setValues } = useForm({
   validationSchema: toTypedSchema(schema),

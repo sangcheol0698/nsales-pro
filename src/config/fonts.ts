@@ -1,17 +1,10 @@
 // Available fonts for the application
 export const fonts = [
   'Pretendard',
-  'Arial',
-  'Helvetica',
-  'Times New Roman',
-  'Courier New',
-  'Verdana',
-  'Georgia',
-  'Palatino',
-  'Garamond',
-  'Bookman',
-  'Tahoma',
-  'Trebuchet MS'
+  'D2Coding',
+  'IBM Plex Mono',
+  'Roboto Mono',
+  'Courier New'
 ] as const;
 
 // Type for font names

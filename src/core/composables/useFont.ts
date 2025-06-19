@@ -9,7 +9,12 @@ export function useFont() {
   const applyFont = (fontName: FontName) => {
     console.log('Applying font:', fontName);
 
-    const fontFamily = `'${fontName}', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif`;
+    // Special handling for font names with spaces
+    const formattedFontName = fontName.includes(' ') ? `'${fontName}'` : fontName;
+
+    const fontFamily = `${formattedFontName}, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif`;
+
+    console.log('Using font-family:', fontFamily);
 
     // Apply to documentElement (html)
     document.documentElement.style.setProperty('font-family', fontFamily, 'important');

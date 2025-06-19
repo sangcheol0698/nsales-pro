@@ -69,7 +69,7 @@ const columns: ColumnDef<ProjectSearch>[] = [
   },
   {
     accessorKey: 'type',
-    header: ({ column }) => h(DataTableColumnHeader, { column, title: '유형' }),
+    header: '유형',
     cell: ({ row }) => h('div', {}, row.getValue('type') || '-'),
   },
   {
@@ -100,17 +100,17 @@ const columns: ColumnDef<ProjectSearch>[] = [
   },
   {
     accessorKey: 'mainCompany',
-    header: '주관사',
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '주관사' }),
     cell: ({ row }) => h('div', {}, row.getValue('mainCompany') || '-'),
   },
   {
     accessorKey: 'clientCompany',
-    header: '고객사',
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '고객사' }),
     cell: ({ row }) => h('div', {}, row.getValue('clientCompany') || '-'),
   },
   {
     accessorKey: 'status',
-    header: ({ column }) => h(DataTableColumnHeader, { column, title: '상태' }),
+    header: '상태',
     cell: ({ row }) => h('div', { class: 'capitalize' }, row.getValue('status') || '-'),
   },
   {

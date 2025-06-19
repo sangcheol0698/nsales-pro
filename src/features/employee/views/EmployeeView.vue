@@ -65,19 +65,14 @@ const columns: ColumnDef<EmployeeSearch>[] = [
       ]);
     },
   },
-  // {
-  //   accessorKey: 'email',
-  //   header: ({ column }) => h(DataTableColumnHeader, { column, title: '이메일' }),
-  //   cell: ({ row }) => h('div', {}, row.getValue('email') || '-'),
-  // },
   {
     accessorKey: 'teamName',
-    header: ({ column }) => h(DataTableColumnHeader, { column, title: '부서' }),
+    header: '부서',
     cell: ({ row }) => h('div', {}, row.getValue('teamName') || '-'),
   },
   {
     accessorKey: 'rank',
-    header: ({ column }) => h(DataTableColumnHeader, { column, title: '직급' }),
+    header: '직급',
     cell: ({ row }) => h('div', {}, row.getValue('rank') || '-'),
   },
   {
@@ -87,7 +82,7 @@ const columns: ColumnDef<EmployeeSearch>[] = [
   },
   {
     accessorKey: 'status',
-    header: ({ column }) => h(DataTableColumnHeader, { column, title: '상태' }),
+    header: '상태',
     cell: ({ row }) => h('div', { class: 'capitalize' }, row.getValue('status') || '-'),
   },
   {

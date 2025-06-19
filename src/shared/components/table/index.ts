@@ -1,0 +1,1 @@
+export { default as DataTableWithUrl } from './DataTableWithUrl.vue'

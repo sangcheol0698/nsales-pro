@@ -16,6 +16,7 @@
       :emptyMessage="emptyMessage"
       :emptyDescription="emptyDescription"
       :tableInstance="table"
+      @rowClick="$emit('rowClick', $event)"
     >
       <template v-if="$slots['expanded-row']" #expanded-row="slotProps">
         <slot name="expanded-row" v-bind="slotProps"></slot>

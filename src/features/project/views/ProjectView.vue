@@ -10,6 +10,7 @@
           :getColumnLabel="getColumnLabel"
           emptyMessage="프로젝트가 없습니다"
           emptyDescription="새 프로젝트를 추가하거나 검색 조건을 변경해보세요"
+          @rowClick="onRowClick"
         />
       </div>
     </main>
@@ -174,6 +175,12 @@ async function fetchProjects(params: Record<string, any>): Promise<PageResponse<
       position: 'bottom-right',
     });
     throw error;
+  }
+}
+
+function onRowClick(row: ProjectSearch) {
+  if (row && row.id) {
+    router.push(`/projects/${row.id}`);
   }
 }
 </script>

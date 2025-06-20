@@ -15,7 +15,6 @@ import {
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
-  loading?: boolean;
   emptyMessage?: string;
   emptyDescription?: string;
   columnVisibility?: VisibilityState;
@@ -73,10 +72,7 @@ defineExpose({ table });
 
 <template>
   <div class="rounded-md border overflow-auto">
-    <div v-if="loading" class="flex justify-center items-center p-8">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-    </div>
-    <Table v-else>
+    <Table>
       <TableHeader>
         <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
           <TableHead v-for="header in headerGroup.headers" :key="header.id">

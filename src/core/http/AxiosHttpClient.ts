@@ -3,6 +3,8 @@ import HttpError from '@/core/http/HttpError.ts';
 import { singleton } from 'tsyringe';
 import router from '@/core/router';
 import { useToast } from '@/core/composables';
+import NProgress from 'nprogress';
+
 export type HttpRequestConfig = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   path: string;
@@ -26,9 +28,10 @@ export default class AxiosHttpClient {
   }
 
   private setupInterceptors() {
-    // 요청 인터셉터 추가 - XSRF 토큰을 쿠키에서 가져와 헤더에 설정
+    // 요청 인터셉터 추가
     this.client.interceptors.request.use(
       (config) => {
+        NProgress.start();
         // 쿠키에서 XSRF-TOKEN 값을 추출하는 함수
         const getCookieValue = (name: string): string | null => {
           const match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
@@ -42,14 +45,19 @@ export default class AxiosHttpClient {
         return config;
       },
       (error) => {
+        NProgress.done();
         return Promise.reject(error);
       }
     );
 
     // 응답 인터셉터
     this.client.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        NProgress.done();
+        return response;
+      },
       (error: AxiosError) => {
+        NProgress.done();
         // 401 Unauthorized 에러 처리 (세션 만료)
         if (error.response?.status === 401) {
           // 로컬 스토리지에서 사용자 정보 제거
@@ -58,14 +66,14 @@ export default class AxiosHttpClient {
           // 현재 경로가 로그인 페이지가 아닌 경우에만 리다이렉트
           if (!router.currentRoute.value.path.startsWith('/auths/')) {
             const toast = useToast();
-            toast.error('세션 만료', { 
-              description: '로그인 세션이 만료되었습니다. 다시 로그인해주세요.' 
+            toast.error('세션 만료', {
+              description: '로그인 세션이 만료되었습니다. 다시 로그인해주세요.',
             });
 
             // 로그인 페이지로 리다이렉트 (세션 만료 표시)
-            router.push({ 
+            router.push({
               name: 'login',
-              query: { expired: 'true' }
+              query: { expired: 'true' },
             });
           }
         }

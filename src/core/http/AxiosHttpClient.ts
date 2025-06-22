@@ -4,6 +4,7 @@ import { singleton } from 'tsyringe';
 import router from '@/core/router';
 import { useToast } from '@/core/composables';
 import NProgress from 'nprogress';
+import { useAuthStore } from '@/core/stores/auth.store';
 
 export type HttpRequestConfig = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -60,8 +61,8 @@ export default class AxiosHttpClient {
         NProgress.done();
         // 401 Unauthorized 에러 처리 (세션 만료)
         if (error.response?.status === 401) {
-          // 로컬 스토리지에서 사용자 정보 제거
-          localStorage.removeItem('user');
+          const authStore = useAuthStore();
+          authStore.logout();
 
           // 현재 경로가 로그인 페이지가 아닌 경우에만 리다이렉트
           if (!router.currentRoute.value.path.startsWith('/auths/')) {

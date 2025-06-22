@@ -9,7 +9,7 @@
           >
             <Avatar class="h-8 w-8 rounded-lg">
               <AvatarImage :src="user.avatar" :alt="user.name" />
-              <AvatarFallback class="rounded-lg"> CN </AvatarFallback>
+              <AvatarFallback class="rounded-lg"> CN</AvatarFallback>
             </Avatar>
             <div class="grid flex-1 text-left text-sm leading-tight">
               <span class="truncate font-semibold">{{ user.name }}</span>
@@ -28,7 +28,7 @@
             <div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
               <Avatar class="h-8 w-8 rounded-lg">
                 <AvatarImage :src="user.avatar" :alt="user.name" />
-                <AvatarFallback class="rounded-lg"> CN </AvatarFallback>
+                <AvatarFallback class="rounded-lg"> CN</AvatarFallback>
               </Avatar>
               <div class="grid flex-1 text-left text-sm leading-tight">
                 <span class="truncate font-semibold">{{ user.name }}</span>
@@ -93,8 +93,8 @@ import AuthRepository from '@/features/auth/repository/AuthRepository.ts';
 import { useRouter } from 'vue-router';
 import type HttpError from '@/core/http/HttpError.ts';
 import { useAlertDialog, useToast } from '@/core/composables';
-import { computed, ref } from 'vue';
-import type Member from '@/features/member/entity/Member';
+import { computed } from 'vue';
+import { useAuthStore } from '@/core/stores/auth.store';
 
 // 기존 props 정의는 유지하되 선택적으로 변경
 const props = defineProps<{
@@ -105,26 +105,16 @@ const props = defineProps<{
   };
 }>();
 
-// localStorage에서 사용자 정보 가져오기
-const storedUser = ref<Member | null>(null);
+const authStore = useAuthStore();
 
-// 컴포넌트 마운트 시 localStorage에서 사용자 정보 로드
-try {
-  const userStr = localStorage.getItem('user');
-  if (userStr) {
-    storedUser.value = JSON.parse(userStr);
-  }
-} catch (error) {
-  console.error('Failed to parse user from localStorage:', error);
-}
-
-// props로 전달된 사용자 정보와 localStorage의 사용자 정보를 합쳐서 사용
+// props로 전달된 사용자 정보와 authStore의 사용자 정보를 합쳐서 사용
 const user = computed(() => {
-  if (storedUser.value) {
+  const currentUser = authStore.currentUser;
+  if (currentUser) {
     return {
-      name: storedUser.value.name,
-      email: storedUser.value.username, // Member 엔티티의 username은 이메일
-      avatar: props.user?.avatar || '', // avatar는 localStorage에 없으므로 props에서 가져오거나 빈 문자열 사용
+      name: currentUser.name,
+      email: currentUser.username, // Member 엔티티의 username은 이메일
+      avatar: props.user?.avatar || '', // avatar는 authStore에 없으므로 props에서 가져오거나 빈 문자열 사용
     };
   }
   return props.user || { name: '', email: '', avatar: '' };
@@ -141,18 +131,18 @@ const handleLogout = async () => {
     description: '정말 로그아웃 하시겠습니까?',
     confirmText: '로그아웃',
     cancelText: '취소',
-    onConfirm: () => {
-      AUTH_REPOSITORY.logout()
-        .then(() => {
-          toast.info('로그아웃', {
-            description: '로그아웃 되었습니다!',
-            position: 'bottom-right',
-          });
-          router.push('/auths/login');
-        })
-        .catch((e: HttpError) => {
-          toast.error('로그아웃 실패', { description: e.getMessage() });
+    onConfirm: async () => {
+      try {
+        await AUTH_REPOSITORY.logout();
+        authStore.logout();
+        toast.info('로그아웃', {
+          description: '로그아웃 되었습니다!',
+          position: 'bottom-right',
         });
+        await router.push('/auths/login');
+      } catch (e) {
+        toast.error('로그아웃 실패', { description: (e as HttpError).getMessage() });
+      }
     },
   });
 };

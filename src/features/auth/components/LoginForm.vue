@@ -101,6 +101,7 @@ import MemberRepository from '@/features/member/repository/MemberRepository.ts';
 import { Label } from '@/core/components/ui/label';
 import { Checkbox } from '@/core/components/ui/checkbox';
 import { onMounted, ref } from 'vue';
+import { useAuthStore } from '@/core/stores/auth.store';
 
 // 로그인 폼 검증 스키마 정의
 const loginSchema = toTypedSchema(
@@ -116,6 +117,7 @@ const loginSchema = toTypedSchema(
 
 const toast = useToast();
 const router = useRouter();
+const authStore = useAuthStore();
 
 const remember = ref(false);
 const isLoading = ref(false);
@@ -150,8 +152,8 @@ async function handleLogin(values: any) {
     // 로그인 성공 후 사용자 정보 가져오기
     const myInfo = await MEMBER_REPOSITORY.getMyInfo();
 
-    // 사용자 정보를 localStorage에 저장
-    localStorage.setItem('user', JSON.stringify(myInfo));
+    // Pinia 스토어에 사용자 정보 저장
+    authStore.setUser(myInfo);
 
     toast.success('로그인 성공', {
       description: '환영합니다! 로그인에 성공했습니다.',

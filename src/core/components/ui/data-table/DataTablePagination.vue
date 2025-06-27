@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { Button } from '@/core/components/ui/button';
 import {
   Select,
@@ -24,6 +25,31 @@ const emit = defineEmits<{
   (e: 'pageChange', page: number): void;
   (e: 'pageSizeChange', pageSize: number): void;
 }>();
+
+const pages = computed(() => {
+  const total = props.totalPages;
+  if (total <= 1) return [];
+
+  const current = props.page;
+  const maxVisible = 6;
+
+  if (total <= maxVisible) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  // Near start: 1, 2, 3, 4, 5, ..., total
+  if (current < 5) {
+    return [1, 2, 3, 4, 5, '...', total];
+  }
+
+  // Near end: 1, ..., total-4, total-3, total-2, total-1, total
+  if (current > total - 4) {
+    return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+  }
+
+  // Middle: 1, ..., c-2, c-1, c, c+1, ..., total
+  return [1, '...', current - 2, current - 1, current, current + 1, '...', total];
+});
 
 function onPageChange(page: number) {
   emit('pageChange', page);
@@ -86,61 +112,16 @@ function onPageSizeChange(pageSize: string) {
 
         <!-- Page number buttons -->
         <div class="flex items-center gap-1 mx-1">
-          <template v-if="totalPages <= 5">
-            <!-- Show all pages if 5 or fewer -->
+          <template v-for="(p, i) in pages" :key="`${p}-${i}`">
+            <span v-if="p === '...'" class="hidden sm:inline-flex px-1">...</span>
             <Button
-              v-for="pageNum in totalPages"
-              :key="pageNum"
+              v-else
               variant="outline"
               size="sm"
-              :class="pageNum === page ? 'is-active' : ''"
-              @click="onPageChange(pageNum)"
+              :class="{ 'is-active': p === page }"
+              @click="onPageChange(p as number)"
             >
-              {{ pageNum }}
-            </Button>
-          </template>
-          <template v-else>
-            <!-- Show first page -->
-            <Button
-              v-if="page > 3"
-              variant="outline"
-              size="sm"
-              class="hidden sm:inline-flex"
-              @click="onPageChange(1)"
-            >
-              1
-            </Button>
-
-            <!-- Show ellipsis if needed -->
-            <span v-if="page > 4" class="hidden sm:inline-flex px-1">...</span>
-
-            <!-- Show pages around current page -->
-            <Button
-              v-for="pageNum in Array.from({ length: 3 }, (_, i) => {
-                const start = Math.max(1, Math.min(page - 1, totalPages - 2));
-                return start + i;
-              }).filter((num) => num > 0 && num <= totalPages)"
-              :key="pageNum"
-              variant="outline"
-              size="sm"
-              :class="pageNum === page ? 'is-active' : ''"
-              @click="onPageChange(pageNum)"
-            >
-              {{ pageNum }}
-            </Button>
-
-            <!-- Show ellipsis if needed -->
-            <span v-if="page < totalPages - 3" class="hidden sm:inline-flex px-1">...</span>
-
-            <!-- Show last page -->
-            <Button
-              v-if="page < totalPages - 2"
-              variant="outline"
-              size="sm"
-              class="hidden sm:inline-flex"
-              @click="onPageChange(totalPages)"
-            >
-              {{ totalPages }}
+              {{ p }}
             </Button>
           </template>
         </div>

@@ -52,7 +52,7 @@ import {
   useVueTable,
 } from '@tanstack/vue-table';
 import { onMounted, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter, type LocationQuery } from 'vue-router';
 import { valueUpdater } from '@/core/components/ui/table/utils';
 import { debounce } from 'lodash-es';
 import PageResponse from '@/core/common/PageResponse';
@@ -60,7 +60,8 @@ import { DataTable, DataTablePagination, DataTableToolbar } from '@/core/compone
 
 interface DataTableWithUrlProps<TData> {
   columns: ColumnDef<TData, any>[];
-  fetchData: (params: Record<string, any>) => Promise<PageResponse<TData>>;
+  fetchData: (params: Record<string, any>) => Promise<PageResponse<TData>>; // TData로 변경
+  searchColumnId?: string;
   searchColumnId?: string;
   searchPlaceholder?: string;
   emptyMessage?: string;
@@ -81,7 +82,7 @@ const props = withDefaults(defineProps<DataTableWithUrlProps<any>>(), {
 const router = useRouter();
 const route = useRoute();
 
-const data = ref<any[]>([]);
+const data = ref<TData[]>([]);
 const sorting = ref<SortingState>([]);
 const columnFilters = ref<ColumnFiltersState>([]);
 const columnVisibility = ref<VisibilityState>({});
@@ -121,43 +122,27 @@ const table = useVueTable({
   // Use row.id as the selection key instead of row index
   getRowId: (row) => row.id?.toString() || '',
   onSortingChange: (updaterOrValue) => {
-    console.log('onSortingChange called with:', updaterOrValue);
-
-    // Log before updating
-    console.log('Before updating sorting state:', sorting.value);
-
     valueUpdater(updaterOrValue, sorting);
-
-    // Log after updating
-    console.log('After updating sorting state:', sorting.value);
 
     // Update params with sorting information
     if (sorting.value.length > 0) {
       const sort = sorting.value[0];
       // Format sort parameter as expected by Spring Boot: 'property,direction'
       const sortParam = `${sort.id},${sort.desc ? 'desc' : 'asc'}`;
-      console.log('Setting sort parameter:', sortParam);
 
       params.value = {
         ...params.value,
         sort: sortParam,
       };
 
-      // Keep separate direction parameter for URL display and backward compatibility
-      params.value.direction = sort.desc ? 'desc' : 'asc';
-
-      console.log('Updated params with sort:', params.value);
+      
     } else if (params.value.sort) {
       // Remove sorting if not present
-      console.log('Clearing sort parameter');
       const { sort, direction, ...rest } = params.value;
       params.value = rest;
-
-      console.log('Updated params after clearing sort:', params.value);
     }
 
     // Update URL and fetch data
-    console.log('Calling updateUrl and loadData');
     updateUrl();
     loadData();
   },
@@ -207,12 +192,69 @@ const table = useVueTable({
   },
 });
 
+function syncStateFromUrlQuery(query: LocationQuery) {
+  // Update params from URL
+  if (query.page) params.value.page = Number(query.page);
+  if (query.size) params.value.size = Number(query.size);
+  // Handle legacy limit parameter for backward compatibility
+  else if (query.limit) params.value.size = Number(query.limit);
+
+  // Handle sort params
+  if (query.sort) {
+    const sortValue = query.sort as string;
+
+    // Check if sort parameter contains direction (property,direction format)
+    if (sortValue.includes(',')) {
+      const [property, direction] = sortValue.split(',');
+
+      params.value.sort = sortValue;
+
+      // Update sorting state
+      sorting.value = [
+        {
+          id: property,
+          desc: direction === 'desc',
+        },
+      ];
+    } else {
+      // Add default direction (asc) if not present
+      params.value.sort = `${sortValue},asc`;
+
+      // Update sorting state
+      sorting.value = [
+        {
+          id: sortValue,
+          desc: false,
+        },
+      ];
+    }
+  } else if (!query.sort && sorting.value.length > 0) {
+    // Clear sorting state if no sort param in URL
+    sorting.value = [];
+  }
+
+  // Handle search filter
+  if (query[props.searchColumnId]) {
+    params.value[props.searchColumnId] = query[props.searchColumnId] as string;
+
+    // Update column filters state
+    columnFilters.value = [
+      {
+        id: props.searchColumnId,
+        value: query[props.searchColumnId] as string,
+      },
+    ];
+  } else if (!query[props.searchColumnId] && columnFilters.value.length > 0) {
+    // Clear search filter if no search param in URL
+    columnFilters.value = [];
+  }
+}
+
 // Debounced URL update function
 const updateUrlDebounced = debounce(updateUrl, props.debounceTime);
 
 // Update URL with current params
 function updateUrl() {
-  console.log('Updating URL with params:', params.value);
   router.replace({
     query: { ...params.value },
   });
@@ -221,23 +263,15 @@ function updateUrl() {
 // Load data from API
 function loadData() {
   pagination.value.loading = true;
-  console.log('Loading data with params:', params.value);
 
   // Ensure sort parameter is in the correct format for Spring Boot
   if (params.value.sort && !params.value.sort.includes(',')) {
-    console.log('Sort parameter does not include direction, adding default direction (asc)');
     params.value.sort = `${params.value.sort},asc`;
-    params.value.direction = 'asc';
   }
 
   props
     .fetchData(params.value)
-    .then((response: PageResponse<any>) => {
-      console.log('Data loaded successfully:', {
-        totalElements: response.totalElements,
-        totalPages: response.totalPages,
-        contentLength: response.content.length,
-      });
+    .then((response: PageResponse<TData>) => {
       data.value = response.content;
       pagination.value.totalPages = response.totalPages;
       pagination.value.totalElements = response.totalElements;
@@ -278,84 +312,7 @@ function getColumnLabel(columnId: string): string {
 
 // Load initial state from URL on mount
 onMounted(() => {
-  // Get params from URL
-  const query = route.query;
-  console.log('Initial URL query:', query);
-
-  // Update params from URL
-  if (query.page) params.value.page = Number(query.page);
-  if (query.size) params.value.size = Number(query.size);
-  // Handle legacy limit parameter for backward compatibility
-  else if (query.limit) params.value.size = Number(query.limit);
-
-  // Handle sort params
-  if (query.sort) {
-    const sortValue = query.sort as string;
-    console.log('Processing sort parameter from URL:', sortValue);
-
-    // Check if sort parameter contains direction (property,direction format)
-    if (sortValue.includes(',')) {
-      const [property, direction] = sortValue.split(',');
-      console.log('Sort parameter contains direction:', { property, direction });
-
-      params.value.sort = sortValue;
-      params.value.direction = direction;
-
-      // Update sorting state
-      sorting.value = [
-        {
-          id: property,
-          desc: direction === 'desc',
-        },
-      ];
-    }
-    // Backward compatibility for separate sort and direction parameters
-    else if (query.direction) {
-      const direction = query.direction as string;
-      console.log('Using separate direction parameter:', { sort: sortValue, direction });
-
-      params.value.sort = `${sortValue},${direction}`;
-      params.value.direction = direction;
-
-      // Update sorting state
-      sorting.value = [
-        {
-          id: sortValue,
-          desc: direction === 'desc',
-        },
-      ];
-    } else {
-      console.log('Sort parameter without direction, adding default direction (asc)');
-      // Add default direction (asc) if not present
-      params.value.sort = `${sortValue},asc`;
-      params.value.direction = 'asc';
-
-      // Update sorting state
-      sorting.value = [
-        {
-          id: sortValue,
-          desc: false,
-        },
-      ];
-    }
-  } else {
-    console.log('No sort parameter in URL');
-  }
-
-  // Handle search filter
-  if (query[props.searchColumnId]) {
-    params.value[props.searchColumnId] = query[props.searchColumnId] as string;
-
-    // Update column filters state
-    columnFilters.value = [
-      {
-        id: props.searchColumnId,
-        value: query[props.searchColumnId] as string,
-      },
-    ];
-  }
-
-  // Load data with initial params
+  syncStateFromUrlQuery(route.query);
   loadData();
 });
 
@@ -363,17 +320,9 @@ onMounted(() => {
 watch(
   () => route.query,
   (newQuery) => {
-    console.log('Route query changed:', newQuery);
-    console.log('Current params:', params.value);
-
     // Only update if the change wasn't triggered by this component
     // Simplify the sort change detection logic
     const sortChanged = String(newQuery.sort) !== String(params.value.sort);
-
-    console.log('Sort changed?', sortChanged, {
-      'newQuery.sort': newQuery.sort,
-      'params.value.sort': params.value.sort,
-    });
 
     if (
       newQuery.page !== params.value.page.toString() ||
@@ -381,86 +330,7 @@ watch(
       sortChanged ||
       newQuery[props.searchColumnId] !== params.value[props.searchColumnId]
     ) {
-      console.log('Updating params from URL');
-      // Update params from URL
-      if (newQuery.page) params.value.page = Number(newQuery.page);
-      if (newQuery.size) params.value.size = Number(newQuery.size);
-      // Handle legacy limit parameter for backward compatibility
-      else if (newQuery.limit) params.value.size = Number(newQuery.limit);
-
-      // Handle sort params
-      if (newQuery.sort) {
-        const sortValue = newQuery.sort as string;
-        console.log('Processing sort parameter from URL change:', sortValue);
-
-        // Check if sort parameter contains direction (property,direction format)
-        if (sortValue.includes(',')) {
-          const [property, direction] = sortValue.split(',');
-          console.log('Sort parameter contains direction:', { property, direction });
-
-          params.value.sort = sortValue;
-          params.value.direction = direction;
-
-          // Update sorting state
-          sorting.value = [
-            {
-              id: property,
-              desc: direction === 'desc',
-            },
-          ];
-        }
-        // Backward compatibility for separate sort and direction parameters
-        else if (newQuery.direction) {
-          const direction = newQuery.direction as string;
-          console.log('Using separate direction parameter:', { sort: sortValue, direction });
-
-          params.value.sort = `${sortValue},${direction}`;
-          params.value.direction = direction;
-
-          // Update sorting state
-          sorting.value = [
-            {
-              id: sortValue,
-              desc: direction === 'desc',
-            },
-          ];
-        } else {
-          console.log('Sort parameter without direction, adding default direction (asc)');
-          // Add default direction (asc) if not present
-          params.value.sort = `${sortValue},asc`;
-          params.value.direction = 'asc';
-
-          // Update sorting state
-          sorting.value = [
-            {
-              id: sortValue,
-              desc: false,
-            },
-          ];
-        }
-      } else if (!newQuery.sort && sorting.value.length > 0) {
-        console.log('Clearing sorting state');
-        sorting.value = [];
-      } else {
-        console.log('No sort parameter in URL change');
-      }
-
-      // Handle search filter
-      if (newQuery[props.searchColumnId]) {
-        params.value[props.searchColumnId] = newQuery[props.searchColumnId] as string;
-
-        // Update column filters state
-        columnFilters.value = [
-          {
-            id: props.searchColumnId,
-            value: newQuery[props.searchColumnId] as string,
-          },
-        ];
-      } else if (!newQuery[props.searchColumnId] && columnFilters.value.length > 0) {
-        columnFilters.value = [];
-      }
-
-      // Load data with updated params
+      syncStateFromUrlQuery(newQuery);
       loadData();
     }
   },

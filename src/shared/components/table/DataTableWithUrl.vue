@@ -174,7 +174,6 @@ const table = useVueTable({
   onExpandedChange: (updaterOrValue) => valueUpdater(updaterOrValue, expanded),
   state: {
     get sorting() {
-      console.log('DataTableWithUrl - state.sorting getter called', sorting.value);
       return sorting.value;
     },
     get columnFilters() {

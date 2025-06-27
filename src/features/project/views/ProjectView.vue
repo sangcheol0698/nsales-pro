@@ -114,28 +114,6 @@ const columns: ColumnDef<ProjectSearch>[] = [
     header: '상태',
     cell: ({ row }) => h('div', { class: 'capitalize' }, row.getValue('status') || '-'),
   },
-  {
-    id: 'actions',
-    enableHiding: false,
-    cell: ({ row }) => {
-      return h(
-        Button,
-        {
-          variant: 'ghost',
-          onClick: () => {
-            // Navigate to project detail view
-            router.push(`/projects/${row.original.id}`);
-          },
-        },
-        () => [
-          '상세',
-          h(ChevronDown, {
-            class: 'ml-2 h-4 w-4',
-          }),
-        ]
-      );
-    },
-  },
 ];
 
 function getColumnLabel(columnId: string): string {

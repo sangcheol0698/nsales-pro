@@ -85,25 +85,6 @@ const columns: ColumnDef<EmployeeSearch>[] = [
     header: '상태',
     cell: ({ row }) => h('div', { class: 'capitalize' }, row.getValue('status') || '-'),
   },
-  {
-    id: 'actions',
-    enableHiding: false,
-    cell: ({ row }) => {
-      return h(
-        Button,
-        {
-          variant: 'ghost',
-          onClick: () => row.toggleExpanded(!row.getIsExpanded()),
-        },
-        () => [
-          '상세',
-          h(ChevronDown, {
-            class: `ml-2 h-4 w-4 transition-transform ${row.getIsExpanded() ? 'rotate-180' : ''}`,
-          }),
-        ]
-      );
-    },
-  },
 ];
 
 function getColumnLabel(columnId: string): string {

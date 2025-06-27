@@ -90,25 +90,6 @@ const columns: ColumnDef<PartnerSearch>[] = [
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '등급' }),
     cell: ({ row }) => h('div', {}, row.getValue('grade') || '-'),
   },
-  {
-    id: 'actions',
-    enableHiding: false,
-    cell: ({ row }) => {
-      return h(
-        Button,
-        {
-          variant: 'ghost',
-          onClick: () => row.toggleExpanded(!row.getIsExpanded()),
-        },
-        () => [
-          '상세',
-          h(ChevronDown, {
-            class: `ml-2 h-4 w-4 transition-transform ${row.getIsExpanded() ? 'rotate-180' : ''}`,
-          }),
-        ]
-      );
-    },
-  },
 ];
 
 function getColumnLabel(columnId: string): string {

@@ -264,10 +264,7 @@ function updateUrl() {
 function loadData() {
   pagination.value.loading = true;
 
-  // Ensure sort parameter is in the correct format for Spring Boot
-  if (params.value.sort && !params.value.sort.includes(',')) {
-    params.value.sort = `${params.value.sort},asc`;
-  }
+  
 
   props
     .fetchData(params.value)

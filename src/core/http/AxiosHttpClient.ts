@@ -3,7 +3,6 @@ import HttpError from '@/core/http/HttpError.ts';
 import { singleton } from 'tsyringe';
 import router from '@/core/router';
 import { useToast } from '@/core/composables';
-import NProgress from 'nprogress';
 import { useAuthStore } from '@/core/stores/auth.store';
 
 export type HttpRequestConfig = {
@@ -32,7 +31,6 @@ export default class AxiosHttpClient {
     // 요청 인터셉터 추가
     this.client.interceptors.request.use(
       (config) => {
-        NProgress.start();
         // 쿠키에서 XSRF-TOKEN 값을 추출하는 함수
         const getCookieValue = (name: string): string | null => {
           const match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
@@ -46,7 +44,6 @@ export default class AxiosHttpClient {
         return config;
       },
       (error) => {
-        NProgress.done();
         return Promise.reject(error);
       }
     );
@@ -54,11 +51,9 @@ export default class AxiosHttpClient {
     // 응답 인터셉터
     this.client.interceptors.response.use(
       (response) => {
-        NProgress.done();
         return response;
       },
       (error: AxiosError) => {
-        NProgress.done();
         // 401 Unauthorized 에러 처리 (세션 만료)
         if (error.response?.status === 401) {
           const authStore = useAuthStore();

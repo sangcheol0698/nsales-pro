@@ -304,7 +304,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import {
   ArrowUpDown,
   Bot,
@@ -344,6 +345,8 @@ import type { ChatSession } from '../entity/ChatMessage';
 
 const toast = useToast();
 const chatRepository = new ChatRepository();
+const route = useRoute();
+const router = useRouter();
 
 const sessions = ref<ChatSession[]>([]);
 const currentSessionId = ref<string>();
@@ -464,7 +467,8 @@ const createNewChat = async () => {
   try {
     const newSession = await chatRepository.createSession();
     sessions.value.unshift(newSession);
-    currentSessionId.value = newSession.id;
+    // 새 세션 생성시 URL 업데이트
+    router.push({ name: 'chatSession', params: { sessionId: newSession.id } });
   } catch (error) {
     console.error('Create chat error:', error);
     toast.error('새 채팅 생성 실패', {
@@ -474,7 +478,12 @@ const createNewChat = async () => {
 };
 
 const selectSession = (sessionId: string) => {
-  currentSessionId.value = sessionId;
+  // URL을 업데이트하여 브라우저 히스토리에 반영
+  if (route.params.sessionId !== sessionId) {
+    router.push({ name: 'chatSession', params: { sessionId } });
+  } else {
+    currentSessionId.value = sessionId;
+  }
 };
 
 // 필터 및 정렬 함수들
@@ -560,10 +569,8 @@ const loadSessions = async () => {
     const result = await chatRepository.getSessions({ page: 0, size: 50 });
     sessions.value = result.sessions;
 
-    // 첫 번째 세션을 자동 선택
-    if (sessions.value.length > 0 && !currentSessionId.value) {
-      currentSessionId.value = sessions.value[0].id;
-    }
+    // URL 기반으로 세션 선택 (watch에서 처리)
+    // 더 이상 자동 선택하지 않음
   } catch (error) {
     console.error('Load sessions error:', error);
     toast.error('채팅 목록 로드 실패', {
@@ -613,8 +620,15 @@ const deleteSession = async (sessionId: string) => {
       sessions.value.splice(index, 1);
     }
 
+    // 현재 보고 있던 세션이 삭제된 경우
     if (currentSessionId.value === sessionId) {
-      currentSessionId.value = sessions.value[0]?.id;
+      if (sessions.value.length > 0) {
+        // 첫 번째 세션으로 이동
+        router.push({ name: 'chatSession', params: { sessionId: sessions.value[0].id } });
+      } else {
+        // 세션이 없으면 기본 채팅 페이지로 이동
+        router.push({ name: 'chat' });
+      }
     }
 
     toast.success('채팅 삭제 완료', {
@@ -647,6 +661,23 @@ const formatDate = (date: Date | string) => {
     }).format(targetDate);
   }
 };
+
+// URL 파라미터 변화 감지
+watch(() => route.params.sessionId, (newSessionId) => {
+  if (typeof newSessionId === 'string') {
+    currentSessionId.value = newSessionId;
+  } else if (!newSessionId && currentSessionId.value) {
+    // URL에서 sessionId가 제거된 경우 (예: /chat로 이동)
+    currentSessionId.value = undefined;
+  }
+}, { immediate: true });
+
+// /chat 경로로 접근시 첫 번째 세션으로 리다이렉트
+watch([sessions, () => route.path], ([newSessions, newPath]) => {
+  if (newPath === '/chat' && newSessions.length > 0 && !currentSessionId.value) {
+    router.replace({ name: 'chatSession', params: { sessionId: newSessions[0].id } });
+  }
+});
 
 onMounted(() => {
   loadSessions();

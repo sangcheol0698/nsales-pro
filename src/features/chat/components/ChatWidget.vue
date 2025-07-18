@@ -441,7 +441,8 @@ const loadSession = async () => {
     const history = await chatRepository.getMessageHistory(props.sessionId)
     messages.value = history.messages
     
-    await scrollToBottom()
+    // 세션 로드시에는 자동 스크롤하지 않음 (사용자가 마지막 대화 위치를 볼 수 있도록)
+    // 새 메시지가 추가될 때만 스크롤 (sendMessage에서 처리)
   } catch (error) {
     console.error('Load session error:', error)
     toast.error('채팅 세션 로드 실패', {

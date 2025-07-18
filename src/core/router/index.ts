@@ -334,6 +334,32 @@ const routes = [
       ],
     },
   },
+  {
+    path: '/chat/:sessionId',
+    name: 'chatSession',
+    component: () => import('@/features/chat/views/ChatView.vue'),
+    meta: {
+      menu: false,
+      activeIndex: 4,
+      title: 'AI Assistant',
+      breadcrumbs: [
+        {
+          title: '홈',
+          disabled: false,
+          to: '/',
+        },
+        {
+          title: 'AI Assistant',
+          disabled: false,
+          to: '/chat',
+        },
+        {
+          title: '채팅 세션',
+          disabled: true,
+        },
+      ],
+    },
+  },
 ];
 
 const router = createRouter({

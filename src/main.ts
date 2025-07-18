@@ -1,7 +1,7 @@
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import '@/index.css';
-import 'highlight.js/styles/github-dark.css';
+import 'highlight.js/styles/atom-one-dark.css';
 import App from './App.vue';
 import router from './core/router';
 import 'reflect-metadata';

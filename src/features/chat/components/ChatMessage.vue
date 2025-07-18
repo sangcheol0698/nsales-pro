@@ -153,15 +153,23 @@ const showCopySuccess = ref(false)
 // Configure marked with highlight.js
 marked.setOptions({
   highlight: (code, lang) => {
-    if (lang && hljs.getLanguage(lang)) {
+    const language = lang?.toLowerCase()
+    if (language && hljs.getLanguage(language)) {
       try {
-        return hljs.highlight(code, { language: lang }).value
+        const result = hljs.highlight(code, { language })
+        return result.value
       } catch (err) {
-        console.warn('Highlight.js error:', err)
-        return hljs.highlightAuto(code).value
+        console.warn('Highlight.js error for language:', language, err)
       }
     }
-    return hljs.highlightAuto(code).value
+    // Auto detect language if specific language fails or not provided
+    try {
+      const result = hljs.highlightAuto(code)
+      return result.value
+    } catch (err) {
+      console.warn('Highlight.js auto-detect error:', err)
+      return code
+    }
   },
   breaks: true,
   gfm: true,
@@ -578,54 +586,93 @@ onUnmounted(() => {
   font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
 }
 
-/* 하이라이트.js 스타일 최적화 */
-.markdown-content .hljs {
-  background: transparent !important;
-  color: hsl(var(--foreground)) !important;
+/* 하이라이트.js 스타일 - Atom One Dark 테마 커스터마이징 */
+.markdown-content .code-block-container pre code.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 0;
+  color: #abb2bf;
+  background: transparent;
 }
 
-.markdown-content .hljs-keyword,
-.markdown-content .hljs-selector-tag,
-.markdown-content .hljs-literal,
-.markdown-content .hljs-section,
-.markdown-content .hljs-link {
-  color: hsl(var(--primary)) !important;
-  font-weight: 600;
-}
-
-.markdown-content .hljs-string,
-.markdown-content .hljs-title,
-.markdown-content .hljs-name,
-.markdown-content .hljs-type,
-.markdown-content .hljs-attribute,
-.markdown-content .hljs-symbol,
-.markdown-content .hljs-bullet,
-.markdown-content .hljs-addition,
-.markdown-content .hljs-variable,
-.markdown-content .hljs-template-tag,
-.markdown-content .hljs-template-variable {
-  color: hsl(var(--primary)/0.8) !important;
-}
-
+/* Atom One Dark 기본 색상 유지하면서 테마 호환성 개선 */
 .markdown-content .hljs-comment,
-.markdown-content .hljs-quote,
-.markdown-content .hljs-deletion,
-.markdown-content .hljs-meta {
-  color: hsl(var(--muted-foreground)) !important;
+.markdown-content .hljs-quote {
+  color: #5c6370;
   font-style: italic;
 }
 
-.markdown-content .hljs-number,
-.markdown-content .hljs-regexp,
-.markdown-content .hljs-built_in,
-.markdown-content .hljs-builtin-name {
-  color: hsl(var(--destructive)) !important;
+.markdown-content .hljs-doctag,
+.markdown-content .hljs-keyword,
+.markdown-content .hljs-formula {
+  color: #c678dd;
 }
 
-.markdown-content .hljs-function,
-.markdown-content .hljs-class {
-  color: hsl(var(--primary)/0.9) !important;
-  font-weight: 500;
+.markdown-content .hljs-section,
+.markdown-content .hljs-name,
+.markdown-content .hljs-selector-tag,
+.markdown-content .hljs-deletion,
+.markdown-content .hljs-subst {
+  color: #e06c75;
+}
+
+.markdown-content .hljs-literal {
+  color: #56b6c2;
+}
+
+.markdown-content .hljs-string,
+.markdown-content .hljs-regexp,
+.markdown-content .hljs-addition,
+.markdown-content .hljs-attribute,
+.markdown-content .hljs-meta-string {
+  color: #98c379;
+}
+
+.markdown-content .hljs-built_in,
+.markdown-content .hljs-class .hljs-title {
+  color: #e6c07b;
+}
+
+.markdown-content .hljs-attr,
+.markdown-content .hljs-variable,
+.markdown-content .hljs-template-variable,
+.markdown-content .hljs-type,
+.markdown-content .hljs-selector-class,
+.markdown-content .hljs-selector-attr,
+.markdown-content .hljs-selector-pseudo,
+.markdown-content .hljs-number {
+  color: #d19a66;
+}
+
+.markdown-content .hljs-symbol,
+.markdown-content .hljs-bullet,
+.markdown-content .hljs-link,
+.markdown-content .hljs-meta,
+.markdown-content .hljs-selector-id,
+.markdown-content .hljs-title {
+  color: #61aeee;
+}
+
+.markdown-content .hljs-emphasis {
+  font-style: italic;
+}
+
+.markdown-content .hljs-strong {
+  font-weight: bold;
+}
+
+.markdown-content .hljs-link {
+  text-decoration: underline;
+}
+
+/* 다크 테마에서 더 잘 보이도록 배경색 조정 */
+.dark .markdown-content .code-block-container {
+  background: linear-gradient(135deg, #1e1e1e 0%, #252526 100%);
+}
+
+.dark .markdown-content .code-block-header {
+  background: rgba(30, 30, 30, 0.8);
+  border-bottom-color: #3e3e42;
 }
 
 /* 기존 pre 스타일은 코드 블록 컨테이너가 없는 경우를 위해 유지 */

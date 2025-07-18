@@ -44,6 +44,7 @@ import {
   SidebarRail,
 } from '@/core/components/ui/sidebar';
 import {
+  Bot,
   Building2,
   FileText,
   GalleryVerticalEnd,
@@ -96,6 +97,11 @@ const data = {
       title: '매출',
       url: '/sales',
       icon: Wallet,
+    },
+    {
+      title: 'AI Assistant',
+      url: '/chat',
+      icon: Bot,
     },
   ],
 };

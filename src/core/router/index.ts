@@ -313,6 +313,27 @@ const routes = [
       ],
     },
   },
+  {
+    path: '/chat',
+    name: 'chat',
+    component: () => import('@/features/chat/views/ChatView.vue'),
+    meta: {
+      menu: true,
+      activeIndex: 4,
+      title: 'AI Assistant',
+      breadcrumbs: [
+        {
+          title: '홈',
+          disabled: false,
+          to: '/',
+        },
+        {
+          title: 'AI Assistant',
+          disabled: true,
+        },
+      ],
+    },
+  },
 ];
 
 const router = createRouter({

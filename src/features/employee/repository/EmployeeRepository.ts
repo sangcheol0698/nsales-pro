@@ -15,9 +15,12 @@ export default class EmployeeRepository {
     });
 
     // Transform the raw content array into EmployeeSearch instances
-    const transformedContent = response.content.map((item: any) => EmployeeSearch.fromResponse(item));
+    const transformedContent = response.content.map((item: any) =>
+      EmployeeSearch.fromResponse(item)
+    );
 
-    // Create and return a PageResponse with the transformed content
+    // Create and return a PageRe
+    // sponse with the transformed content
     return new PageResponse<EmployeeSearch>({
       page: response.page,
       size: response.size,

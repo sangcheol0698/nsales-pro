@@ -1,6 +1,6 @@
 <template>
   <SidebarProvider>
-    <div class="flex min-h-svh w-full">
+    <div class="flex h-svh w-full overflow-hidden">
       <AppSidebar />
       <SidebarInset>
         <header
@@ -43,7 +43,7 @@
             <ThemeToggle />
           </div>
         </header>
-        <main class="flex-1 p-4 transition-all duration-300 ease-in-out">
+        <main class="flex-1 p-4 transition-all duration-300 ease-in-out overflow-hidden">
           <slot></slot>
         </main>
       </SidebarInset>

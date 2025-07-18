@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude init)",
+      "Bash(claude mcp add:*)",
+      "Bash(claude mcp)",
+      "WebFetch(domain:www.shadcn-vue.com)",
+      "WebFetch(domain:tailwindcss.com)",
+      "WebFetch(domain:v3.tailwindcss.com)",
+      "Bash(npm run dev:*)",
+      "Bash(pkill:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(npm install:*)",
+      "Bash(gh pr view:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": []
+  }
+}

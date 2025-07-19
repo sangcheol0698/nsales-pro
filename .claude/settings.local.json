@@ -12,7 +12,18 @@
       "WebFetch(domain:github.com)",
       "Bash(npm install:*)",
       "Bash(gh pr view:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(npm run build:*)",
+      "Bash(git reset:*)",
+      "Bash(node:*)",
+      "Bash(npm uninstall:*)",
+      "WebFetch(domain:openai.com)",
+      "Bash(pip install:*)",
+      "Bash(source:*)",
+      "Bash(uvicorn:*)",
+      "Bash(brew install:*)",
+      "Bash(tesseract:*)"
     ],
     "deny": []
   }

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -11,6 +11,12 @@ import os
 from openai import AsyncOpenAI
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
+import PyPDF2
+import docx
+from PIL import Image
+import pytesseract
+import io
+import tempfile
 
 # .env 파일 로드
 load_dotenv()
@@ -82,6 +88,60 @@ class ChatStreamChunk(BaseModel):
     timestamp: datetime
     sessionId: str
     isComplete: bool = False
+
+# 파일 처리 함수들
+async def extract_text_from_pdf(file_content: bytes) -> str:
+    """PDF 파일에서 텍스트 추출"""
+    try:
+        pdf_file = io.BytesIO(file_content)
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() + "\n"
+        return text.strip()
+    except Exception as e:
+        return f"PDF 읽기 오류: {str(e)}"
+
+async def extract_text_from_docx(file_content: bytes) -> str:
+    """DOCX 파일에서 텍스트 추출"""
+    try:
+        doc_file = io.BytesIO(file_content)
+        doc = docx.Document(doc_file)
+        text = ""
+        for paragraph in doc.paragraphs:
+            text += paragraph.text + "\n"
+        return text.strip()
+    except Exception as e:
+        return f"DOCX 읽기 오류: {str(e)}"
+
+async def extract_text_from_image(file_content: bytes) -> str:
+    """이미지에서 OCR로 텍스트 추출"""
+    try:
+        image = Image.open(io.BytesIO(file_content))
+        text = pytesseract.image_to_string(image, lang='kor+eng')
+        return text.strip() if text.strip() else "이미지에서 텍스트를 찾을 수 없습니다."
+    except Exception as e:
+        return f"이미지 OCR 오류: {str(e)}"
+
+async def process_uploaded_file(file: UploadFile) -> str:
+    """업로드된 파일을 처리하여 텍스트 추출"""
+    try:
+        file_content = await file.read()
+        file_type = file.content_type.lower()
+        filename = file.filename.lower()
+        
+        if file_type == "application/pdf" or filename.endswith('.pdf'):
+            return await extract_text_from_pdf(file_content)
+        elif file_type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"] or filename.endswith('.docx'):
+            return await extract_text_from_docx(file_content)
+        elif file_type.startswith('image/'):
+            return await extract_text_from_image(file_content)
+        elif file_type == "text/plain" or filename.endswith('.txt'):
+            return file_content.decode('utf-8', errors='ignore')
+        else:
+            return f"지원하지 않는 파일 형식: {file_type}"
+    except Exception as e:
+        return f"파일 처리 오류: {str(e)}"
 
 # 유틸리티 함수들
 def generate_id() -> str:
@@ -266,6 +326,106 @@ async def get_message_history(session_id: str):
         totalCount=len(messages)
     )
 
+@app.post("/api/v1/chat/messages/with-files")
+async def send_message_with_files(
+    content: str = Form(...),
+    sessionId: str = Form(...),
+    files: List[UploadFile] = File(default=[])
+):
+    """파일 첨부를 지원하는 채팅 메시지 전송"""
+    try:
+        # 세션 존재 확인
+        if sessionId not in sessions_db:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        session_messages = messages_db.get(sessionId, [])
+        
+        # 파일 처리
+        file_contents = []
+        if files:
+            for file in files:
+                if file.filename:  # 파일이 실제로 업로드된 경우
+                    print(f"Processing file: {file.filename}, type: {file.content_type}")
+                    file_text = await process_uploaded_file(file)
+                    file_contents.append(f"[파일: {file.filename}]\n{file_text}")
+        
+        # 메시지 내용 구성 (텍스트 + 파일 내용)
+        message_content = content
+        if file_contents:
+            message_content += "\n\n" + "\n\n".join(file_contents)
+        
+        # 사용자 메시지 저장
+        user_message = ChatMessage(
+            id=generate_id(),
+            content=message_content,
+            role="user",
+            timestamp=datetime.now(),
+            sessionId=sessionId
+        )
+        session_messages.append(user_message.model_dump())
+        
+        # OpenAI API에 전달할 메시지 구성
+        conversation_messages = [
+            {"role": "system", "content": "당신은 NSales Pro의 영업 AI 도우미입니다. 영업 데이터 분석, 프로젝트 정보 조회, 업무 관련 질문에 도움을 주세요. 한국어로 친근하고 전문적으로 답변해주세요. 첨부된 파일의 내용을 분석하여 관련된 답변을 제공해주세요."}
+        ]
+        
+        # 기존 대화 내용 추가 (최근 20개 메시지만 유지)
+        recent_messages = session_messages[-21:] if len(session_messages) > 21 else session_messages[:-1]  # 현재 메시지 제외
+        for msg in recent_messages:
+            conversation_messages.append({
+                "role": msg["role"],
+                "content": msg["content"]
+            })
+        
+        # 현재 사용자 메시지 추가
+        conversation_messages.append({"role": "user", "content": message_content})
+        
+        # OpenAI API 호출
+        try:
+            print(f"Conversation length: {len(conversation_messages)} messages")
+            print(f"Files processed: {len(file_contents)}")
+            
+            response = await client.chat.completions.create(
+                model="gpt-4o",
+                messages=conversation_messages,
+                max_tokens=1500,  # 파일 내용 처리를 위해 토큰 수 증가
+                temperature=0.7
+            )
+            
+            ai_content = response.choices[0].message.content
+            print(f"OpenAI Response: {ai_content}")
+            
+        except Exception as e:
+            print(f"OpenAI API Error: {e}")
+            ai_content = f"죄송합니다. 현재 AI 서비스에 일시적인 문제가 있습니다. 첨부하신 파일을 포함한 '{content}'에 대한 답변을 준비하고 있습니다. 잠시 후 다시 시도해주세요."
+        
+        # AI 응답 저장
+        ai_message = ChatMessage(
+            id=generate_id(),
+            content=ai_content,
+            role="assistant",
+            timestamp=datetime.now(),
+            sessionId=sessionId
+        )
+        session_messages.append(ai_message.model_dump())
+        
+        # 메시지 저장
+        messages_db[sessionId] = session_messages
+        
+        # 세션 업데이트
+        sessions_db[sessionId]["messageCount"] = len(session_messages)
+        sessions_db[sessionId]["updatedAt"] = datetime.now()
+        
+        return {
+            "userMessage": user_message,
+            "aiMessage": ai_message,
+            "success": True
+        }
+        
+    except Exception as e:
+        print(f"Error in send_message_with_files: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/v1/chat/messages", response_model=ChatResponse)
 async def send_message(request: ChatRequest):
     if request.sessionId not in sessions_db:
@@ -310,7 +470,7 @@ async def send_message(request: ChatRequest):
         print(f"Conversation length: {len(conversation_messages)} messages")  # 디버깅용
         
         response = await client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o",
             messages=conversation_messages,
             max_tokens=1000,
             temperature=0.7
@@ -386,7 +546,7 @@ async def stream_chat(request: ChatRequest):
             
             # OpenAI 스트리밍 API 호출
             stream = await client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o",
                 messages=conversation_messages,
                 max_tokens=1000,
                 temperature=0.7,
@@ -509,7 +669,7 @@ async def regenerate_message(message_id: str):
                     
                     # OpenAI API 호출
                     response = await client.chat.completions.create(
-                        model="gpt-3.5-turbo",
+                        model="gpt-4o",
                         messages=conversation_messages,
                         max_tokens=1000,
                         temperature=0.8  # 더 다양한 응답을 위해 temperature 증가

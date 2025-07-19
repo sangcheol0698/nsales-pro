@@ -30,7 +30,7 @@
             size="sm"
             @click="clearChat"
             :disabled="messages.length === 0"
-            :aria-label="$t ? $t('chat.clearChat') : '채팅 지우기'"
+            aria-label="채팅 지우기"
             class="h-8 w-8 p-0"
           >
             <RotateCcw class="h-3 w-3" />
@@ -41,7 +41,7 @@
             variant="ghost"
             size="sm"
             @click="onMinimize"
-            :aria-label="$t ? $t('chat.minimizeChat') : '채팅 최소화'"
+            aria-label="채팅 최소화"
             class="h-8 w-8 p-0"
           >
             <Minimize2 class="h-3 w-3" />
@@ -57,18 +57,6 @@
       @scroll="handleScroll"
       style="scrollbar-width: thin;"
     >
-      <!-- 로딩 더 많은 메시지 -->
-      <div 
-        v-if="isLoadingMore"
-        class="flex items-center justify-center py-4"
-      >
-        <div class="flex items-center gap-2 text-sm text-muted-foreground">
-          <div class="w-2 h-2 bg-current rounded-full animate-bounce"></div>
-          <div class="w-2 h-2 bg-current rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-          <div class="w-2 h-2 bg-current rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-          <span>이전 메시지를 불러오는 중...</span>
-        </div>
-      </div>
 
       <!-- 빈 상태 -->
       <div v-if="messages.length === 0" class="text-center py-8">
@@ -151,10 +139,7 @@ const messages = ref<ChatMessageType[]>([])
 const currentSession = ref<ChatSession>()
 const isLoading = ref(false)
 const isConnected = ref(true)
-const isLoadingMore = ref(false)
 const showScrollToBottom = ref(false)
-const currentPage = ref(0)
-const hasMoreMessages = ref(true)
 
 const scrollAreaRef = ref()
 const chatInputRef = ref()
@@ -162,19 +147,6 @@ const chatInputRef = ref()
 const sendMessage = async (content: string, files?: File[]) => {
   if ((!content.trim() && (!files || files.length === 0)) || isLoading.value) return
 
-  // 사용자 메시지 추가 (파일 정보 포함)
-  let messageContent = content
-  if (files && files.length > 0) {
-    const fileInfo = files.map(file => `[첨부파일: ${file.name}]`).join(' ')
-    messageContent = content ? `${content}\n\n${fileInfo}` : fileInfo
-  }
-  
-  const userMessage = createChatMessage('user', messageContent, currentSession.value?.id)
-  messages.value.push(userMessage)
-  
-  // 스크롤을 최하단으로
-  await scrollToBottom()
-  
   isLoading.value = true
   
   try {
@@ -183,42 +155,96 @@ const sendMessage = async (content: string, files?: File[]) => {
       currentSession.value = await chatRepository.createSession('New Chat')
     }
 
-    // AI 응답을 위한 임시 메시지
-    const assistantMessage = createChatMessage('assistant', '', currentSession.value.id)
-    messages.value.push(assistantMessage)
+    let response: any
     
-    await scrollToBottom()
+    // 파일이 첨부된 경우 파일 업로드 API 사용
+    if (files && files.length > 0) {
+      console.log('Sending message with files:', files.map(f => f.name))
+      response = await chatRepository.sendMessageWithFiles(
+        content,
+        currentSession.value.id,
+        files
+      )
+    } else {
+      // 파일이 없는 경우 기존 스트리밍 API 사용
+      // 사용자 메시지 추가
+      const userMessage = createChatMessage('user', content, currentSession.value.id)
+      messages.value.push(userMessage)
+      
+      // 스크롤을 최하단으로
+      await scrollToBottom()
 
-    // 스트리밍으로 응답 받기
-    let fullContent = ''
-    await chatRepository.streamMessage(
-      {
-        content: content,
-        sessionId: currentSession.value.id,
-      },
-      (chunk) => {
-        if (!chunk.isComplete) {
-          fullContent += chunk.content
-          // 마지막 메시지 업데이트
-          const lastMessage = messages.value[messages.value.length - 1]
-          if (lastMessage.role === 'assistant') {
-            lastMessage.content = fullContent
+      // AI 응답을 위한 임시 메시지
+      const assistantMessage = createChatMessage('assistant', '', currentSession.value.id)
+      messages.value.push(assistantMessage)
+      
+      await scrollToBottom()
+
+      // 스트리밍으로 응답 받기
+      let fullContent = ''
+      let lastScrollTime = 0
+      await chatRepository.streamMessage(
+        {
+          content: content,
+          sessionId: currentSession.value.id,
+        },
+        (chunk) => {
+          if (!chunk.isComplete) {
+            fullContent += chunk.content
+            // 마지막 메시지 업데이트
+            const lastMessage = messages.value[messages.value.length - 1]
+            if (lastMessage.role === 'assistant') {
+              lastMessage.content = fullContent
+            }
+            // 스크롤을 너무 자주 하지 않도록 throttle (100ms마다)
+            const now = Date.now()
+            if (now - lastScrollTime > 100) {
+              scrollToBottom()
+              lastScrollTime = now
+            }
           }
-          scrollToBottom()
+        },
+        (error) => {
+          console.error('Chat error:', error)
+          toast.error('AI 응답 실패', {
+            description: 'AI 응답 중 오류가 발생했습니다.',
+          })
+          
+          // 오류 발생 시 빈 AI 메시지 제거
+          if (messages.value[messages.value.length - 1]?.content === '') {
+            messages.value.pop()
+          }
         }
-      },
-      (error) => {
-        console.error('Chat error:', error)
-        toast.error('AI 응답 실패', {
-          description: 'AI 응답 중 오류가 발생했습니다.',
-        })
-        
-        // 오류 발생 시 빈 AI 메시지 제거
-        if (messages.value[messages.value.length - 1]?.content === '') {
-          messages.value.pop()
-        }
-      }
-    )
+      )
+      return // 스트리밍의 경우 여기서 종료
+    }
+
+    // 파일 업로드 응답 처리
+    if (response?.userMessage && response?.aiMessage) {
+      // 사용자 메시지 추가
+      messages.value.push({
+        id: response.userMessage.id,
+        content: response.userMessage.content,
+        role: response.userMessage.role,
+        timestamp: new Date(response.userMessage.timestamp),
+        sessionId: response.userMessage.sessionId
+      })
+      
+      // AI 응답 메시지 추가
+      messages.value.push({
+        id: response.aiMessage.id,
+        content: response.aiMessage.content,
+        role: response.aiMessage.role,
+        timestamp: new Date(response.aiMessage.timestamp),
+        sessionId: response.aiMessage.sessionId
+      })
+      
+      await scrollToBottom()
+      
+      toast.success('파일 업로드 완료', {
+        description: `${files?.length}개의 파일이 성공적으로 분석되었습니다.`
+      })
+    }
   } catch (error) {
     console.error('Send message error:', error)
     toast.error('메시지 전송 실패', {
@@ -273,6 +299,7 @@ const handleRegenerateMessage = async (messageId: string) => {
 
     // 스트리밍으로 재생성
     let fullContent = ''
+    let lastScrollTime = 0
     await chatRepository.streamMessage(
       {
         content: previousUserMessage.content,
@@ -286,7 +313,12 @@ const handleRegenerateMessage = async (messageId: string) => {
           if (lastMessage.role === 'assistant') {
             lastMessage.content = fullContent
           }
-          scrollToBottom()
+          // 스크롤을 너무 자주 하지 않도록 throttle (100ms마다)
+          const now = Date.now()
+          if (now - lastScrollTime > 100) {
+            scrollToBottom()
+            lastScrollTime = now
+          }
         }
       },
       (error) => {
@@ -343,76 +375,8 @@ const handleScroll = async (event: Event) => {
   // 스크롤 하단 버튼 표시/숨김
   const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100
   showScrollToBottom.value = !isNearBottom
-  
-  // 무한 스크롤 - 상단에 도달했을 때 이전 메시지 로드
-  if (scrollTop <= 50 && !isLoadingMore.value && hasMoreMessages.value) {
-    await loadMoreMessages()
-  }
 }
 
-const loadMoreMessages = async () => {
-  if (!currentSession.value || isLoadingMore.value || !hasMoreMessages.value) return
-  
-  isLoadingMore.value = true
-  
-  try {
-    // 현재 스크롤 위치 저장
-    const scrollElement = scrollAreaRef.value
-    const previousScrollHeight = scrollElement?.scrollHeight || 0
-    
-    // 다음 페이지 메시지 로드 (실제 구현에서는 API 호출)
-    currentPage.value++
-    
-    // 데모: 더 많은 메시지 시뮬레이션
-    const moreMessages = await simulateLoadMoreMessages(currentSession.value.id, currentPage.value)
-    
-    if (moreMessages.length > 0) {
-      // 새 메시지를 기존 메시지 앞에 추가
-      messages.value.unshift(...moreMessages)
-      
-      // 스크롤 위치 유지
-      await nextTick()
-      if (scrollElement) {
-        const newScrollHeight = scrollElement.scrollHeight
-        scrollElement.scrollTop = newScrollHeight - previousScrollHeight
-      }
-    } else {
-      hasMoreMessages.value = false
-    }
-  } catch (error) {
-    console.error('Load more messages error:', error)
-    toast.error('메시지 로드 실패', {
-      description: '이전 메시지를 불러오는 중 오류가 발생했습니다.'
-    })
-  } finally {
-    isLoadingMore.value = false
-  }
-}
-
-// 더 많은 메시지 로드 시뮬레이션 함수
-const simulateLoadMoreMessages = async (sessionId: string, page: number) => {
-  // 실제 구현에서는 API 호출로 대체
-  return new Promise<ChatMessageType[]>((resolve) => {
-    setTimeout(() => {
-      if (page > 3) {
-        resolve([]) // 더 이상 메시지가 없음
-        return
-      }
-      
-      const moreMessages: ChatMessageType[] = []
-      for (let i = 0; i < 5; i++) {
-        moreMessages.push({
-          id: `demo-${page}-${i}`,
-          content: `이전 메시지 ${page}-${i + 1}`,
-          role: i % 2 === 0 ? 'user' : 'assistant',
-          timestamp: new Date(Date.now() - (page * 24 * 60 * 60 * 1000) - (i * 60 * 60 * 1000)),
-          sessionId
-        })
-      }
-      resolve(moreMessages)
-    }, 1000)
-  })
-}
 
 // 메시지 검색 결과로 스크롤
 const scrollToMessage = (messageId: string) => {
@@ -441,8 +405,44 @@ const loadSession = async () => {
     const history = await chatRepository.getMessageHistory(props.sessionId)
     messages.value = history.messages
     
-    // 세션 로드시에는 자동 스크롤하지 않음 (사용자가 마지막 대화 위치를 볼 수 있도록)
-    // 새 메시지가 추가될 때만 스크롤 (sendMessage에서 처리)
+    // 테스트용 코드 블록이 있는 메시지 추가 (임시)
+    if (messages.value.length > 0 && !messages.value.find(m => m.id === 'test-code-highlight')) {
+      const testMessage = {
+        id: 'test-code-highlight',
+        content: `여기는 JavaScript 코드 예제입니다:
+
+\`\`\`javascript
+function greet(name) {
+  console.log("Hello, " + name + "!");
+  const message = \`Welcome \${name}!\`;
+  return message;
+}
+
+const users = ['Alice', 'Bob', 'Charlie'];
+users.forEach(user => greet(user));
+\`\`\`
+
+그리고 Python 코드도 있습니다:
+
+\`\`\`python
+def fibonacci(n):
+    if n <= 1:
+        return n
+    return fibonacci(n-1) + fibonacci(n-2)
+
+# 리스트 컴프리헨션 예제
+squares = [x**2 for x in range(10)]
+print(squares)
+\`\`\``,
+        role: 'assistant',
+        timestamp: new Date(),
+        sessionId: props.sessionId
+      }
+      messages.value.push(testMessage)
+    }
+    
+    // 세션 로드시 항상 마지막 메시지로 스크롤
+    await scrollToBottom()
   } catch (error) {
     console.error('Load session error:', error)
     toast.error('채팅 세션 로드 실패', {
@@ -455,18 +455,12 @@ const loadSession = async () => {
 watch(() => props.sessionId, (newSessionId) => {
   if (newSessionId) {
     // 상태 초기화
-    currentPage.value = 0
-    hasMoreMessages.value = true
-    isLoadingMore.value = false
     showScrollToBottom.value = false
     
     loadSession()
   } else {
     messages.value = []
     currentSession.value = undefined
-    currentPage.value = 0
-    hasMoreMessages.value = true
-    isLoadingMore.value = false
     showScrollToBottom.value = false
   }
 }, { immediate: true })

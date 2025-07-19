@@ -48,8 +48,15 @@
           <div
             v-else-if="message.role === 'assistant'"
             class="markdown-content prose prose-sm max-w-none dark:prose-invert"
-            v-html="formattedContent"
-          />
+          >
+            <div v-if="isProcessing" class="flex items-center gap-2 text-muted-foreground">
+              <div class="w-2 h-2 bg-current rounded-full animate-bounce"></div>
+              <div class="w-2 h-2 bg-current rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+              <div class="w-2 h-2 bg-current rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+              <span class="text-sm">코드 하이라이트 중...</span>
+            </div>
+            <div v-else v-html="formattedContent" />
+          </div>
 
           <!-- User 메시지 -->
           <div v-else class="whitespace-pre-wrap leading-relaxed">
@@ -62,14 +69,14 @@
           v-if="!isTyping"
           class="flex items-center gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
           role="toolbar"
-          :aria-label="$t ? $t('chat.messageActions') : '메시지 액션'"
+          aria-label="메시지 액션"
         >
           <Button
             variant="ghost"
             size="sm"
             @click="copyMessage"
             class="h-8 px-2 text-xs hover:bg-muted/80 focus:opacity-100"
-            :aria-label="$t ? $t('chat.copyMessage') : '메시지 복사'"
+            aria-label="메시지 복사"
           >
             <Copy class="h-3 w-3 mr-1" />
             복사
@@ -81,7 +88,7 @@
             size="sm"
             @click="regenerateMessage"
             class="h-8 px-2 text-xs hover:bg-muted/80 focus:opacity-100"
-            :aria-label="$t ? $t('chat.regenerateMessage') : '메시지 재생성'"
+            aria-label="메시지 재생성"
           >
             <RefreshCw class="h-3 w-3 mr-1" />
             재생성
@@ -92,7 +99,7 @@
             size="sm"
             @click="deleteMessage"
             class="h-8 px-2 text-xs hover:bg-destructive/10 hover:text-destructive focus:opacity-100"
-            :aria-label="$t ? $t('chat.deleteMessage') : '메시지 삭제'"
+            aria-label="메시지 삭제"
           >
             <Trash2 class="h-3 w-3 mr-1" />
             삭제
@@ -121,9 +128,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { marked } from 'marked'
-import hljs from 'highlight.js'
+import { codeToHtml } from 'shiki'
 import he from 'he'
 import { Copy, RefreshCw, Trash2 } from 'lucide-vue-next'
 import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
@@ -150,31 +157,74 @@ const toast = useToast()
 
 const showCopySuccess = ref(false)
 
-// Configure marked with highlight.js
+// Shiki 캐시를 위한 변수
+const highlightCache = new Map<string, string>()
+
+// Configure marked (Shiki는 비동기이므로 후처리로 사용)
 marked.setOptions({
-  highlight: (code, lang) => {
-    const language = lang?.toLowerCase()
-    if (language && hljs.getLanguage(language)) {
-      try {
-        const result = hljs.highlight(code, { language })
-        return result.value
-      } catch (err) {
-        console.warn('Highlight.js error for language:', language, err)
-      }
-    }
-    // Auto detect language if specific language fails or not provided
-    try {
-      const result = hljs.highlightAuto(code)
-      return result.value
-    } catch (err) {
-      console.warn('Highlight.js auto-detect error:', err)
-      return code
-    }
-  },
   breaks: true,
   gfm: true,
-  langPrefix: 'hljs language-',
+  langPrefix: 'language-',
+  sanitize: false,
+  smartypants: false,
 })
+
+// 다크 모드 감지
+const isDarkMode = computed(() => {
+  return document.documentElement.classList.contains('dark')
+})
+
+// Shiki로 코드 하이라이트 처리하는 함수
+const highlightWithShiki = async (code: string, lang: string): Promise<string> => {
+  const cacheKey = `${lang}:${code}:${isDarkMode.value ? 'dark' : 'light'}`
+  if (highlightCache.has(cacheKey)) {
+    return highlightCache.get(cacheKey)!
+  }
+
+  try {
+    console.log('🎨 Highlighting with Shiki:', { lang, codeLength: code.length, theme: isDarkMode.value ? 'one-dark-pro' : 'github-light' })
+    
+    // 언어 매핑
+    const langMap: Record<string, string> = {
+      'js': 'javascript',
+      'ts': 'typescript',
+      'py': 'python',
+      'sh': 'bash',
+      'shell': 'bash'
+    }
+    
+    const shikiLang = langMap[lang.toLowerCase()] || lang.toLowerCase()
+    
+    // 다크/라이트 모드에 따라 테마 선택
+    const theme = isDarkMode.value ? 'one-dark-pro' : 'github-light'
+    
+    const html = await codeToHtml(code, {
+      lang: shikiLang,
+      theme: theme,
+      transformers: []
+    })
+    
+    console.log('✅ Shiki success:', html.includes('style=') ? 'Has styles' : 'No styles')
+    highlightCache.set(cacheKey, html)
+    return html
+  } catch (error) {
+    console.warn('⚠️ Shiki fallback to JavaScript:', error)
+    try {
+      const theme = isDarkMode.value ? 'one-dark-pro' : 'github-light'
+      const html = await codeToHtml(code, {
+        lang: 'javascript',
+        theme: theme
+      })
+      highlightCache.set(cacheKey, html)
+      return html
+    } catch (fallbackError) {
+      console.error('❌ Shiki complete failure:', fallbackError)
+      const fallback = `<pre><code>${he.encode(code)}</code></pre>`
+      highlightCache.set(cacheKey, fallback)
+      return fallback
+    }
+  }
+}
 
 // 유니코드 안전한 base64 인코딩/디코딩 함수
 const unicodeToBtoa = (str: string) => {
@@ -189,48 +239,93 @@ const btoaToUnicode = (str: string) => {
   }).join(''))
 }
 
-const formattedContent = computed(() => {
-  if (props.message.role === 'assistant') {
-    const html = marked(props.message.content)
-    // 코드 블록에 복사 버튼 추가
-    return html.replace(
-      /<pre><code(?:\s+class="[^"]*language-(\w+)[^"]*")?[^>]*>([\s\S]*?)<\/code><\/pre>/g,
-      (match, language, code) => {
-        const decodedCode = he.decode(code)
-        const lang = language || 'text'
-        const buttonId = `copy-${Math.random().toString(36).substr(2, 9)}`
-        
-        try {
-          const encodedCode = unicodeToBtoa(decodedCode)
-          return `
-            <div class="code-block-container" data-language="${lang}">
-              <div class="code-block-header">
-                <span class="code-language">${lang.toUpperCase()}</span>
-                <button 
-                  class="copy-code-btn" 
-                  onclick="copyCodeBlock('${buttonId}', this)"
-                  data-code="${encodedCode}"
-                  title="코드 복사"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2" fill="none"/>
-                  </svg>
-                  <span class="copy-text">복사</span>
-                </button>
-              </div>
-              <pre id="${buttonId}"><code class="language-${lang}">${code}</code></pre>
-            </div>
-          `
-        } catch (error) {
-          console.warn('Code encoding error:', error)
-          // 인코딩 실패시 기본 코드 블록 반환
-          return match
-        }
-      }
-    )
+const formattedContent = ref('')
+const isProcessing = ref(false)
+
+// 비동기로 콘텐츠 처리
+const processContent = async () => {
+  if (props.message.role !== 'assistant') {
+    formattedContent.value = props.message.content
+    return
   }
-  return props.message.content
+
+  isProcessing.value = true
+  try {
+    let html = marked(props.message.content)
+    console.log('Original marked HTML (first 200 chars):', html.substring(0, 200))
+    
+    // 코드 블록 찾기
+    const codeBlockRegex = /<pre><code(?:\s+class="([^"]*)")?[^>]*>([\s\S]*?)<\/code><\/pre>/g
+    const codeBlocks: Array<{ match: string; classAttr?: string; code: string; lang: string }> = []
+    let match
+    
+    while ((match = codeBlockRegex.exec(html)) !== null) {
+      const [fullMatch, classAttr, code] = match
+      const langMatch = classAttr?.match(/(?:^|\s)language-(\w+)(?:\s|$)/)
+      const lang = langMatch?.[1] || 'text'
+      
+      // HTML 디코딩
+      const tempDiv = document.createElement('div')
+      tempDiv.innerHTML = code
+      const plainCode = tempDiv.textContent || tempDiv.innerText || ''
+      
+      codeBlocks.push({ match: fullMatch, classAttr, code: plainCode, lang })
+    }
+    
+    console.log('Found code blocks:', codeBlocks.length)
+    
+    // 각 코드 블록을 Shiki로 처리
+    for (const block of codeBlocks) {
+      console.log('Processing code block:', block.lang)
+      const highlightedHtml = await highlightWithShiki(block.code, block.lang)
+      
+      // 복사 버튼과 함께 래핑
+      const buttonId = `copy-${Math.random().toString(36).substr(2, 9)}`
+      const encodedCode = unicodeToBtoa(block.code)
+      
+      const wrappedCode = `
+        <div class="code-block-container" data-language="${block.lang}">
+          <div class="code-block-header">
+            <span class="code-language">${block.lang.toUpperCase()}</span>
+            <button 
+              class="copy-code-btn" 
+              onclick="copyCodeBlock('${buttonId}', this)"
+              data-code="${encodedCode}"
+              title="코드 복사"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2" fill="none"/>
+              </svg>
+              <span class="copy-text">복사</span>
+            </button>
+          </div>
+          <div id="${buttonId}" class="shiki-wrapper">${highlightedHtml}</div>
+        </div>
+      `
+      
+      html = html.replace(block.match, wrappedCode)
+    }
+    
+    formattedContent.value = html
+  } catch (error) {
+    console.error('Content processing error:', error)
+    formattedContent.value = marked(props.message.content)
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+// 메시지 내용이 변경될 때마다 처리
+watch(() => props.message.content, processContent, { immediate: true })
+
+// 다크 모드 변경 시 코드 하이라이트 다시 처리
+watch(isDarkMode, () => {
+  if (props.message.role === 'assistant') {
+    // 캐시 클리어 후 다시 처리
+    highlightCache.clear()
+    processContent()
+  }
 })
 
 const formatTime = (timestamp: Date | string) => {
@@ -586,83 +681,30 @@ onUnmounted(() => {
   font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
 }
 
-/* 하이라이트.js 스타일 - Atom One Dark 테마 커스터마이징 */
-.markdown-content .code-block-container pre code.hljs {
-  display: block;
+/* Shiki 래퍼 스타일 - Shiki는 인라인 스타일을 사용하므로 래퍼만 설정 */
+.markdown-content .shiki-wrapper {
   overflow-x: auto;
-  padding: 0;
-  color: #abb2bf;
-  background: transparent;
+  border-radius: 0.5rem;
 }
 
-/* Atom One Dark 기본 색상 유지하면서 테마 호환성 개선 */
-.markdown-content .hljs-comment,
-.markdown-content .hljs-quote {
-  color: #5c6370;
-  font-style: italic;
+.markdown-content .shiki-wrapper pre {
+  margin: 0 !important;
+  padding: 1.5rem !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  overflow-x: auto !important;
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace !important;
+  line-height: 1.5 !important;
+  tab-size: 4 !important;
 }
 
-.markdown-content .hljs-doctag,
-.markdown-content .hljs-keyword,
-.markdown-content .hljs-formula {
-  color: #c678dd;
-}
-
-.markdown-content .hljs-section,
-.markdown-content .hljs-name,
-.markdown-content .hljs-selector-tag,
-.markdown-content .hljs-deletion,
-.markdown-content .hljs-subst {
-  color: #e06c75;
-}
-
-.markdown-content .hljs-literal {
-  color: #56b6c2;
-}
-
-.markdown-content .hljs-string,
-.markdown-content .hljs-regexp,
-.markdown-content .hljs-addition,
-.markdown-content .hljs-attribute,
-.markdown-content .hljs-meta-string {
-  color: #98c379;
-}
-
-.markdown-content .hljs-built_in,
-.markdown-content .hljs-class .hljs-title {
-  color: #e6c07b;
-}
-
-.markdown-content .hljs-attr,
-.markdown-content .hljs-variable,
-.markdown-content .hljs-template-variable,
-.markdown-content .hljs-type,
-.markdown-content .hljs-selector-class,
-.markdown-content .hljs-selector-attr,
-.markdown-content .hljs-selector-pseudo,
-.markdown-content .hljs-number {
-  color: #d19a66;
-}
-
-.markdown-content .hljs-symbol,
-.markdown-content .hljs-bullet,
-.markdown-content .hljs-link,
-.markdown-content .hljs-meta,
-.markdown-content .hljs-selector-id,
-.markdown-content .hljs-title {
-  color: #61aeee;
-}
-
-.markdown-content .hljs-emphasis {
-  font-style: italic;
-}
-
-.markdown-content .hljs-strong {
-  font-weight: bold;
-}
-
-.markdown-content .hljs-link {
-  text-decoration: underline;
+.markdown-content .shiki-wrapper code {
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-family: inherit !important;
 }
 
 /* 다크 테마에서 더 잘 보이도록 배경색 조정 */

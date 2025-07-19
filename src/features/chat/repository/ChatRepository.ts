@@ -17,6 +17,28 @@ export class ChatRepository {
     return response.data;
   }
 
+  async sendMessageWithFiles(
+    content: string, 
+    sessionId: string, 
+    files: File[]
+  ): Promise<ChatResponse> {
+    const formData = new FormData();
+    formData.append('content', content);
+    formData.append('sessionId', sessionId);
+    
+    // 파일들을 FormData에 추가
+    files.forEach((file) => {
+      formData.append('files', file);
+    });
+
+    const response = await axios.post(`${this.baseURL}/chat/messages/with-files`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  }
+
   async streamMessage(
     request: ChatRequest,
     onChunk: (chunk: ChatStreamChunk) => void,

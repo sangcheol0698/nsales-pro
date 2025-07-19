@@ -23,7 +23,9 @@
       "Bash(source:*)",
       "Bash(uvicorn:*)",
       "Bash(brew install:*)",
-      "Bash(tesseract:*)"
+      "Bash(tesseract:*)",
+      "WebFetch(domain:platform.openai.com)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }

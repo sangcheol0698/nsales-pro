@@ -366,7 +366,7 @@ async def send_message_with_files(
         
         # OpenAI API에 전달할 메시지 구성
         conversation_messages = [
-            {"role": "system", "content": "당신은 NSales Pro의 영업 AI 도우미입니다. 영업 데이터 분석, 프로젝트 정보 조회, 업무 관련 질문에 도움을 주세요. 한국어로 친근하고 전문적으로 답변해주세요. 첨부된 파일의 내용을 분석하여 관련된 답변을 제공해주세요."}
+            {"role": "system", "content": "당신은 NSales Pro의 영업 AI 도우미입니다. 영업 데이터 분석, 프로젝트 정보 조회, 업무 관련 질문에 도움을 주세요. 한국어로 친근하고 전문적으로 답변해주세요. 첨부된 파일의 내용을 분석하여 관련된 답변을 제공해주세요. 최신 정보가 필요하거나 실시간 데이터, 뉴스, 시장 동향 등을 질문받으면 웹 검색을 적극 활용하여 정확하고 최신의 정보를 제공하세요."}
         ]
         
         # 기존 대화 내용 추가 (최근 20개 메시지만 유지)
@@ -389,7 +389,12 @@ async def send_message_with_files(
                 model="gpt-4o",
                 messages=conversation_messages,
                 max_tokens=1500,  # 파일 내용 처리를 위해 토큰 수 증가
-                temperature=0.7
+                temperature=0.7,
+                tools=[
+                    {
+                        "type": "web_search"
+                    }
+                ]
             )
             
             ai_content = response.choices[0].message.content
@@ -450,7 +455,7 @@ async def send_message(request: ChatRequest):
     
     # OpenAI API에 전달할 메시지 구성
     conversation_messages = [
-        {"role": "system", "content": "당신은 NSales Pro의 영업 AI 도우미입니다. 영업 데이터 분석, 프로젝트 정보 조회, 업무 관련 질문에 도움을 주세요. 한국어로 친근하고 전문적으로 답변해주세요. 이전 대화 내용을 기억하고 문맥을 유지하여 답변하세요."}
+        {"role": "system", "content": "당신은 NSales Pro의 영업 AI 도우미입니다. 영업 데이터 분석, 프로젝트 정보 조회, 업무 관련 질문에 도움을 주세요. 한국어로 친근하고 전문적으로 답변해주세요. 이전 대화 내용을 기억하고 문맥을 유지하여 답변하세요. 최신 정보가 필요하거나 실시간 데이터, 뉴스, 시장 동향 등을 질문받으면 웹 검색을 적극 활용하여 정확하고 최신의 정보를 제공하세요."}
     ]
     
     # 기존 대화 내용 추가 (최근 10개 메시지만 유지하여 토큰 절약)
@@ -473,7 +478,12 @@ async def send_message(request: ChatRequest):
             model="gpt-4o",
             messages=conversation_messages,
             max_tokens=1000,
-            temperature=0.7
+            temperature=0.7,
+            tools=[
+                {
+                    "type": "web_search"
+                }
+            ]
         )
         
         ai_content = response.choices[0].message.content
@@ -527,7 +537,7 @@ async def stream_chat(request: ChatRequest):
         
         # OpenAI API에 전달할 메시지 구성
         conversation_messages = [
-            {"role": "system", "content": "당신은 NSales Pro의 영업 AI 도우미입니다. 영업 데이터 분석, 프로젝트 정보 조회, 업무 관련 질문에 도움을 주세요. 한국어로 친근하고 전문적으로 답변해주세요. 이전 대화 내용을 기억하고 문맥을 유지하여 답변하세요."}
+            {"role": "system", "content": "당신은 NSales Pro의 영업 AI 도우미입니다. 영업 데이터 분석, 프로젝트 정보 조회, 업무 관련 질문에 도움을 주세요. 한국어로 친근하고 전문적으로 답변해주세요. 이전 대화 내용을 기억하고 문맥을 유지하여 답변하세요. 최신 정보가 필요하거나 실시간 데이터, 뉴스, 시장 동향 등을 질문받으면 웹 검색을 적극 활용하여 정확하고 최신의 정보를 제공하세요."}
         ]
         
         # 기존 대화 내용 추가 (최근 20개 메시지만 유지하여 토큰 절약)
@@ -550,7 +560,12 @@ async def stream_chat(request: ChatRequest):
                 messages=conversation_messages,
                 max_tokens=1000,
                 temperature=0.7,
-                stream=True
+                stream=True,
+                tools=[
+                    {
+                        "type": "web_search"
+                    }
+                ]
             )
             
             async for chunk in stream:
@@ -672,7 +687,12 @@ async def regenerate_message(message_id: str):
                         model="gpt-4o",
                         messages=conversation_messages,
                         max_tokens=1000,
-                        temperature=0.8  # 더 다양한 응답을 위해 temperature 증가
+                        temperature=0.8,  # 더 다양한 응답을 위해 temperature 증가
+                        tools=[
+                            {
+                                "type": "web_search"
+                            }
+                        ]
                     )
                     
                     new_content = response.choices[0].message.content

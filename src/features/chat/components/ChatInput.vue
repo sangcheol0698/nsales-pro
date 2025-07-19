@@ -89,6 +89,19 @@
       </div>
     </div>
     
+    <!-- 웹 검색 알림 -->
+    <div class="flex items-center gap-2 mt-3 text-sm text-blue-600 dark:text-blue-400">
+      <div class="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/50 px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0 9l-3-3m-3 3l3-3m0-6v6m0-6l3 3m-3-3l-3 3"/>
+        </svg>
+        <span class="font-medium">웹 검색이 활성화되었습니다</span>
+      </div>
+      <div class="text-xs text-muted-foreground">
+        최신 정보가 필요할 때 AI가 자동으로 웹 검색을 수행합니다
+      </div>
+    </div>
+
     <!-- 로딩 상태 -->
     <div v-if="isLoading" class="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
       <div class="flex gap-1">

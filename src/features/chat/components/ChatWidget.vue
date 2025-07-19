@@ -405,42 +405,6 @@ const loadSession = async () => {
     const history = await chatRepository.getMessageHistory(props.sessionId)
     messages.value = history.messages
     
-    // 테스트용 코드 블록이 있는 메시지 추가 (임시)
-    if (messages.value.length > 0 && !messages.value.find(m => m.id === 'test-code-highlight')) {
-      const testMessage = {
-        id: 'test-code-highlight',
-        content: `여기는 JavaScript 코드 예제입니다:
-
-\`\`\`javascript
-function greet(name) {
-  console.log("Hello, " + name + "!");
-  const message = \`Welcome \${name}!\`;
-  return message;
-}
-
-const users = ['Alice', 'Bob', 'Charlie'];
-users.forEach(user => greet(user));
-\`\`\`
-
-그리고 Python 코드도 있습니다:
-
-\`\`\`python
-def fibonacci(n):
-    if n <= 1:
-        return n
-    return fibonacci(n-1) + fibonacci(n-2)
-
-# 리스트 컴프리헨션 예제
-squares = [x**2 for x in range(10)]
-print(squares)
-\`\`\``,
-        role: 'assistant',
-        timestamp: new Date(),
-        sessionId: props.sessionId
-      }
-      messages.value.push(testMessage)
-    }
-    
     // 세션 로드시 항상 마지막 메시지로 스크롤
     await scrollToBottom()
   } catch (error) {

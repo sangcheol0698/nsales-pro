@@ -17,6 +17,8 @@ export interface ChatSession {
 export interface ChatRequest {
   content: string
   sessionId: string
+  model?: string
+  webSearch?: boolean
 }
 
 export interface ChatResponse {

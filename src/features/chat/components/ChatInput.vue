@@ -1,5 +1,5 @@
 <template>
-  <div class="p-4">
+  <div class="p-4 relative">
     <!-- 첨부된 파일 미리보기 -->
     <div v-if="attachedFiles.length > 0" class="mb-3">
       <div class="flex flex-wrap gap-2">
@@ -23,53 +23,88 @@
     </div>
 
     <!-- 메인 입력 영역 -->
-    <div class="flex items-end gap-2">
-      <!-- 추가 기능 버튼들 -->
-      <div class="flex items-center gap-1 pb-2">
-        <!-- 파일 첨부 버튼 -->
+    <div class="relative">
+      <!-- 상단 컨트롤 바 -->
+      <div class="flex items-center gap-2 mb-3">
+        <!-- 모델 선택 버튼 -->
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
-          @click="triggerFileInput"
+          @click="() => { console.log('Model button clicked'); showModelSelector = !showModelSelector }"
           :disabled="disabled"
-          class="h-9 w-9 p-0 hover:bg-muted/80"
+          data-model-trigger
+          class="h-8 px-3 text-xs font-medium hover:bg-muted/50 relative border-dashed"
         >
-          <Paperclip class="h-4 w-4" />
+          <Bot class="h-3 w-3 mr-1.5" />
+          {{ getCurrentModelName() }}
+          <ChevronDown class="h-3 w-3 ml-1.5 transition-transform" :class="{ 'rotate-180': showModelSelector }" />
         </Button>
         
-        <!-- 이모지 버튼 -->
+        <!-- 웹 검색 토글 -->
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
-          @click="toggleEmojiPicker"
+          @click="webSearchEnabled = !webSearchEnabled"
           :disabled="disabled"
-          class="h-9 w-9 p-0 hover:bg-muted/80"
+          class="h-8 px-3 text-xs font-medium hover:bg-muted/50 transition-all duration-200"
+          :class="{ 
+            'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800': webSearchEnabled,
+            'border-dashed': !webSearchEnabled
+          }"
         >
-          <Smile class="h-4 w-4" />
+          <Search class="h-3 w-3 mr-1.5" />
+          Web 검색
+          <span v-if="webSearchEnabled" class="ml-1.5 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
         </Button>
-        
-        <!-- 음성 입력 버튼 -->
-        <Button
-          variant="ghost"
-          size="sm"
-          @click="toggleVoiceInput"
-          :disabled="disabled"
-          class="h-9 w-9 p-0 hover:bg-muted/80"
-          :class="{ 'bg-red-500 text-white hover:bg-red-600': isRecording }"
-        >
-          <Mic v-if="!isRecording" class="h-4 w-4" />
-          <Square v-else class="h-4 w-4" />
-        </Button>
+
+        <!-- 우측 액션 버튼들 -->
+        <div class="ml-auto flex items-center gap-1">
+          <!-- 파일 첨부 -->
+          <Button
+            variant="ghost"
+            size="sm"
+            @click="triggerFileInput"
+            :disabled="disabled"
+            class="h-8 w-8 p-0 hover:bg-muted/80"
+          >
+            <Paperclip class="h-3 w-3" />
+          </Button>
+          
+          <!-- 이모지 -->
+          <Button
+            variant="ghost"
+            size="sm"
+            @click="toggleEmojiPicker"
+            :disabled="disabled"
+            data-emoji-trigger
+            class="h-8 w-8 p-0 hover:bg-muted/80"
+          >
+            <Smile class="h-3 w-3" />
+          </Button>
+          
+          <!-- 음성 입력 -->
+          <Button
+            variant="ghost"
+            size="sm"
+            @click="toggleVoiceInput"
+            :disabled="disabled"
+            class="h-8 w-8 p-0 hover:bg-muted/80 transition-all duration-200"
+            :class="{ 'bg-red-500 text-white hover:bg-red-600': isRecording }"
+          >
+            <Mic v-if="!isRecording" class="h-3 w-3" />
+            <Square v-else class="h-3 w-3" />
+          </Button>
+        </div>
       </div>
 
       <!-- 입력 필드 -->
-      <div class="flex-1 relative">
+      <div class="relative">
         <Textarea
           ref="textareaRef"
           v-model="inputMessage"
-          :placeholder="placeholder"
+          :placeholder="getPlaceholder()"
           :disabled="disabled"
-          class="min-h-[44px] max-h-32 resize-none pr-12 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+          class="min-h-[50px] max-h-32 resize-none pr-12 pl-4 py-3 border-2 rounded-xl transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary/40"
           @keydown="handleKeyDown"
           @input="adjustHeight"
           @compositionstart="handleCompositionStart"
@@ -82,72 +117,175 @@
           size="sm"
           @click="handleSubmit"
           :disabled="disabled || (!inputMessage.trim() && attachedFiles.length === 0)"
-          class="absolute right-2 bottom-2 h-8 w-8 p-0 bg-primary hover:bg-primary/90 transition-all duration-200"
+          class="absolute right-2 bottom-2 h-8 w-8 p-0 bg-primary hover:bg-primary/90 transition-all duration-200 rounded-lg"
         >
           <Send class="h-4 w-4" />
         </Button>
       </div>
     </div>
     
-    <!-- 웹 검색 알림 -->
-    <div class="flex items-center gap-2 mt-3 text-sm text-blue-600 dark:text-blue-400">
-      <div class="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/50 px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800">
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0 9l-3-3m-3 3l3-3m0-6v6m0-6l3 3m-3-3l-3 3"/>
-        </svg>
-        <span class="font-medium">웹 검색이 활성화되었습니다</span>
+    <!-- 모델 선택 드롭다운 -->
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      leave-active-class="transition-all duration-150 ease-in"
+      enter-from-class="opacity-0 scale-95 translate-y-2"
+      leave-to-class="opacity-0 scale-95 translate-y-2"
+    >
+      <div
+        v-if="showModelSelector"
+        data-modal="model-selector"
+        class="absolute bottom-full left-0 right-0 mb-2 bg-card border border-border rounded-xl shadow-lg p-3 z-50 backdrop-blur-sm"
+      >
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold flex items-center gap-2">
+            <Bot class="h-4 w-4" />
+            AI 모델 선택
+          </h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            @click="showModelSelector = false"
+            class="h-6 w-6 p-0 hover:bg-muted rounded-md"
+          >
+            <X class="h-3 w-3" />
+          </Button>
+        </div>
+        
+        <div class="space-y-2">
+          <div v-if="Object.keys(availableModels).length === 0" class="text-sm text-muted-foreground p-3">
+            모델을 로딩 중입니다...
+          </div>
+          <button
+            v-for="(model, key) in availableModels"
+            :key="key"
+            @click="() => { console.log('Model clicked:', key); selectModel(key) }"
+            class="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left hover:bg-muted/60 transition-all duration-150 group"
+            :class="{ 'bg-primary/10 border border-primary/30 shadow-sm': selectedModel === key }"
+          >
+            <div class="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 group-hover:from-primary/30 group-hover:to-primary/20 transition-all duration-200">
+              <Bot class="h-5 w-5 text-primary" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="font-medium text-sm">{{ model.name }}</span>
+                <span v-if="model.supports_web_search" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 font-medium">
+                  <Search class="h-2.5 w-2.5" />
+                  Web
+                </span>
+              </div>
+              <p class="text-xs text-muted-foreground truncate">{{ model.description }}</p>
+            </div>
+            <div v-if="selectedModel === key" class="text-primary flex-shrink-0">
+              <div class="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+              </div>
+            </div>
+          </button>
+        </div>
       </div>
-      <div class="text-xs text-muted-foreground">
-        최신 정보가 필요할 때 AI가 자동으로 웹 검색을 수행합니다
-      </div>
+    </Transition>
+    
+    <!-- 상태 표시 -->
+    <div v-if="webSearchEnabled || selectedModel !== 'gpt-4o' || isRecording" class="flex items-center gap-2 mt-3">
+      <Transition
+        enter-active-class="transition-all duration-300 ease-out"
+        leave-active-class="transition-all duration-200 ease-in"
+        enter-from-class="opacity-0 scale-95 translate-x-2"
+        leave-to-class="opacity-0 scale-95 translate-x-2"
+      >
+        <div v-if="webSearchEnabled" class="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/30 px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800">
+          <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+          <Search class="h-3 w-3 text-blue-600 dark:text-blue-400" />
+          <span class="text-blue-700 dark:text-blue-300 font-medium text-xs">웹 검색 활성화</span>
+        </div>
+      </Transition>
+      
+      <Transition
+        enter-active-class="transition-all duration-300 ease-out"
+        leave-active-class="transition-all duration-200 ease-in"
+        enter-from-class="opacity-0 scale-95 translate-x-2"
+        leave-to-class="opacity-0 scale-95 translate-x-2"
+      >
+        <div v-if="selectedModel !== 'gpt-4o'" class="flex items-center gap-2 bg-muted px-3 py-2 rounded-lg">
+          <Bot class="h-3 w-3 text-muted-foreground" />
+          <span class="text-muted-foreground font-medium text-xs">{{ getCurrentModelName() }}</span>
+        </div>
+      </Transition>
     </div>
 
     <!-- 로딩 상태 -->
-    <div v-if="isLoading" class="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
-      <div class="flex gap-1">
-        <div class="w-2 h-2 bg-current rounded-full animate-bounce"></div>
-        <div class="w-2 h-2 bg-current rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-        <div class="w-2 h-2 bg-current rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+    <Transition
+      enter-active-class="transition-all duration-300 ease-out"
+      leave-active-class="transition-all duration-200 ease-in"
+      enter-from-class="opacity-0 translate-y-2"
+      leave-to-class="opacity-0 translate-y-2"
+    >
+      <div v-if="isLoading" class="flex items-center gap-3 mt-3 p-3 bg-muted/50 rounded-lg border border-dashed">
+        <div class="flex gap-1">
+          <div class="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+          <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+          <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+        </div>
+        <span class="text-sm text-muted-foreground font-medium">AI가 응답하고 있습니다...</span>
       </div>
-      <span>AI가 응답하고 있습니다...</span>
-    </div>
+    </Transition>
     
     <!-- 음성 입력 상태 -->
-    <div v-if="isRecording" class="flex items-center gap-2 mt-3 text-sm text-red-600">
-      <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-      <span>음성 입력 중... (말하기를 멈추면 자동으로 전송됩니다)</span>
-    </div>
+    <Transition
+      enter-active-class="transition-all duration-300 ease-out"
+      leave-active-class="transition-all duration-200 ease-in"
+      enter-from-class="opacity-0 translate-y-2"
+      leave-to-class="opacity-0 translate-y-2"
+    >
+      <div v-if="isRecording" class="flex items-center gap-3 mt-3 p-3 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800">
+        <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+        <span class="text-sm text-red-700 dark:text-red-300 font-medium">음성 입력 중... (말하기를 멈추면 자동으로 전송됩니다)</span>
+      </div>
+    </Transition>
     
     <!-- 이모지 선택기 -->
-    <div
-      v-if="showEmojiPicker"
-      class="absolute bottom-full left-4 right-4 mb-2 bg-card border border-border rounded-lg shadow-lg p-4 z-50"
+    <Transition
+      enter-active-class="transition-all duration-300 ease-out"
+      leave-active-class="transition-all duration-200 ease-in"
+      enter-from-class="opacity-0 scale-95 translate-y-4"
+      leave-to-class="opacity-0 scale-95 translate-y-4"
     >
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-sm font-medium">이모지 선택</h3>
-        <Button
-          variant="ghost"
-          size="sm"
-          @click="toggleEmojiPicker"
-          class="h-6 w-6 p-0"
-        >
-          <X class="h-3 w-3" />
-        </Button>
+      <div
+        v-if="showEmojiPicker"
+        data-modal="emoji-picker"
+        class="absolute bottom-full left-4 right-4 mb-2 bg-card border border-border rounded-xl shadow-lg p-4 z-50 backdrop-blur-sm"
+      >
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold flex items-center gap-2">
+            <Smile class="h-4 w-4" />
+            이모지 선택
+          </h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            @click="toggleEmojiPicker"
+            class="h-6 w-6 p-0 hover:bg-muted rounded-md"
+          >
+            <X class="h-3 w-3" />
+          </Button>
+        </div>
+        
+        <div class="grid grid-cols-8 gap-2 max-h-48 overflow-y-auto">
+          <Button
+            v-for="emoji in emojiList"
+            :key="emoji.unicode"
+            variant="ghost"
+            size="sm"
+            @click="insertEmoji(emoji)"
+            class="h-8 w-8 p-0 text-lg hover:bg-muted/80 rounded-md"
+          >
+            {{ emoji.unicode }}
+          </Button>
+        </div>
       </div>
-      
-      <div class="grid grid-cols-8 gap-2 max-h-48 overflow-y-auto">
-        <Button
-          v-for="emoji in emojiList"
-          :key="emoji.unicode"
-          variant="ghost"
-          size="sm"
-          @click="insertEmoji(emoji)"
-          class="h-8 w-8 p-0 text-lg hover:bg-muted/80"
-        >
-          {{ emoji.unicode }}
-        </Button>
-      </div>
-    </div>
+    </Transition>
 
     <!-- 숨겨진 파일 입력 -->
     <input
@@ -163,7 +301,7 @@
 
 <script setup lang="ts">
 import { ref, nextTick, onMounted, onUnmounted } from 'vue'
-import { Send, Paperclip, Smile, Mic, Square, X, FileText } from 'lucide-vue-next'
+import { Send, Paperclip, Smile, Mic, Square, X, FileText, Bot, ChevronDown, Search } from 'lucide-vue-next'
 import { Button } from '@/core/components/ui/button'
 import { Textarea } from '@/core/components/ui/textarea'
 import { useToast } from '@/core/composables'
@@ -175,7 +313,7 @@ interface Props {
 }
 
 interface Emits {
-  submit: [message: string, files?: File[]]
+  submit: [message: string, files?: File[], model?: string, webSearch?: boolean]
 }
 
 interface EmojiItem {
@@ -198,6 +336,14 @@ const inputMessage = ref('')
 const textareaRef = ref<HTMLTextAreaElement>()
 const fileInputRef = ref<HTMLInputElement>()
 const isComposing = ref(false)
+
+// AI 모델 관련 상태
+const selectedModel = ref('gpt-4o')
+const availableModels = ref({})
+const showModelSelector = ref(false)
+
+// 웹 검색 상태
+const webSearchEnabled = ref(false)
 
 // 새로운 기능 상태
 const attachedFiles = ref<File[]>([])
@@ -280,18 +426,63 @@ const emojiList: EmojiItem[] = [
   { unicode: '💝', name: 'gift_heart', category: 'objects' },
 ]
 
+const getCurrentModelName = () => {
+  const model = availableModels.value[selectedModel.value]
+  return model?.name || 'GPT-4o'
+}
+
+const getPlaceholder = () => {
+  if (webSearchEnabled.value) {
+    return '웹 검색이 활성화되었습니다. 최신 정보를 물어보세요...'
+  }
+  return props.placeholder
+}
+
+const selectModel = (modelKey: string) => {
+  console.log('Selecting model:', modelKey)
+  selectedModel.value = modelKey
+  showModelSelector.value = false
+  
+  toast.success('모델 변경됨', {
+    description: `${getCurrentModelName()}로 변경되었습니다.`
+  })
+}
+
 const handleSubmit = () => {
   const message = inputMessage.value.trim()
   if ((!message && attachedFiles.value.length === 0) || props.disabled || isComposing.value) return
 
-  emit('submit', message, attachedFiles.value.length > 0 ? attachedFiles.value : undefined)
+  const finalModel = selectedModel.value
+  const webSearch = webSearchEnabled.value
+  
+  emit('submit', message, attachedFiles.value.length > 0 ? attachedFiles.value : undefined, finalModel, webSearch)
+  
   inputMessage.value = ''
   attachedFiles.value = []
+  webSearchEnabled.value = false // 전송 후 웹 검색 비활성화
   
   nextTick(() => {
     adjustHeight()
     focus()
   })
+}
+
+// 사용 가능한 모델 목록 로드
+const loadAvailableModels = async () => {
+  try {
+    console.log('Loading models from API...')
+    const response = await fetch('http://localhost:8000/api/v1/models')
+    console.log('Response status:', response.status)
+    const data = await response.json()
+    console.log('Response data:', data)
+    availableModels.value = data.models
+    console.log('Available models loaded:', Object.keys(data.models))
+  } catch (error) {
+    console.error('Failed to load available models:', error)
+    toast.error('모델 로드 실패', {
+      description: '사용 가능한 AI 모델을 불러오는데 실패했습니다.'
+    })
+  }
 }
 
 const handleKeyDown = (event: KeyboardEvent) => {
@@ -301,6 +492,12 @@ const handleKeyDown = (event: KeyboardEvent) => {
     if (!isComposing.value) {
       handleSubmit()
     }
+  }
+  
+  // Escape 키로 모달 닫기
+  if (event.key === 'Escape') {
+    showModelSelector.value = false
+    showEmojiPicker.value = false
   }
 }
 
@@ -379,6 +576,7 @@ const removeFile = (fileToRemove: File) => {
 // 이모지 관련 함수들
 const toggleEmojiPicker = () => {
   showEmojiPicker.value = !showEmojiPicker.value
+  showModelSelector.value = false // 다른 모달 닫기
 }
 
 const insertEmoji = (emoji: EmojiItem) => {
@@ -461,20 +659,16 @@ const toggleVoiceInput = () => {
     inputMessage.value = ''
     recognition.value.start()
     isRecording.value = true
+    showModelSelector.value = false
+    showEmojiPicker.value = false
   }
 }
+
 
 // 라이프사이클 훅
 onMounted(() => {
   initSpeechRecognition()
-  
-  // 클릭 아웃사이드로 이모지 선택기 닫기
-  document.addEventListener('click', (event) => {
-    const target = event.target as HTMLElement
-    if (showEmojiPicker.value && !target.closest('.emoji-picker')) {
-      showEmojiPicker.value = false
-    }
-  })
+  loadAvailableModels()
 })
 
 onUnmounted(() => {

@@ -20,11 +20,19 @@ export class ChatRepository {
   async sendMessageWithFiles(
     content: string, 
     sessionId: string, 
-    files: File[]
+    files: File[],
+    model?: string,
+    webSearch?: boolean
   ): Promise<ChatResponse> {
     const formData = new FormData();
     formData.append('content', content);
     formData.append('sessionId', sessionId);
+    if (model) {
+      formData.append('model', model);
+    }
+    if (webSearch) {
+      formData.append('webSearch', 'true');
+    }
     
     // 파일들을 FormData에 추가
     files.forEach((file) => {

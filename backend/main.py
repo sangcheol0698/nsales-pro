@@ -27,6 +27,34 @@ client = AsyncOpenAI(
     api_key=os.getenv("OPENAI_API_KEY", "your-openai-api-key-here")
 )
 
+# 사용 가능한 AI 모델 설정
+AVAILABLE_MODELS = {
+    "gpt-4o": {
+        "name": "GPT-4o",
+        "description": "OpenAI의 최신 멀티모달 모델",
+        "provider": "openai",
+        "supports_web_search": True,
+        "max_tokens": 4000,
+        "temperature": 0.7
+    },
+    "gpt-4": {
+        "name": "GPT-4",
+        "description": "OpenAI의 강력한 언어 모델",
+        "provider": "openai", 
+        "supports_web_search": True,
+        "max_tokens": 4000,
+        "temperature": 0.7
+    },
+    "gpt-3.5-turbo": {
+        "name": "GPT-3.5 Turbo",
+        "description": "빠르고 효율적인 OpenAI 모델",
+        "provider": "openai",
+        "supports_web_search": False,
+        "max_tokens": 2000,
+        "temperature": 0.7
+    }
+}
+
 # 메모리 저장소 (실제 환경에서는 데이터베이스 사용)
 sessions_db: Dict[str, Dict] = {}
 messages_db: Dict[str, List[Dict]] = {}
@@ -42,6 +70,8 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     content: str
     sessionId: str
+    model: Optional[str] = "gpt-4o"  # 기본값은 gpt-4o
+    webSearch: Optional[bool] = False  # 웹 검색 여부
 
 class ChatResponse(BaseModel):
     id: str
@@ -220,11 +250,11 @@ def initialize_demo_data():
         for session_id in sessions_db.keys():
             update_session_message_count(session_id)
 
-# 앱 시작 시 데모 데이터 초기화
+# 앱 시작 시 데모 데이터 초기화 (비활성화)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    initialize_demo_data()
+    # initialize_demo_data()  # 데모 데이터 생성 비활성화
     yield
     # Shutdown
     pass
@@ -254,6 +284,11 @@ async def root():
 @app.get("/api/v1/health")
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now()}
+
+@app.get("/api/v1/models")
+async def get_available_models():
+    """사용 가능한 AI 모델 목록 반환"""
+    return {"models": AVAILABLE_MODELS}
 
 # 채팅 세션 관리
 @app.post("/api/v1/chat/sessions", response_model=ChatSession)
@@ -330,7 +365,8 @@ async def get_message_history(session_id: str):
 async def send_message_with_files(
     content: str = Form(...),
     sessionId: str = Form(...),
-    files: List[UploadFile] = File(default=[])
+    files: List[UploadFile] = File(default=[]),
+    model: str = Form(default="gpt-4o")
 ):
     """파일 첨부를 지원하는 채팅 메시지 전송"""
     try:
@@ -380,24 +416,80 @@ async def send_message_with_files(
         # 현재 사용자 메시지 추가
         conversation_messages.append({"role": "user", "content": message_content})
         
+        # 선택된 모델 정보 가져오기
+        selected_model = model if model in AVAILABLE_MODELS else "gpt-4o"
+        model_config = AVAILABLE_MODELS[selected_model]
+
         # OpenAI API 호출
         try:
+            print(f"Using model: {selected_model} ({model_config['name']})")
             print(f"Conversation length: {len(conversation_messages)} messages")
             print(f"Files processed: {len(file_contents)}")
             
-            response = await client.chat.completions.create(
-                model="gpt-4o",
-                messages=conversation_messages,
-                max_tokens=1500,  # 파일 내용 처리를 위해 토큰 수 증가
-                temperature=0.7,
-                tools=[
-                    {
-                        "type": "web_search"
-                    }
-                ]
-            )
+            # 웹 검색 여부는 form 데이터에서 확인
+            web_search = form.get('webSearch', 'false').lower() == 'true'
+            needs_web_search = web_search
             
-            ai_content = response.choices[0].message.content
+            if needs_web_search and model_config["supports_web_search"]:
+                print("🔍 Web search detected - using Responses API with web search")
+                try:
+                    # OpenAI Responses API를 사용한 웹 검색
+                    response = await client.responses.create(
+                        model=selected_model,
+                        input=content,
+                        tools=[
+                            {
+                                "type": "web_search"
+                            }
+                        ]
+                    )
+                    
+                    # Extract message content from output
+                    ai_content = ""
+                    sources = []
+                    
+                    for output_item in response.output:
+                        if output_item.type == 'message' and hasattr(output_item, 'content'):
+                            for content_item in output_item.content:
+                                if content_item.type == 'output_text':
+                                    ai_content += content_item.text
+                                    
+                                    # Extract URL citations from annotations
+                                    if hasattr(content_item, 'annotations'):
+                                        for annotation in content_item.annotations:
+                                            if annotation.type == 'url_citation':
+                                                sources.append({
+                                                    'title': getattr(annotation, 'title', ''),
+                                                    'url': getattr(annotation, 'url', ''),
+                                                    'snippet': ''
+                                                })
+                    
+                    # Add sources to the content if found
+                    if sources:
+                        sources_text = "\n\n**참고 출처:**\n"
+                        for i, source in enumerate(sources, 1):
+                            sources_text += f"{i}. [{source['title']}]({source['url']})\n"
+                        ai_content += sources_text
+                        print(f"📚 Found {len(sources)} web search sources")
+                except Exception as e:
+                    print(f"Responses API error, falling back to chat completions: {e}")
+                    # Responses API가 작동하지 않으면 일반 채팅으로 폴백
+                    response = await client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=conversation_messages,
+                        max_tokens=1500,
+                        temperature=0.7
+                    )
+                    ai_content = response.choices[0].message.content
+            else:
+                response = await client.chat.completions.create(
+                    model=selected_model,
+                    messages=conversation_messages,
+                    max_tokens=model_config["max_tokens"],
+                    temperature=model_config["temperature"]
+                )
+                ai_content = response.choices[0].message.content
+            
             print(f"OpenAI Response: {ai_content}")
             
         except Exception as e:
@@ -469,24 +561,81 @@ async def send_message(request: ChatRequest):
     # 현재 사용자 메시지 추가
     conversation_messages.append({"role": "user", "content": request.content})
     
+    # 선택된 모델 정보 가져오기
+    selected_model = request.model if request.model in AVAILABLE_MODELS else "gpt-4o"
+    model_config = AVAILABLE_MODELS[selected_model]
+    
     # OpenAI API 호출
     try:
+        print(f"Using model: {selected_model} ({model_config['name']})")
         print(f"OpenAI API Key: {os.getenv('OPENAI_API_KEY')[:20]}...")  # 디버깅용
         print(f"Conversation length: {len(conversation_messages)} messages")  # 디버깅용
         
-        response = await client.chat.completions.create(
-            model="gpt-4o",
-            messages=conversation_messages,
-            max_tokens=1000,
-            temperature=0.7,
-            tools=[
-                {
-                    "type": "web_search"
-                }
-            ]
-        )
+        # 웹 검색 여부는 요청에서 확인
+        needs_web_search = getattr(request, 'webSearch', False)
+        search_content = request.content
         
-        ai_content = response.choices[0].message.content
+        # 웹 검색은 지원하는 모델에서만 가능
+        if needs_web_search and model_config["supports_web_search"]:
+            print("🔍 Web search detected - using Responses API with web search")
+            try:
+                # OpenAI Responses API를 사용한 웹 검색
+                response = await client.responses.create(
+                    model=selected_model,
+                    input=search_content,
+                    tools=[
+                        {
+                            "type": "web_search"
+                        }
+                    ]
+                )
+                
+                # Extract message content from output
+                ai_content = ""
+                sources = []
+                
+                for output_item in response.output:
+                    if output_item.type == 'message' and hasattr(output_item, 'content'):
+                        for content_item in output_item.content:
+                            if content_item.type == 'output_text':
+                                ai_content += content_item.text
+                                
+                                # Extract URL citations from annotations
+                                if hasattr(content_item, 'annotations'):
+                                    for annotation in content_item.annotations:
+                                        if annotation.type == 'url_citation':
+                                            sources.append({
+                                                'title': getattr(annotation, 'title', ''),
+                                                'url': getattr(annotation, 'url', ''),
+                                                'snippet': ''
+                                            })
+                
+                # Add sources to the content if found
+                if sources:
+                    sources_text = "\n\n**참고 출처:**\n"
+                    for i, source in enumerate(sources, 1):
+                        sources_text += f"{i}. [{source['title']}]({source['url']})\n"
+                    ai_content += sources_text
+                    print(f"📚 Found {len(sources)} web search sources")
+            except Exception as e:
+                print(f"Responses API error, falling back to chat completions: {e}")
+                # Responses API가 작동하지 않으면 일반 채팅으로 폴백
+                response = await client.chat.completions.create(
+                    model=selected_model,
+                    messages=conversation_messages,
+                    max_tokens=model_config["max_tokens"],
+                    temperature=model_config["temperature"]
+                )
+                ai_content = response.choices[0].message.content
+        else:
+            response = await client.chat.completions.create(
+                model=selected_model,
+                messages=conversation_messages,
+                max_tokens=model_config["max_tokens"],
+                temperature=model_config["temperature"]
+            )
+            ai_content = response.choices[0].message.content
+        
         print(f"OpenAI Response: {ai_content}")  # 디버깅용
         
     except Exception as e:
@@ -552,27 +701,141 @@ async def stream_chat(request: ChatRequest):
         conversation_messages.append({"role": "user", "content": request.content})
         
         try:
+            # 선택된 모델 정보 가져오기
+            selected_model = request.model if request.model in AVAILABLE_MODELS else "gpt-4o"
+            model_config = AVAILABLE_MODELS[selected_model]
+            
+            print(f"Stream using model: {selected_model} ({model_config['name']})")
             print(f"Stream conversation length: {len(conversation_messages)} messages")  # 디버깅용
             
-            # OpenAI 스트리밍 API 호출
-            stream = await client.chat.completions.create(
-                model="gpt-4o",
-                messages=conversation_messages,
-                max_tokens=1000,
-                temperature=0.7,
-                stream=True,
-                tools=[
-                    {
-                        "type": "web_search"
-                    }
-                ]
-            )
+            # 웹 검색 여부는 프론트엔드에서 결정 (webSearch 파라미터로 전달)
+            needs_web_search = getattr(request, 'webSearch', False)
+            search_content = request.content
             
+            if needs_web_search and model_config["supports_web_search"]:
+                print("🔍 Web search detected in stream - using Responses API")
+                try:
+                    # 웹 검색이 필요한 경우 스트리밍 대신 일반 응답 사용
+                    response = await client.responses.create(
+                        model=selected_model,
+                        input=search_content,
+                        tools=[
+                            {
+                                "type": "web_search"
+                            }
+                        ]
+                    )
+                    
+                    # Extract message content from output
+                    ai_content = ""
+                    sources = []
+                    
+                    for output_item in response.output:
+                        if output_item.type == 'message' and hasattr(output_item, 'content'):
+                            for content_item in output_item.content:
+                                if content_item.type == 'output_text':
+                                    ai_content += content_item.text
+                                    
+                                    # Extract URL citations from annotations
+                                    if hasattr(content_item, 'annotations'):
+                                        for annotation in content_item.annotations:
+                                            if annotation.type == 'url_citation':
+                                                sources.append({
+                                                    'title': getattr(annotation, 'title', ''),
+                                                    'url': getattr(annotation, 'url', ''),
+                                                    'snippet': ''
+                                                })
+                    
+                    # Add sources to the content if found
+                    if sources:
+                        sources_text = "\n\n**참고 출처:**\n"
+                        for i, source in enumerate(sources, 1):
+                            sources_text += f"{i}. [{source['title']}]({source['url']})\n"
+                        ai_content += sources_text
+                        print(f"📚 Found {len(sources)} web search sources in stream")
+                    
+                    full_content = ai_content
+                    
+                    # 웹 검색 결과를 자연스럽게 스트리밍
+                    import re
+                    
+                    # 문자별로 스트리밍 (더 자연스럽게)
+                    for i, char in enumerate(ai_content):
+                        stream_chunk = ChatStreamChunk(
+                            id=ai_message_id,
+                            content=char,
+                            role="assistant",
+                            timestamp=datetime.now(),
+                            sessionId=request.sessionId,
+                            isComplete=False
+                        )
+                        yield f"data: {stream_chunk.json()}\n\n"
+                        
+                        # 문자 유형에 따른 적응적 지연
+                        if char in ".!?":
+                            await asyncio.sleep(0.15)  # 문장 끝
+                        elif char in ",;:":
+                            await asyncio.sleep(0.08)  # 문장 중간
+                        elif char == '\n':
+                            await asyncio.sleep(0.12)  # 줄바꿈
+                        elif char == ' ':
+                            await asyncio.sleep(0.03)  # 공백
+                        elif char in "()[]{}":
+                            await asyncio.sleep(0.05)  # 괄호
+                        else:
+                            await asyncio.sleep(0.02)  # 일반 문자
+                    
+                    # 웹 검색 스트리밍 완료 신호
+                    final_chunk = ChatStreamChunk(
+                        id=ai_message_id,
+                        content="",
+                        role="assistant",
+                        timestamp=datetime.now(),
+                        sessionId=request.sessionId,
+                        isComplete=True
+                    )
+                    yield f"data: {final_chunk.json()}\\n\\n"
+                    
+                    # 웹 검색 성공 시 여기서 return
+                    # AI 응답 저장
+                    ai_message = ChatMessage(
+                        id=ai_message_id,
+                        content=full_content,
+                        role="assistant",
+                        timestamp=datetime.now(),
+                        sessionId=request.sessionId
+                    )
+                    
+                    messages_db[request.sessionId].append(ai_message.dict())
+                    update_session_message_count(request.sessionId)
+                    return
+                        
+                except Exception as web_error:
+                    print(f"Responses API error in stream, falling back to chat completions: {web_error}")
+                    # 웹 검색 실패 시 일반 스트리밍으로 폴백
+                    stream = await client.chat.completions.create(
+                        model=selected_model,
+                        messages=conversation_messages,
+                        max_tokens=model_config["max_tokens"],
+                        temperature=model_config["temperature"],
+                        stream=True
+                    )
+            else:
+                # 웹 검색이 필요하지 않은 경우 일반 스트리밍 사용
+                stream = await client.chat.completions.create(
+                    model=selected_model,
+                    messages=conversation_messages,
+                    max_tokens=model_config["max_tokens"],
+                    temperature=model_config["temperature"],
+                    stream=True
+                )
+            
+            # 일반 스트리밍 처리 (웹 검색 실패하거나 웹 검색이 필요하지 않은 경우)
             async for chunk in stream:
                 if chunk.choices[0].delta.content:
                     content = chunk.choices[0].delta.content
                     full_content += content
-                    
+                
                     stream_chunk = ChatStreamChunk(
                         id=ai_message_id,
                         content=content,
@@ -687,12 +950,7 @@ async def regenerate_message(message_id: str):
                         model="gpt-4o",
                         messages=conversation_messages,
                         max_tokens=1000,
-                        temperature=0.8,  # 더 다양한 응답을 위해 temperature 증가
-                        tools=[
-                            {
-                                "type": "web_search"
-                            }
-                        ]
+                        temperature=0.8  # 더 다양한 응답을 위해 temperature 증가
                     )
                     
                     new_content = response.choices[0].message.content

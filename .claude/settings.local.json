@@ -25,7 +25,15 @@
       "Bash(brew install:*)",
       "Bash(tesseract:*)",
       "WebFetch(domain:platform.openai.com)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "WebFetch(domain:cookbook.openai.com)",
+      "Bash(python:*)",
+      "Bash(curl:*)",
+      "Bash(grep:*)",
+      "Bash(claude mcp:*)",
+      "WebFetch(domain:magicui.design)",
+      "WebFetch(domain:ui.nuxt.com)",
+      "Bash(true)"
     ],
     "deny": []
   }

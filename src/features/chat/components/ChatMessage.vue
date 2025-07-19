@@ -880,6 +880,59 @@ onUnmounted(() => {
   }
 }
 
+/* 웹 검색 출처 섹션 스타일링 */
+.markdown-content p:has(strong:contains("참고 출처")) {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.markdown-content strong:contains("참고 출처") {
+  color: hsl(var(--primary));
+  background: hsl(var(--primary)/0.1);
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--primary)/0.2);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+/* 출처 링크 스타일 개선 */
+.markdown-content p:has(strong:contains("참고 출처")) + ol {
+  margin-top: 0.75rem;
+  background: hsl(var(--muted)/0.3);
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid hsl(var(--border)/0.5);
+  backdrop-filter: blur(4px);
+}
+
+.markdown-content p:has(strong:contains("참고 출처")) + ol li {
+  margin: 0.5rem 0;
+  padding: 0.25rem 0;
+}
+
+.markdown-content p:has(strong:contains("참고 출처")) + ol li a {
+  font-weight: 600;
+  color: hsl(var(--primary));
+  text-decoration: none;
+  background: hsl(var(--background));
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid hsl(var(--border));
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.markdown-content p:has(strong:contains("참고 출처")) + ol li a:hover {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px hsl(var(--primary)/0.2);
+}
+
 /* 스크롤바 스타일링 */
 .markdown-content pre::-webkit-scrollbar {
   height: 8px;

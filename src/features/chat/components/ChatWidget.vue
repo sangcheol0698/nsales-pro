@@ -144,7 +144,7 @@ const showScrollToBottom = ref(false)
 const scrollAreaRef = ref()
 const chatInputRef = ref()
 
-const sendMessage = async (content: string, files?: File[]) => {
+const sendMessage = async (content: string, files?: File[], model?: string, webSearch?: boolean) => {
   if ((!content.trim() && (!files || files.length === 0)) || isLoading.value) return
 
   isLoading.value = true
@@ -163,7 +163,9 @@ const sendMessage = async (content: string, files?: File[]) => {
       response = await chatRepository.sendMessageWithFiles(
         content,
         currentSession.value.id,
-        files
+        files,
+        model,
+        webSearch
       )
     } else {
       // 파일이 없는 경우 기존 스트리밍 API 사용
@@ -187,6 +189,8 @@ const sendMessage = async (content: string, files?: File[]) => {
         {
           content: content,
           sessionId: currentSession.value.id,
+          model: model,
+          webSearch: webSearch
         },
         (chunk) => {
           if (!chunk.isComplete) {
@@ -303,7 +307,9 @@ const handleRegenerateMessage = async (messageId: string) => {
     await chatRepository.streamMessage(
       {
         content: previousUserMessage.content,
-        sessionId: currentSession.value?.id || ''
+        sessionId: currentSession.value?.id || '',
+        model: 'gpt-4o', // 재생성에서는 기본 모델 사용
+        webSearch: false // 재생성에서는 웹 검색 비활성화
       },
       (chunk) => {
         if (!chunk.isComplete) {

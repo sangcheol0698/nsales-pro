@@ -99,6 +99,32 @@
 
       <!-- 입력 필드 -->
       <div class="relative">
+        <!-- 멘션 추천 드롭다운 -->
+        <div 
+          v-if="showMentionSuggestions" 
+          class="absolute bottom-full left-0 right-0 mb-2 bg-background border rounded-lg shadow-lg z-50 max-h-40 overflow-y-auto"
+        >
+          <div class="p-2">
+            <div class="text-xs text-muted-foreground mb-2 font-medium">사용 가능한 서비스</div>
+            <div
+              v-for="(mention, index) in filteredMentions"
+              :key="mention.trigger"
+              class="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+              :class="{ 'bg-muted': selectedMentionIndex === index }"
+              @click="selectMention(mention)"
+            >
+              <div class="text-lg">{{ mention.icon }}</div>
+              <div class="flex-1">
+                <div class="font-medium text-sm">{{ mention.trigger }}</div>
+                <div class="text-xs text-muted-foreground">{{ mention.description }}</div>
+              </div>
+              <div class="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                {{ mention.category }}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <Textarea
           ref="textareaRef"
           v-model="inputMessage"
@@ -106,7 +132,7 @@
           :disabled="disabled"
           class="min-h-[50px] max-h-32 resize-none pr-12 pl-4 py-3 border-2 rounded-xl transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary/40"
           @keydown="handleKeyDown"
-          @input="adjustHeight"
+          @input="handleInput"
           @compositionstart="handleCompositionStart"
           @compositionend="handleCompositionEnd"
         />
@@ -300,7 +326,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { Send, Paperclip, Smile, Mic, Square, X, FileText, Bot, ChevronDown, Search } from 'lucide-vue-next'
 import { Button } from '@/core/components/ui/button'
 import { Textarea } from '@/core/components/ui/textarea'
@@ -349,6 +375,62 @@ const webSearchEnabled = ref(false)
 const attachedFiles = ref<File[]>([])
 const showEmojiPicker = ref(false)
 const isRecording = ref(false)
+
+// 멘션 시스템 상태
+const showMentionSuggestions = ref(false)
+const selectedMentionIndex = ref(0)
+const mentionQuery = ref('')
+
+// 사용 가능한 멘션 목록
+const availableMentions = ref([
+  {
+    trigger: '@캘린더',
+    icon: '📅',
+    description: 'Google Calendar 일정 관리',
+    category: 'Google',
+    keywords: ['calendar', 'schedule', '일정', '캘린더']
+  },
+  {
+    trigger: '@메일',
+    icon: '📧',
+    description: 'Gmail 이메일 관리',
+    category: 'Google',
+    keywords: ['email', 'mail', '메일', '이메일']
+  },
+  {
+    trigger: '@일정생성',
+    icon: '➕',
+    description: '새로운 캘린더 일정 생성',
+    category: 'Google',
+    keywords: ['create', 'new', '생성', '새로운']
+  },
+  {
+    trigger: '@빈시간',
+    icon: '🕐',
+    description: '사용 가능한 시간 찾기',
+    category: 'Google',
+    keywords: ['free', 'available', '빈시간', '가능한']
+  },
+  {
+    trigger: '@웹검색',
+    icon: '🔍',
+    description: '웹에서 최신 정보 검색',
+    category: '검색',
+    keywords: ['web', 'search', '검색', '웹']
+  }
+])
+
+// 필터링된 멘션 목록
+const filteredMentions = computed(() => {
+  if (!mentionQuery.value) return availableMentions.value
+  
+  const query = mentionQuery.value.toLowerCase()
+  return availableMentions.value.filter(mention =>
+    mention.trigger.toLowerCase().includes(query) ||
+    mention.description.toLowerCase().includes(query) ||
+    mention.keywords.some(keyword => keyword.toLowerCase().includes(query))
+  )
+})
 const mediaRecorder = ref<MediaRecorder | null>(null)
 const recognition = ref<SpeechRecognition | null>(null)
 
@@ -485,7 +567,91 @@ const loadAvailableModels = async () => {
   }
 }
 
+// 멘션 관련 함수들
+const detectMention = () => {
+  const input = inputMessage.value
+  const cursorPos = textareaRef.value?.$el?.selectionStart || 0
+  
+  // @ 문자를 찾기
+  const beforeCursor = input.substring(0, cursorPos)
+  const mentionMatch = beforeCursor.match(/@([^\s]*)$/)
+  
+  if (mentionMatch) {
+    mentionQuery.value = mentionMatch[1]
+    showMentionSuggestions.value = true
+    selectedMentionIndex.value = 0
+  } else {
+    showMentionSuggestions.value = false
+    mentionQuery.value = ''
+  }
+}
+
+const selectMention = (mention: any) => {
+  const input = inputMessage.value
+  const cursorPos = textareaRef.value?.$el?.selectionStart || 0
+  
+  // @ 문자 위치 찾기
+  const beforeCursor = input.substring(0, cursorPos)
+  const mentionMatch = beforeCursor.match(/@([^\s]*)$/)
+  
+  if (mentionMatch) {
+    const mentionStart = beforeCursor.lastIndexOf('@')
+    const beforeMention = input.substring(0, mentionStart)
+    const afterCursor = input.substring(cursorPos)
+    
+    // 멘션 텍스트로 교체
+    inputMessage.value = beforeMention + mention.trigger + ' ' + afterCursor
+    
+    // 커서 위치 조정
+    nextTick(() => {
+      const newPos = mentionStart + mention.trigger.length + 1
+      const textarea = textareaRef.value?.$el
+      if (textarea) {
+        textarea.selectionStart = newPos
+        textarea.selectionEnd = newPos
+      }
+    })
+  }
+  
+  showMentionSuggestions.value = false
+  mentionQuery.value = ''
+}
+
 const handleKeyDown = (event: KeyboardEvent) => {
+  // 멘션 추천이 보일 때의 키보드 이벤트 처리
+  if (showMentionSuggestions.value) {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      selectedMentionIndex.value = Math.min(
+        selectedMentionIndex.value + 1,
+        filteredMentions.value.length - 1
+      )
+      return
+    }
+    
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      selectedMentionIndex.value = Math.max(selectedMentionIndex.value - 1, 0)
+      return
+    }
+    
+    if (event.key === 'Enter' || event.key === 'Tab') {
+      event.preventDefault()
+      if (filteredMentions.value[selectedMentionIndex.value]) {
+        selectMention(filteredMentions.value[selectedMentionIndex.value])
+      }
+      return
+    }
+    
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      showMentionSuggestions.value = false
+      mentionQuery.value = ''
+      return
+    }
+  }
+  
+  // 일반적인 키보드 이벤트 처리
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault()
     // 한글 입력 중이 아닐 때만 제출
@@ -498,7 +664,13 @@ const handleKeyDown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
     showModelSelector.value = false
     showEmojiPicker.value = false
+    showMentionSuggestions.value = false
   }
+}
+
+const handleInput = () => {
+  adjustHeight()
+  detectMention()
 }
 
 const handleCompositionStart = () => {

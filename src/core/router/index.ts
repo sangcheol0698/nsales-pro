@@ -360,6 +360,27 @@ const routes = [
       ],
     },
   },
+  {
+    path: '/google-integration',
+    name: 'googleIntegration',
+    component: () => import('@/views/GoogleIntegration.vue'),
+    meta: {
+      menu: true,
+      activeIndex: 6,
+      title: 'Google 연동',
+      breadcrumbs: [
+        {
+          title: '홈',
+          disabled: false,
+          to: '/',
+        },
+        {
+          title: 'Google 연동',
+          disabled: true,
+        },
+      ],
+    },
+  },
 ];
 
 const router = createRouter({

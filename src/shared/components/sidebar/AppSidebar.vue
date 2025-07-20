@@ -51,6 +51,7 @@ import {
   LayoutDashboard,
   Users,
   Wallet,
+  Smartphone,
 } from 'lucide-vue-next';
 import NavMain from '@/shared/components/sidebar/NavMain.vue';
 import NavUser from '@/shared/components/sidebar/NavUser.vue';
@@ -102,6 +103,11 @@ const data = {
       title: 'AI Assistant',
       url: '/chat',
       icon: Bot,
+    },
+    {
+      title: 'Google 연동',
+      url: '/google-integration',
+      icon: Smartphone,
     },
   ],
 };

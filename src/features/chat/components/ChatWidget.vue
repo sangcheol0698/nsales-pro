@@ -200,10 +200,17 @@ const sendMessage = async (content: string, files?: File[], model?: string, webS
             if (lastMessage.role === 'assistant') {
               lastMessage.content = fullContent
             }
-            // 스크롤을 너무 자주 하지 않도록 throttle (100ms마다)
+            // 코드 블록이나 마크다운 감지 시 더 자주 스크롤
+            const hasCodeOrMarkdown = fullContent.includes('```') || 
+                                    fullContent.includes('##') || 
+                                    fullContent.includes('**') ||
+                                    fullContent.includes('[') ||
+                                    fullContent.includes('|')
+            
+            const scrollInterval = hasCodeOrMarkdown ? 50 : 100 // 코드가 있으면 더 자주
             const now = Date.now()
-            if (now - lastScrollTime > 100) {
-              scrollToBottom()
+            if (now - lastScrollTime > scrollInterval) {
+              scrollToBottom(hasCodeOrMarkdown)
               lastScrollTime = now
             }
           }
@@ -220,6 +227,12 @@ const sendMessage = async (content: string, files?: File[], model?: string, webS
           }
         }
       )
+      
+      // 스트리밍 완료 후 최종 스크롤 (코드 블록 렌더링 완료 대기)
+      setTimeout(() => {
+        scrollToBottom(true)
+      }, 300)
+      
       return // 스트리밍의 경우 여기서 종료
     }
 
@@ -319,10 +332,17 @@ const handleRegenerateMessage = async (messageId: string) => {
           if (lastMessage.role === 'assistant') {
             lastMessage.content = fullContent
           }
-          // 스크롤을 너무 자주 하지 않도록 throttle (100ms마다)
+          // 코드 블록이나 마크다운 감지 시 더 자주 스크롤
+          const hasCodeOrMarkdown = fullContent.includes('```') || 
+                                  fullContent.includes('##') || 
+                                  fullContent.includes('**') ||
+                                  fullContent.includes('[') ||
+                                  fullContent.includes('|')
+          
+          const scrollInterval = hasCodeOrMarkdown ? 50 : 100 // 코드가 있으면 더 자주
           const now = Date.now()
-          if (now - lastScrollTime > 100) {
-            scrollToBottom()
+          if (now - lastScrollTime > scrollInterval) {
+            scrollToBottom(hasCodeOrMarkdown)
             lastScrollTime = now
           }
         }
@@ -341,6 +361,10 @@ const handleRegenerateMessage = async (messageId: string) => {
     })
   } finally {
     isLoading.value = false
+    // 재생성 완료 후 최종 스크롤
+    setTimeout(() => {
+      scrollToBottom(true)
+    }, 300)
   }
 }
 
@@ -366,11 +390,31 @@ const handleDeleteMessage = async (messageId: string) => {
   }
 }
 
-const scrollToBottom = async () => {
+const scrollToBottom = async (force = false) => {
+  // 여러 번의 nextTick을 통해 마크다운 렌더링 완료 대기
   await nextTick()
+  await nextTick()
+  
   const scrollElement = scrollAreaRef.value
   if (scrollElement) {
-    scrollElement.scrollTop = scrollElement.scrollHeight
+    const targetScrollTop = scrollElement.scrollHeight
+    
+    // 부드러운 스크롤 애니메이션
+    if (force || Math.abs(scrollElement.scrollTop - targetScrollTop) > 100) {
+      scrollElement.scrollTo({
+        top: targetScrollTop,
+        behavior: 'smooth'
+      })
+    } else {
+      scrollElement.scrollTop = targetScrollTop
+    }
+    
+    // 코드 블록 등의 지연 렌더링을 위한 추가 체크
+    setTimeout(() => {
+      if (scrollElement.scrollTop < scrollElement.scrollHeight - scrollElement.clientHeight - 50) {
+        scrollElement.scrollTop = scrollElement.scrollHeight
+      }
+    }, 150)
   }
 }
 

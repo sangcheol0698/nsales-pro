@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, RedirectResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import asyncio
@@ -17,6 +17,18 @@ from PIL import Image
 import pytesseract
 import io
 import tempfile
+
+# Google 서비스 import
+try:
+    from google_services import auth_service, calendar_service, gmail_service
+    from google_functions import GOOGLE_TOOLS, FUNCTION_MAP
+    GOOGLE_SERVICES_AVAILABLE = True
+    print("✅ Google 서비스가 성공적으로 로드되었습니다.")
+except ImportError as e:
+    print(f"⚠️ Google 서비스 로드 실패: {e}")
+    GOOGLE_SERVICES_AVAILABLE = False
+    GOOGLE_TOOLS = []
+    FUNCTION_MAP = {}
 
 # .env 파일 로드
 load_dotenv()
@@ -58,6 +70,269 @@ AVAILABLE_MODELS = {
 # 메모리 저장소 (실제 환경에서는 데이터베이스 사용)
 sessions_db: Dict[str, Dict] = {}
 messages_db: Dict[str, List[Dict]] = {}
+
+# Google 서비스 도구 정의
+def get_google_tools():
+    """Google 서비스 함수들을 OpenAI 도구 형식으로 반환"""
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": "get_calendar_events",
+                "description": "Google Calendar에서 일정을 조회합니다. 오늘, 이번주, 이번달 등의 일정을 확인할 수 있습니다.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "time_period": {
+                            "type": "string",
+                            "enum": ["today", "tomorrow", "this_week", "next_week", "this_month", "next_month"],
+                            "description": "조회할 시간 범위"
+                        },
+                        "max_results": {
+                            "type": "integer",
+                            "default": 10,
+                            "description": "최대 조회할 일정 수"
+                        }
+                    },
+                    "required": ["time_period"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "create_calendar_event",
+                "description": "Google Calendar에 새로운 일정을 생성합니다.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "summary": {
+                            "type": "string",
+                            "description": "일정 제목"
+                        },
+                        "description": {
+                            "type": "string",
+                            "description": "일정 설명"
+                        },
+                        "start_datetime": {
+                            "type": "string",
+                            "description": "시작 일시 (ISO 8601 형식: 2023-12-25T10:00:00)"
+                        },
+                        "end_datetime": {
+                            "type": "string",
+                            "description": "종료 일시 (ISO 8601 형식: 2023-12-25T11:00:00)"
+                        },
+                        "attendees": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "참석자 이메일 목록"
+                        }
+                    },
+                    "required": ["summary", "start_datetime", "end_datetime"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "find_free_time",
+                "description": "지정된 기간 동안 빈 시간을 찾습니다.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "duration_minutes": {
+                            "type": "integer",
+                            "description": "필요한 시간 (분 단위)"
+                        },
+                        "date_range": {
+                            "type": "string",
+                            "enum": ["today", "tomorrow", "this_week", "next_week"],
+                            "description": "검색할 날짜 범위"
+                        },
+                        "working_hours_only": {
+                            "type": "boolean",
+                            "default": True,
+                            "description": "업무 시간(9-18시)만 검색할지 여부"
+                        }
+                    },
+                    "required": ["duration_minutes", "date_range"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_emails",
+                "description": "Gmail에서 이메일을 조회합니다.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "검색 쿼리 (예: 'subject:회의', 'from:manager@company.com')"
+                        },
+                        "max_results": {
+                            "type": "integer",
+                            "default": 10,
+                            "description": "최대 조회할 이메일 수"
+                        },
+                        "time_period": {
+                            "type": "string",
+                            "enum": ["today", "this_week", "this_month", "all"],
+                            "default": "this_week",
+                            "description": "조회할 시간 범위"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "send_email",
+                "description": "Gmail을 통해 이메일을 발송합니다.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "to": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "수신자 이메일 주소 목록"
+                        },
+                        "subject": {
+                            "type": "string",
+                            "description": "이메일 제목"
+                        },
+                        "body": {
+                            "type": "string",
+                            "description": "이메일 본문"
+                        },
+                        "cc": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "참조 이메일 주소 목록"
+                        }
+                    },
+                    "required": ["to", "subject", "body"]
+                }
+            }
+        }
+    ]
+
+# Google 함수 실행 핸들러
+async def execute_google_function(function_name: str, arguments: dict):
+    """Google 함수를 실행하고 결과를 반환"""
+    try:
+        if not GOOGLE_SERVICES_AVAILABLE or not auth_service.is_authenticated():
+            return {"error": "Google 서비스가 연결되지 않았습니다. 먼저 Google 인증을 완료해주세요."}
+        
+        if function_name == "get_calendar_events":
+            from datetime import datetime, timedelta
+            
+            # time_period를 start_date, end_date로 변환
+            time_period = arguments.get("time_period", "today")
+            today = datetime.now().date()
+            
+            if time_period == "today":
+                start_date = today.isoformat()
+                end_date = today.isoformat()
+            elif time_period == "tomorrow":
+                tomorrow = today + timedelta(days=1)
+                start_date = tomorrow.isoformat()
+                end_date = tomorrow.isoformat()
+            elif time_period == "this_week":
+                # 이번 주 월요일부터 일요일까지
+                days_since_monday = today.weekday()
+                monday = today - timedelta(days=days_since_monday)
+                sunday = monday + timedelta(days=6)
+                start_date = monday.isoformat()
+                end_date = sunday.isoformat()
+            elif time_period == "next_week":
+                # 다음 주 월요일부터 일요일까지
+                days_since_monday = today.weekday()
+                next_monday = today - timedelta(days=days_since_monday) + timedelta(days=7)
+                next_sunday = next_monday + timedelta(days=6)
+                start_date = next_monday.isoformat()
+                end_date = next_sunday.isoformat()
+            elif time_period == "this_month":
+                # 이번 달 1일부터 말일까지
+                first_day = today.replace(day=1)
+                if today.month == 12:
+                    last_day = today.replace(year=today.year+1, month=1, day=1) - timedelta(days=1)
+                else:
+                    last_day = today.replace(month=today.month+1, day=1) - timedelta(days=1)
+                start_date = first_day.isoformat()
+                end_date = last_day.isoformat()
+            elif time_period == "next_month":
+                # 다음 달 1일부터 말일까지
+                if today.month == 12:
+                    next_month_first = today.replace(year=today.year+1, month=1, day=1)
+                    next_month_last = today.replace(year=today.year+1, month=2, day=1) - timedelta(days=1)
+                else:
+                    next_month_first = today.replace(month=today.month+1, day=1)
+                    if today.month == 11:
+                        next_month_last = today.replace(year=today.year+1, month=1, day=1) - timedelta(days=1)
+                    else:
+                        next_month_last = today.replace(month=today.month+2, day=1) - timedelta(days=1)
+                start_date = next_month_first.isoformat()
+                end_date = next_month_last.isoformat()
+            else:
+                # 기본값은 오늘
+                start_date = today.isoformat()
+                end_date = today.isoformat()
+            
+            result = await calendar_service.get_events(
+                start_date=start_date,
+                end_date=end_date,
+                max_results=arguments.get("max_results", 10)
+            )
+            return result
+            
+        elif function_name == "create_calendar_event":
+            from google_services import CalendarEvent
+            event_data = CalendarEvent(
+                summary=arguments["summary"],
+                description=arguments.get("description", ""),
+                start_datetime=arguments["start_datetime"],
+                end_datetime=arguments["end_datetime"],
+                attendees=arguments.get("attendees", [])
+            )
+            result = await calendar_service.create_event(event_data)
+            return result
+            
+        elif function_name == "find_free_time":
+            result = await calendar_service.find_free_time(
+                duration_minutes=arguments["duration_minutes"],
+                date_range=arguments["date_range"],
+                working_hours_only=arguments.get("working_hours_only", True)
+            )
+            return result
+            
+        elif function_name == "get_emails":
+            result = await gmail_service.get_emails(
+                query=arguments.get("query", ""),
+                max_results=arguments.get("max_results", 10),
+                time_period=arguments.get("time_period", "this_week")
+            )
+            return result
+            
+        elif function_name == "send_email":
+            from google_services import EmailMessage
+            email_data = EmailMessage(
+                to=arguments["to"],
+                subject=arguments["subject"],
+                body=arguments["body"],
+                cc=arguments.get("cc", [])
+            )
+            result = await gmail_service.send_email(email_data)
+            return result
+            
+        else:
+            return {"error": f"알 수 없는 함수: {function_name}"}
+            
+    except Exception as e:
+        print(f"Google function execution error: {e}")
+        return {"error": f"함수 실행 중 오류가 발생했습니다: {str(e)}"}
 
 # Pydantic 모델들
 class ChatMessage(BaseModel):
@@ -290,6 +565,42 @@ async def get_available_models():
     """사용 가능한 AI 모델 목록 반환"""
     return {"models": AVAILABLE_MODELS}
 
+# Google 서비스 관련 엔드포인트
+@app.get("/api/v1/google/auth")
+async def google_auth():
+    """Google OAuth2 인증 시작"""
+    if not GOOGLE_SERVICES_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Google 서비스를 사용할 수 없습니다.")
+    
+    auth_url = auth_service.get_authorization_url()
+    if not auth_url:
+        raise HTTPException(status_code=500, detail="인증 URL 생성에 실패했습니다.")
+    
+    return {"auth_url": auth_url}
+
+@app.get("/api/v1/google/callback")
+async def google_callback(code: str):
+    """Google OAuth2 콜백 처리"""
+    if not GOOGLE_SERVICES_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Google 서비스를 사용할 수 없습니다.")
+    
+    success = auth_service.handle_callback(code)
+    if success:
+        return RedirectResponse(url="http://localhost:5174?google_auth=success")
+    else:
+        return RedirectResponse(url="http://localhost:5174?google_auth=error")
+
+@app.get("/api/v1/google/status")
+async def google_status():
+    """Google 인증 상태 확인"""
+    if not GOOGLE_SERVICES_AVAILABLE:
+        return {"authenticated": False, "error": "Google 서비스를 사용할 수 없습니다."}
+    
+    return {
+        "authenticated": auth_service.is_authenticated(),
+        "services_available": True
+    }
+
 # 채팅 세션 관리
 @app.post("/api/v1/chat/sessions", response_model=ChatSession)
 async def create_chat_session(request: SessionCreateRequest):
@@ -482,13 +793,44 @@ async def send_message_with_files(
                     )
                     ai_content = response.choices[0].message.content
             else:
-                response = await client.chat.completions.create(
-                    model=selected_model,
-                    messages=conversation_messages,
-                    max_tokens=model_config["max_tokens"],
-                    temperature=model_config["temperature"]
-                )
-                ai_content = response.choices[0].message.content
+                # 기본 채팅 API 호출 (Google 도구 포함)
+                chat_params = {
+                    "model": selected_model,
+                    "messages": conversation_messages,
+                    "max_tokens": model_config["max_tokens"],
+                    "temperature": model_config["temperature"]
+                }
+                
+                # Google 도구가 있으면 추가
+                if available_tools:
+                    chat_params["tools"] = available_tools
+                    chat_params["tool_choice"] = "auto"
+                    print(f"🛠️ Function Calling 활성화: {len(available_tools)}개 도구")
+                    print(f"🔍 도구 목록: {[tool['function']['name'] for tool in available_tools]}")
+                    print(f"🔍 요청 내용: {request.content}")
+                
+                response = await client.chat.completions.create(**chat_params)
+                
+                # Function calls가 있는지 확인
+                if response.choices[0].message.tool_calls:
+                    print(f"🔧 Function 호출 감지: {len(response.choices[0].message.tool_calls)}개")
+                    
+                    function_results = []
+                    for tool_call in response.choices[0].message.tool_calls:
+                        function_name = tool_call.function.name
+                        function_args = json.loads(tool_call.function.arguments)
+                        
+                        print(f"🔧 실행 중: {function_name}({function_args})")
+                        result = await execute_google_function(function_name, function_args)
+                        function_results.append(f"[{function_name} 결과]\n{json.dumps(result, ensure_ascii=False, indent=2)}")
+                    
+                    # 함수 결과를 AI 응답에 포함
+                    ai_content = response.choices[0].message.content or ""
+                    if function_results:
+                        ai_content += "\n\n" + "\n\n".join(function_results)
+                        print(f"📋 함수 실행 결과가 응답에 추가됨")
+                else:
+                    ai_content = response.choices[0].message.content
             
             print(f"OpenAI Response: {ai_content}")
             
@@ -545,9 +887,27 @@ async def send_message(request: ChatRequest):
     # 세션의 기존 메시지 히스토리 가져오기
     session_messages = messages_db.get(request.sessionId, [])
     
+    # Google 서비스 사용 안내를 포함한 시스템 프롬프트 구성
+    system_prompt = "당신은 NSales Pro의 영업 AI 도우미입니다. 영업 데이터 분석, 프로젝트 정보 조회, 업무 관련 질문에 도움을 주세요. 한국어로 친근하고 전문적으로 답변해주세요. 이전 대화 내용을 기억하고 문맥을 유지하여 답변하세요. 최신 정보가 필요하거나 실시간 데이터, 뉴스, 시장 동향 등을 질문받으면 웹 검색을 적극 활용하여 정확하고 최신의 정보를 제공하세요."
+    
+    # 멘션 기반 서비스 활성화 로직
+    mention_detected = False
+    google_mention_keywords = ['@캘린더', '@메일', '@일정생성', '@빈시간']
+    
+    for keyword in google_mention_keywords:
+        if keyword in request.content:
+            mention_detected = True
+            break
+    
+    # Google 서비스가 사용 가능하고 멘션이 감지된 경우 안내 추가
+    if GOOGLE_SERVICES_AVAILABLE and auth_service.is_authenticated() and mention_detected:
+        system_prompt += "\n\n**🎯 Google 서비스 멘션 감지됨:**\n사용자가 @멘션을 사용했습니다. 다음 함수를 반드시 호출하여 요청을 처리하세요:\n- @캘린더 → get_calendar_events 함수 호출\n- @메일 → get_emails 또는 send_email 함수 호출\n- @일정생성 → create_calendar_event 함수 호출\n- @빈시간 → find_free_time 함수 호출\n\n멘션이 포함된 요청은 반드시 해당 함수를 실행하여 실제 데이터를 제공해야 합니다."
+    elif GOOGLE_SERVICES_AVAILABLE and auth_service.is_authenticated():
+        system_prompt += "\n\n**Google 서비스 연동 안내:**\n사용자가 캘린더, 일정, 스케줄, Gmail, 이메일 관련 질문을 하면 다음 함수들을 적극 활용하세요:\n- get_calendar_events: 캘린더 일정 조회 (오늘, 이번주, 이번달 등)\n- create_calendar_event: 새 일정 생성\n- send_email: 이메일 전송\n- get_emails: 이메일 조회\n- find_free_time: 빈 시간 찾기\n\n사용자가 '캘린더', '일정', '스케줄' 등의 키워드를 사용하면 반드시 해당 함수를 호출하여 실제 데이터를 제공하세요."
+    
     # OpenAI API에 전달할 메시지 구성
     conversation_messages = [
-        {"role": "system", "content": "당신은 NSales Pro의 영업 AI 도우미입니다. 영업 데이터 분석, 프로젝트 정보 조회, 업무 관련 질문에 도움을 주세요. 한국어로 친근하고 전문적으로 답변해주세요. 이전 대화 내용을 기억하고 문맥을 유지하여 답변하세요. 최신 정보가 필요하거나 실시간 데이터, 뉴스, 시장 동향 등을 질문받으면 웹 검색을 적극 활용하여 정확하고 최신의 정보를 제공하세요."}
+        {"role": "system", "content": system_prompt}
     ]
     
     # 기존 대화 내용 추가 (최근 10개 메시지만 유지하여 토큰 절약)
@@ -564,6 +924,12 @@ async def send_message(request: ChatRequest):
     # 선택된 모델 정보 가져오기
     selected_model = request.model if request.model in AVAILABLE_MODELS else "gpt-4o"
     model_config = AVAILABLE_MODELS[selected_model]
+    
+    # 사용 가능한 도구 목록 구성
+    available_tools = []
+    if GOOGLE_SERVICES_AVAILABLE and auth_service.is_authenticated():
+        available_tools.extend(get_google_tools())
+        print(f"🛠️ Google 도구 {len(get_google_tools())}개 추가됨")
     
     # OpenAI API 호출
     try:
@@ -628,13 +994,60 @@ async def send_message(request: ChatRequest):
                 )
                 ai_content = response.choices[0].message.content
         else:
-            response = await client.chat.completions.create(
-                model=selected_model,
-                messages=conversation_messages,
-                max_tokens=model_config["max_tokens"],
-                temperature=model_config["temperature"]
-            )
-            ai_content = response.choices[0].message.content
+            # 기본 채팅 API 호출 (Google 도구 포함)
+            chat_params = {
+                "model": selected_model,
+                "messages": conversation_messages,
+                "max_tokens": model_config["max_tokens"],
+                "temperature": model_config["temperature"]
+            }
+            
+            # Google 도구가 있으면 추가
+            if available_tools:
+                chat_params["tools"] = available_tools
+                chat_params["tool_choice"] = "auto"
+                print(f"🛠️ Function Calling 활성화: {len(available_tools)}개 도구")
+                print(f"🔍 도구 목록: {[tool['function']['name'] for tool in available_tools]}")
+                print(f"🔍 요청 내용: {request.content}")
+            
+            response = await client.chat.completions.create(**chat_params)
+            
+            # Function calls가 있는지 확인
+            if response.choices[0].message.tool_calls:
+                print(f"🔧 Function 호출 감지: {len(response.choices[0].message.tool_calls)}개")
+                
+                function_results = []
+                for tool_call in response.choices[0].message.tool_calls:
+                    function_name = tool_call.function.name
+                    function_args = json.loads(tool_call.function.arguments)
+                    
+                    print(f"🔧 실행 중: {function_name}({function_args})")
+                    result = await execute_google_function(function_name, function_args)
+                    function_results.append(f"[{function_name} 결과]\n{json.dumps(result, ensure_ascii=False, indent=2)}")
+                
+                # 함수 결과가 있으면 AI가 해석하도록 처리
+                if function_results:
+                    # 첫 번째 함수 결과만 사용 (여러 함수 호출시 고려 필요)
+                    first_tool_call = response.choices[0].message.tool_calls[0]
+                    first_result = await execute_google_function(first_tool_call.function.name, json.loads(first_tool_call.function.arguments))
+                    
+                    # 결과가 빈 리스트이면 적절한 메시지로 변환
+                    if isinstance(first_result, list) and len(first_result) == 0:
+                        if first_tool_call.function.name == "get_calendar_events":
+                            ai_content = "오늘 예정된 일정이 없습니다. 자유로운 하루를 보내세요! 😊"
+                        else:
+                            ai_content = "조회된 결과가 없습니다."
+                    elif "error" in str(first_result):
+                        ai_content = f"죄송합니다. {first_tool_call.function.name} 실행 중 문제가 발생했습니다: {first_result.get('error', str(first_result))}"
+                    else:
+                        # 정상 결과가 있으면 AI가 해석
+                        ai_content = f"{response.choices[0].message.content or ''}\n\n조회 결과:\n{json.dumps(first_result, ensure_ascii=False, indent=2)}"
+                    
+                    print(f"📋 함수 결과 해석 완료: {first_tool_call.function.name}")
+                else:
+                    ai_content = response.choices[0].message.content or ""
+            else:
+                ai_content = response.choices[0].message.content
         
         print(f"OpenAI Response: {ai_content}")  # 디버깅용
         
@@ -657,9 +1070,72 @@ async def send_message(request: ChatRequest):
     
     return ChatResponse(**ai_message.dict())
 
-# 스트리밍 채팅
+# 스트리밍 채팅 (임시로 일반 API 사용)
 @app.post("/api/v1/chat/stream")
 async def stream_chat(request: ChatRequest):
+    """스트리밍 채팅 API - 임시로 일반 API로 폴백"""
+    try:
+        # 일반 API로 처리
+        response = await send_message(request)
+        
+        # 응답을 스트리밍 형태로 변환
+        content = response.content  # response.aiMessage.content가 아니라 response.content
+        session_id = request.sessionId
+        message_id = response.id  # response.aiMessage.id가 아니라 response.id
+        
+        async def generate_stream():
+            # 문자별로 스트리밍
+            for i, char in enumerate(content):
+                chunk = ChatStreamChunk(
+                    id=message_id,
+                    content=char,
+                    role="assistant",
+                    timestamp=datetime.now(),
+                    sessionId=session_id,
+                    isComplete=i == len(content) - 1
+                )
+                yield f"data: {chunk.json()}\n\n"
+                await asyncio.sleep(0.01)
+        
+        return StreamingResponse(
+            generate_stream(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "Cache-Control"
+            }
+        )
+    except Exception as e:
+        print(f"Streaming error: {e}")
+        # 에러 발생시 폴백 응답
+        error_chunk = ChatStreamChunk(
+            id="error",
+            content="죄송합니다. 현재 AI 서비스에 일시적인 문제가 있습니다. 잠시 후 다시 시도해주세요.",
+            role="assistant",
+            timestamp=datetime.now(),
+            sessionId=request.sessionId,
+            isComplete=True
+        )
+        
+        async def error_stream():
+            yield f"data: {error_chunk.json()}\n\n"
+        
+        return StreamingResponse(
+            error_stream(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "Cache-Control"
+            }
+        )
+
+# 원래 스트리밍 함수 (임시 비활성화)
+@app.post("/api/v1/chat/stream_disabled")
+async def stream_chat_original(request: ChatRequest):
     if request.sessionId not in sessions_db:
         raise HTTPException(status_code=404, detail="Session not found")
     
@@ -684,9 +1160,27 @@ async def stream_chat(request: ChatRequest):
         # 세션의 기존 메시지 히스토리 가져오기
         session_messages = messages_db.get(request.sessionId, [])
         
+        # Google 서비스 사용 안내를 포함한 시스템 프롬프트 구성
+        system_prompt = "당신은 NSales Pro의 영업 AI 도우미입니다. 영업 데이터 분석, 프로젝트 정보 조회, 업무 관련 질문에 도움을 주세요. 한국어로 친근하고 전문적으로 답변해주세요. 이전 대화 내용을 기억하고 문맥을 유지하여 답변하세요. 최신 정보가 필요하거나 실시간 데이터, 뉴스, 시장 동향 등을 질문받으면 웹 검색을 적극 활용하여 정확하고 최신의 정보를 제공하세요."
+        
+        # 멘션 기반 서비스 활성화 로직
+        mention_detected = False
+        google_mention_keywords = ['@캘린더', '@메일', '@일정생성', '@빈시간']
+        
+        for keyword in google_mention_keywords:
+            if keyword in request.content:
+                mention_detected = True
+                break
+        
+        # Google 서비스가 사용 가능하고 멘션이 감지된 경우 안내 추가
+        if GOOGLE_SERVICES_AVAILABLE and auth_service.is_authenticated() and mention_detected:
+            system_prompt += "\n\n**🎯 Google 서비스 멘션 감지됨:**\n사용자가 @멘션을 사용했습니다. 다음 함수를 반드시 호출하여 요청을 처리하세요:\n- @캘린더 → get_calendar_events 함수 호출\n- @메일 → get_emails 또는 send_email 함수 호출\n- @일정생성 → create_calendar_event 함수 호출\n- @빈시간 → find_free_time 함수 호출\n\n멘션이 포함된 요청은 반드시 해당 함수를 실행하여 실제 데이터를 제공해야 합니다."
+        elif GOOGLE_SERVICES_AVAILABLE and auth_service.is_authenticated():
+            system_prompt += "\n\n**Google 서비스 연동 안내:**\n사용자가 캘린더, 일정, 스케줄, Gmail, 이메일 관련 질문을 하면 다음 함수들을 적극 활용하세요:\n- get_calendar_events: 캘린더 일정 조회 (오늘, 이번주, 이번달 등)\n- create_calendar_event: 새 일정 생성\n- send_email: 이메일 전송\n- get_emails: 이메일 조회\n- find_free_time: 빈 시간 찾기\n\n사용자가 '캘린더', '일정', '스케줄' 등의 키워드를 사용하면 반드시 해당 함수를 호출하여 실제 데이터를 제공하세요."
+        
         # OpenAI API에 전달할 메시지 구성
         conversation_messages = [
-            {"role": "system", "content": "당신은 NSales Pro의 영업 AI 도우미입니다. 영업 데이터 분석, 프로젝트 정보 조회, 업무 관련 질문에 도움을 주세요. 한국어로 친근하고 전문적으로 답변해주세요. 이전 대화 내용을 기억하고 문맥을 유지하여 답변하세요. 최신 정보가 필요하거나 실시간 데이터, 뉴스, 시장 동향 등을 질문받으면 웹 검색을 적극 활용하여 정확하고 최신의 정보를 제공하세요."}
+            {"role": "system", "content": system_prompt}
         ]
         
         # 기존 대화 내용 추가 (최근 20개 메시지만 유지하여 토큰 절약)
@@ -707,6 +1201,18 @@ async def stream_chat(request: ChatRequest):
             
             print(f"Stream using model: {selected_model} ({model_config['name']})")
             print(f"Stream conversation length: {len(conversation_messages)} messages")  # 디버깅용
+            
+            # 사용 가능한 도구 목록 구성
+            available_tools = []
+            
+            # 웹 검색 도구 추가
+            if needs_web_search and model_config["supports_web_search"]:
+                available_tools.append({"type": "web_search"})
+            
+            # Google 서비스 도구 추가 (인증된 경우만)
+            if GOOGLE_SERVICES_AVAILABLE and auth_service.is_authenticated():
+                available_tools.extend(GOOGLE_TOOLS)
+                print(f"🔗 Google 서비스 도구 {len(GOOGLE_TOOLS)}개 추가됨")
             
             # 웹 검색 여부는 프론트엔드에서 결정 (webSearch 파라미터로 전달)
             needs_web_search = getattr(request, 'webSearch', False)
@@ -821,19 +1327,150 @@ async def stream_chat(request: ChatRequest):
                         stream=True
                     )
             else:
-                # 웹 검색이 필요하지 않은 경우 일반 스트리밍 사용
-                stream = await client.chat.completions.create(
-                    model=selected_model,
-                    messages=conversation_messages,
-                    max_tokens=model_config["max_tokens"],
-                    temperature=model_config["temperature"],
-                    stream=True
+                # 임시로 스트리밍 대신 일반 API 사용
+                chat_params = {
+                    "model": selected_model,
+                    "messages": conversation_messages,
+                    "max_tokens": model_config["max_tokens"],
+                    "temperature": model_config["temperature"]
+                }
+                
+                # Google 도구가 있으면 추가
+                if available_tools and not needs_web_search:
+                    chat_params["tools"] = available_tools
+                    chat_params["tool_choice"] = "auto"
+                    print(f"🛠️ Function Calling 활성화: {len(available_tools)}개 도구")
+                
+                print(f"🔍 비스트리밍 파라미터: {chat_params}")
+                response = await client.chat.completions.create(**chat_params)
+                
+                # 응답을 스트리밍 형태로 변환
+                ai_content = response.choices[0].message.content
+                
+                # Function calls가 있는지 확인
+                if response.choices[0].message.tool_calls:
+                    print(f"🔧 Function 호출 감지: {len(response.choices[0].message.tool_calls)}개")
+                    
+                    for tool_call in response.choices[0].message.tool_calls:
+                        function_name = tool_call.function.name
+                        function_args = json.loads(tool_call.function.arguments)
+                        
+                        if function_name in FUNCTION_MAP:
+                            try:
+                                # 함수 실행 상태 표시
+                                status_content = f"\n\n🔄 {function_name} 실행 중...\n"
+                                for char in status_content:
+                                    status_chunk = ChatStreamChunk(
+                                        id=ai_message_id,
+                                        content=char,
+                                        role="assistant",
+                                        timestamp=datetime.now(),
+                                        sessionId=request.sessionId,
+                                        isComplete=False
+                                    )
+                                    yield f"data: {status_chunk.json()}\n\n"
+                                    await asyncio.sleep(0.02)
+                                
+                                # 함수 실행
+                                function_result = await FUNCTION_MAP[function_name](**function_args)
+                                
+                                # 결과를 스트리밍으로 출력
+                                result_content = f"✅ 결과:\n{function_result}\n\n"
+                                ai_content += result_content
+                                
+                                for char in result_content:
+                                    result_chunk = ChatStreamChunk(
+                                        id=ai_message_id,
+                                        content=char,
+                                        role="assistant",
+                                        timestamp=datetime.now(),
+                                        sessionId=request.sessionId,
+                                        isComplete=False
+                                    )
+                                    yield f"data: {result_chunk.json()}\n\n"
+                                    await asyncio.sleep(0.02)
+                                    
+                            except Exception as e:
+                                error_content = f"❌ {function_name} 실행 오류: {str(e)}\n\n"
+                                ai_content += error_content
+                                
+                                for char in error_content:
+                                    error_chunk = ChatStreamChunk(
+                                        id=ai_message_id,
+                                        content=char,
+                                        role="assistant",
+                                        timestamp=datetime.now(),
+                                        sessionId=request.sessionId,
+                                        isComplete=False
+                                    )
+                                    yield f"data: {error_chunk.json()}\n\n"
+                                    await asyncio.sleep(0.02)
+                else:
+                    # 일반 응답을 문자별로 스트리밍
+                    for char in ai_content:
+                        stream_chunk = ChatStreamChunk(
+                            id=ai_message_id,
+                            content=char,
+                            role="assistant",
+                            timestamp=datetime.now(),
+                            sessionId=request.sessionId,
+                            isComplete=False
+                        )
+                        yield f"data: {stream_chunk.json()}\n\n"
+                        await asyncio.sleep(0.02)
+                
+                full_content = ai_content
+                
+                # 완료 신호
+                final_chunk = ChatStreamChunk(
+                    id=ai_message_id,
+                    content="",
+                    role="assistant",
+                    timestamp=datetime.now(),
+                    sessionId=request.sessionId,
+                    isComplete=True
                 )
+                yield f"data: {final_chunk.json()}\n\n"
+                
+                # AI 응답 저장
+                ai_message = ChatMessage(
+                    id=ai_message_id,
+                    content=full_content,
+                    role="assistant",
+                    timestamp=datetime.now(),
+                    sessionId=request.sessionId
+                )
+                
+                messages_db[request.sessionId].append(ai_message.dict())
+                update_session_message_count(request.sessionId)
+                return
             
             # 일반 스트리밍 처리 (웹 검색 실패하거나 웹 검색이 필요하지 않은 경우)
+            tool_calls = []
+            current_tool_call = None
+            
             async for chunk in stream:
-                if chunk.choices[0].delta.content:
-                    content = chunk.choices[0].delta.content
+                delta = chunk.choices[0].delta
+                
+                # Function calling 처리
+                if delta.tool_calls:
+                    for tool_call_delta in delta.tool_calls:
+                        if tool_call_delta.index == 0:
+                            if current_tool_call is None:
+                                current_tool_call = {
+                                    "id": tool_call_delta.id or "",
+                                    "function": {
+                                        "name": tool_call_delta.function.name or "",
+                                        "arguments": tool_call_delta.function.arguments or ""
+                                    }
+                                }
+                            else:
+                                if tool_call_delta.function.arguments:
+                                    current_tool_call["function"]["arguments"] += tool_call_delta.function.arguments
+                
+                # 일반 텍스트 응답 처리
+                elif delta.content:
+                    content = delta.content
                     full_content += content
                 
                     stream_chunk = ChatStreamChunk(
@@ -846,7 +1483,67 @@ async def stream_chat(request: ChatRequest):
                     )
                     
                     yield f"data: {stream_chunk.json()}\n\n"
-                    await asyncio.sleep(0.01)  # 약간의 지연으로 자연스러운 스트리밍 효과
+                    await asyncio.sleep(0.01)
+                
+                # 스트림 완료 체크
+                if chunk.choices[0].finish_reason == "tool_calls" and current_tool_call:
+                    tool_calls.append(current_tool_call)
+            
+            # Function 호출 실행
+            if tool_calls:
+                print(f"🔧 Function 호출 실행: {len(tool_calls)}개")
+                
+                for tool_call in tool_calls:
+                    function_name = tool_call["function"]["name"]
+                    function_args = json.loads(tool_call["function"]["arguments"])
+                    
+                    if function_name in FUNCTION_MAP:
+                        try:
+                            # 함수 실행 상태 표시
+                            status_chunk = ChatStreamChunk(
+                                id=ai_message_id,
+                                content=f"\n\n🔄 {function_name} 실행 중...\n",
+                                role="assistant",
+                                timestamp=datetime.now(),
+                                sessionId=request.sessionId,
+                                isComplete=False
+                            )
+                            yield f"data: {status_chunk.json()}\n\n"
+                            
+                            # 함수 실행
+                            function_result = await FUNCTION_MAP[function_name](**function_args)
+                            
+                            # 결과를 스트리밍으로 출력
+                            result_content = f"✅ 결과:\n{function_result}\n\n"
+                            full_content += result_content
+                            
+                            for char in result_content:
+                                result_chunk = ChatStreamChunk(
+                                    id=ai_message_id,
+                                    content=char,
+                                    role="assistant",
+                                    timestamp=datetime.now(),
+                                    sessionId=request.sessionId,
+                                    isComplete=False
+                                )
+                                yield f"data: {result_chunk.json()}\n\n"
+                                await asyncio.sleep(0.02)
+                                
+                        except Exception as e:
+                            error_content = f"❌ {function_name} 실행 오류: {str(e)}\n\n"
+                            full_content += error_content
+                            
+                            for char in error_content:
+                                error_chunk = ChatStreamChunk(
+                                    id=ai_message_id,
+                                    content=char,
+                                    role="assistant",
+                                    timestamp=datetime.now(),
+                                    sessionId=request.sessionId,
+                                    isComplete=False
+                                )
+                                yield f"data: {error_chunk.json()}\n\n"
+                                await asyncio.sleep(0.02)
             
             # 완료 신호
             final_chunk = ChatStreamChunk(
@@ -861,6 +1558,9 @@ async def stream_chat(request: ChatRequest):
             
         except Exception as e:
             # OpenAI API 오류 시 폴백 응답
+            print(f"🚨 스트리밍 API 예외 발생: {e}")
+            import traceback
+            traceback.print_exc()
             fallback_content = f"죄송합니다. 현재 AI 서비스에 일시적인 문제가 있습니다. '{request.content}'에 대한 답변을 준비하고 있습니다. 잠시 후 다시 시도해주세요."
             full_content = fallback_content
             

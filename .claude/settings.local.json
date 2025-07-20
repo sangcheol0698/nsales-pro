@@ -33,7 +33,8 @@
       "Bash(claude mcp:*)",
       "WebFetch(domain:magicui.design)",
       "WebFetch(domain:ui.nuxt.com)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(find:*)"
     ],
     "deny": []
   }

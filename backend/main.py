@@ -219,6 +219,59 @@ def get_google_tools():
         }
     ]
 
+# 캘린더 일정을 표 형태로 포맷팅하는 함수
+def format_calendar_events_as_table(events: List[Dict]) -> str:
+    """캘린더 일정을 마크다운 표 형태로 포맷팅"""
+    if not events:
+        return "조회된 일정이 없습니다."
+    
+    # 표 헤더
+    table = "## 📅 일정 목록\n\n"
+    table += "| 날짜 | 시간 | 제목 | 장소 | 설명 |\n"
+    table += "|------|------|------|------|------|\n"
+    
+    for event in events:
+        # 날짜/시간 파싱
+        start_time = event.get('start', '')
+        summary = event.get('summary', '제목 없음')
+        location = event.get('location', '-')
+        description = event.get('description', '-')
+        
+        # 날짜와 시간 분리
+        if 'T' in start_time:
+            try:
+                from datetime import datetime
+                dt = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+                date_str = dt.strftime('%m/%d')
+                time_str = dt.strftime('%H:%M')
+                
+                # 종료 시간도 파싱
+                end_time = event.get('end', '')
+                if 'T' in end_time:
+                    end_dt = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
+                    time_str += f" - {end_dt.strftime('%H:%M')}"
+            except:
+                date_str = start_time[:10] if len(start_time) >= 10 else start_time
+                time_str = start_time[11:16] if len(start_time) > 16 else "-"
+        else:
+            date_str = start_time
+            time_str = "종일"
+        
+        # 텍스트 길이 제한 (표가 너무 길어지지 않도록)
+        summary = (summary[:20] + "...") if len(summary) > 20 else summary
+        location = (location[:15] + "...") if len(location) > 15 else location
+        description = (description[:25] + "...") if len(description) > 25 else description
+        
+        # 마크다운 특수문자 이스케이프
+        summary = summary.replace('|', '\\|')
+        location = location.replace('|', '\\|')
+        description = description.replace('|', '\\|')
+        
+        table += f"| {date_str} | {time_str} | {summary} | {location} | {description} |\n"
+    
+    table += f"\n총 **{len(events)}개**의 일정이 있습니다."
+    return table
+
 # Google 함수 실행 핸들러
 async def execute_google_function(function_name: str, arguments: dict):
     """Google 함수를 실행하고 결과를 반환"""
@@ -1034,14 +1087,18 @@ async def send_message(request: ChatRequest):
                     # 결과가 빈 리스트이면 적절한 메시지로 변환
                     if isinstance(first_result, list) and len(first_result) == 0:
                         if first_tool_call.function.name == "get_calendar_events":
-                            ai_content = "오늘 예정된 일정이 없습니다. 자유로운 하루를 보내세요! 😊"
+                            ai_content = "해당 기간에 예정된 일정이 없습니다. 자유로운 시간을 보내세요! 😊"
                         else:
                             ai_content = "조회된 결과가 없습니다."
                     elif "error" in str(first_result):
                         ai_content = f"죄송합니다. {first_tool_call.function.name} 실행 중 문제가 발생했습니다: {first_result.get('error', str(first_result))}"
                     else:
-                        # 정상 결과가 있으면 AI가 해석
-                        ai_content = f"{response.choices[0].message.content or ''}\n\n조회 결과:\n{json.dumps(first_result, ensure_ascii=False, indent=2)}"
+                        # 캘린더 일정은 표 형태로 포맷팅
+                        if first_tool_call.function.name == "get_calendar_events" and isinstance(first_result, list):
+                            ai_content = format_calendar_events_as_table(first_result)
+                        else:
+                            # 다른 함수는 기본 JSON 형태
+                            ai_content = f"{response.choices[0].message.content or ''}\n\n조회 결과:\n{json.dumps(first_result, ensure_ascii=False, indent=2)}"
                     
                     print(f"📋 함수 결과 해석 완료: {first_tool_call.function.name}")
                 else:

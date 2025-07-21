@@ -34,7 +34,12 @@
       "WebFetch(domain:magicui.design)",
       "WebFetch(domain:ui.nuxt.com)",
       "Bash(true)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "Bash(timeout:*)",
+      "Bash(ls:*)",
+      "Bash(npx vue-tsc:*)"
     ],
     "deny": []
   }

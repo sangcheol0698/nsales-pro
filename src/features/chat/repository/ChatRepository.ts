@@ -5,7 +5,6 @@ import type {
   ChatResponse,
   ChatSession,
   ChatStreamChunk,
-  ChatMessage,
 } from '../entity/ChatMessage';
 import type { ChatHistory, ChatSearch, ChatSessionList } from '../entity/ChatSearch';
 
@@ -18,8 +17,8 @@ export class ChatRepository {
   }
 
   async sendMessageWithFiles(
-    content: string, 
-    sessionId: string, 
+    content: string,
+    sessionId: string,
     files: File[],
     model?: string,
     webSearch?: boolean
@@ -33,7 +32,7 @@ export class ChatRepository {
     if (webSearch) {
       formData.append('webSearch', 'true');
     }
-    
+
     // 파일들을 FormData에 추가
     files.forEach((file) => {
       formData.append('files', file);

@@ -361,6 +361,53 @@ const routes = [
     },
   },
   {
+    path: '/chat-enhanced',
+    name: 'chatEnhanced',
+    component: () => import('@/features/chat/views/ChatViewEnhanced.vue'),
+    meta: {
+      menu: false,
+      activeIndex: 4,
+      title: 'AI Assistant Enhanced',
+      breadcrumbs: [
+        {
+          title: '홈',
+          disabled: false,
+          to: '/',
+        },
+        {
+          title: 'AI Assistant Enhanced',
+          disabled: true,
+        },
+      ],
+    },
+  },
+  {
+    path: '/chat-enhanced/:sessionId',
+    name: 'chatEnhancedSession',
+    component: () => import('@/features/chat/views/ChatViewEnhanced.vue'),
+    meta: {
+      menu: false,
+      activeIndex: 4,
+      title: 'AI Assistant Enhanced',
+      breadcrumbs: [
+        {
+          title: '홈',
+          disabled: false,
+          to: '/',
+        },
+        {
+          title: 'AI Assistant Enhanced',
+          disabled: false,
+          to: '/chat-enhanced',
+        },
+        {
+          title: '채팅 세션',
+          disabled: true,
+        },
+      ],
+    },
+  },
+  {
     path: '/google-integration',
     name: 'googleIntegration',
     component: () => import('@/views/GoogleIntegration.vue'),

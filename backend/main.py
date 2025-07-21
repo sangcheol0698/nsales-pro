@@ -9,6 +9,7 @@ import uuid
 from datetime import datetime
 import os
 from openai import AsyncOpenAI
+import openai  # 에러 처리용
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 import PyPDF2
@@ -17,6 +18,7 @@ from PIL import Image
 import pytesseract
 import io
 import tempfile
+import logging
 
 # Google 서비스 import
 try:
@@ -33,6 +35,10 @@ except ImportError as e:
 # .env 파일 로드
 load_dotenv()
 
+# 로거 설정
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
 
 # OpenAI 클라이언트 초기화
 client = AsyncOpenAI(
@@ -46,6 +52,7 @@ AVAILABLE_MODELS = {
         "description": "OpenAI의 최신 멀티모달 모델",
         "provider": "openai",
         "supports_web_search": True,
+        "supports_assistant": True,
         "max_tokens": 4000,
         "temperature": 0.7
     },
@@ -54,6 +61,7 @@ AVAILABLE_MODELS = {
         "description": "OpenAI의 강력한 언어 모델",
         "provider": "openai", 
         "supports_web_search": True,
+        "supports_assistant": True,
         "max_tokens": 4000,
         "temperature": 0.7
     },
@@ -62,6 +70,7 @@ AVAILABLE_MODELS = {
         "description": "빠르고 효율적인 OpenAI 모델",
         "provider": "openai",
         "supports_web_search": False,
+        "supports_assistant": False,
         "max_tokens": 2000,
         "temperature": 0.7
     }
@@ -70,6 +79,347 @@ AVAILABLE_MODELS = {
 # 메모리 저장소 (실제 환경에서는 데이터베이스 사용)
 sessions_db: Dict[str, Dict] = {}
 messages_db: Dict[str, List[Dict]] = {}
+assistants_db: Dict[str, str] = {}  # session_id -> assistant_id 매핑
+threads_db: Dict[str, str] = {}     # session_id -> thread_id 매핑
+
+# 📊 토큰 관리 및 최적화
+token_usage_db: Dict[str, Dict] = {}  # session_id -> token usage stats
+conversation_summaries: Dict[str, str] = {}  # session_id -> summary
+
+# 토큰 사용량 추적 설정
+MAX_CONVERSATION_TOKENS = 8000  # 대화당 최대 토큰
+SUMMARY_TRIGGER_TOKENS = 6000   # 요약 트리거 토큰
+MAX_MESSAGES_PER_SESSION = 50   # 세션당 최대 메시지
+
+# 🗂️ 벡터 스토어 및 지식 베이스 관리
+vector_stores_db: Dict[str, str] = {}  # session_id -> vector_store_id 매핑
+knowledge_base_id: str = None  # 전역 지식 베이스 벡터 스토어 ID
+
+# ===========================
+# 🗂️ 벡터 스토어 기능 구현
+# ===========================
+
+async def create_or_get_vector_store(session_id: str = None, name: str = None) -> str:
+    """세션별 벡터 스토어 생성 또는 기존 벡터 스토어 반환"""
+    try:
+        # 세션별 벡터 스토어 확인
+        if session_id and session_id in vector_stores_db:
+            return vector_stores_db[session_id]
+        
+        # 새 벡터 스토어 생성
+        vector_store_name = name or f"Session Vector Store {session_id or 'Global'}"
+        vector_store = await client.beta.vector_stores.create(
+            name=vector_store_name,
+            file_ids=[],  # 초기에는 빈 상태로 생성
+            metadata={
+                "session_id": session_id or "global",
+                "created_at": datetime.now().isoformat(),
+                "purpose": "knowledge_base"
+            }
+        )
+        
+        # 벡터 스토어 ID 저장
+        vector_store_id = vector_store.id
+        if session_id:
+            vector_stores_db[session_id] = vector_store_id
+        else:
+            global knowledge_base_id
+            knowledge_base_id = vector_store_id
+        
+        logger.info(f"✅ Vector store created: {vector_store_id} for session: {session_id}")
+        return vector_store_id
+        
+    except Exception as e:
+        logger.error(f"❌ Vector store creation failed: {str(e)}")
+        raise
+
+
+async def add_file_to_vector_store(vector_store_id: str, file_id: str) -> bool:
+    """벡터 스토어에 파일 추가"""
+    try:
+        # 파일을 벡터 스토어에 추가
+        vector_store_file = await client.beta.vector_stores.files.create_and_poll(
+            vector_store_id=vector_store_id,
+            file_id=file_id
+        )
+        
+        logger.info(f"✅ File {file_id} added to vector store {vector_store_id}")
+        return vector_store_file.status == "completed"
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to add file to vector store: {str(e)}")
+        return False
+
+
+async def search_vector_store(vector_store_id: str, query: str, limit: int = 5) -> List[Dict]:
+    """벡터 스토어에서 유사한 문서 검색"""
+    try:
+        # 벡터 스토어에서 검색 수행
+        search_results = await client.beta.vector_stores.search(
+            vector_store_id=vector_store_id,
+            query=query,
+            limit=limit
+        )
+        
+        # 검색 결과 포맷팅
+        formatted_results = []
+        for result in search_results.data:
+            formatted_results.append({
+                "content": result.content if hasattr(result, 'content') else "",
+                "score": result.score if hasattr(result, 'score') else 0.0,
+                "file_id": result.file_id if hasattr(result, 'file_id') else "",
+                "metadata": result.metadata if hasattr(result, 'metadata') else {}
+            })
+        
+        logger.info(f"✅ Vector search completed: {len(formatted_results)} results")
+        return formatted_results
+        
+    except Exception as e:
+        logger.error(f"❌ Vector store search failed: {str(e)}")
+        return []
+
+
+async def create_knowledge_base_embeddings(documents: List[str], session_id: str = None) -> str:
+    """문서들을 임베딩하여 지식 베이스 생성"""
+    try:
+        # 벡터 스토어 생성 또는 가져오기
+        vector_store_id = await create_or_get_vector_store(session_id, "Knowledge Base")
+        
+        # 각 문서를 파일로 업로드하고 벡터 스토어에 추가
+        uploaded_files = []
+        for i, document in enumerate(documents):
+            # 임시 파일 생성
+            temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False)
+            temp_file.write(document)
+            temp_file.close()
+            
+            try:
+                # OpenAI Files API로 업로드
+                with open(temp_file.name, 'rb') as f:
+                    file_object = await client.files.create(
+                        file=f,
+                        purpose="assistants"
+                    )
+                
+                # 벡터 스토어에 추가
+                if await add_file_to_vector_store(vector_store_id, file_object.id):
+                    uploaded_files.append(file_object.id)
+                
+            finally:
+                # 임시 파일 삭제
+                try:
+                    os.unlink(temp_file.name)
+                except:
+                    pass
+        
+        logger.info(f"✅ Knowledge base created with {len(uploaded_files)} documents")
+        return vector_store_id
+        
+    except Exception as e:
+        logger.error(f"❌ Knowledge base creation failed: {str(e)}")
+        raise
+
+
+async def get_relevant_context(query: str, session_id: str = None) -> str:
+    """쿼리에 관련된 컨텍스트 검색"""
+    try:
+        # 세션별 벡터 스토어 확인
+        vector_store_id = None
+        if session_id and session_id in vector_stores_db:
+            vector_store_id = vector_stores_db[session_id]
+        elif knowledge_base_id:
+            vector_store_id = knowledge_base_id
+        
+        if not vector_store_id:
+            logger.info("No vector store available for context search")
+            return ""
+        
+        # 벡터 스토어에서 관련 문서 검색
+        search_results = await search_vector_store(vector_store_id, query, limit=3)
+        
+        if not search_results:
+            return ""
+        
+        # 검색 결과를 컨텍스트로 포맷팅
+        context_parts = []
+        for result in search_results:
+            if result.get("content"):
+                context_parts.append(f"관련 정보: {result['content']}")
+        
+        return "\n\n".join(context_parts)
+        
+    except Exception as e:
+        logger.error(f"❌ Context retrieval failed: {str(e)}")
+        return ""
+
+
+async def list_vector_stores() -> List[Dict]:
+    """사용 가능한 벡터 스토어 목록 조회"""
+    try:
+        vector_stores = await client.beta.vector_stores.list(limit=20)
+        
+        stores_info = []
+        for store in vector_stores.data:
+            stores_info.append({
+                "id": store.id,
+                "name": store.name,
+                "file_counts": store.file_counts,
+                "created_at": store.created_at,
+                "metadata": store.metadata if hasattr(store, 'metadata') else {}
+            })
+        
+        return stores_info
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to list vector stores: {str(e)}")
+        return []
+
+# 📊 토큰 관리 및 최적화 함수들
+def estimate_tokens(text: str) -> int:
+    """텍스트의 토큰 수를 추정 (1 토큰 ≈ 4 characters)"""
+    return max(1, len(text) // 4)
+
+def calculate_conversation_tokens(messages: List[Dict]) -> int:
+    """대화의 총 토큰 수 계산"""
+    total_tokens = 0
+    for message in messages:
+        content = message.get("content", "")
+        total_tokens += estimate_tokens(content)
+    return total_tokens
+
+async def create_conversation_summary(session_id: str, messages: List[Dict]) -> str:
+    """대화 요약 생성"""
+    try:
+        print(f"📝 Creating conversation summary for session: {session_id}")
+        
+        # 요약할 메시지들 준비 (최근 20개만)
+        messages_to_summarize = messages[-20:] if len(messages) > 20 else messages
+        
+        conversation_text = ""
+        for msg in messages_to_summarize:
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+            conversation_text += f"{role}: {content}\n"
+        
+        # OpenAI를 사용하여 요약 생성
+        summary_response = await client.chat.completions.create(
+            model="gpt-3.5-turbo",  # 요약은 저렴한 모델 사용
+            messages=[
+                {
+                    "role": "system", 
+                    "content": """당신은 대화 요약 전문가입니다. 주어진 대화를 간결하고 핵심적으로 요약해주세요.
+
+요약 형식:
+- 주요 주제와 논의 내용
+- 핵심 결론이나 결정사항
+- 중요한 데이터나 정보
+- 사용자 관심사나 요구사항
+
+한국어로 3-5문장으로 요약해주세요."""
+                },
+                {
+                    "role": "user",
+                    "content": f"다음 대화를 요약해주세요:\n\n{conversation_text}"
+                }
+            ],
+            max_tokens=200,
+            temperature=0.3
+        )
+        
+        summary = summary_response.choices[0].message.content
+        
+        # 요약 저장
+        conversation_summaries[session_id] = summary
+        print(f"✅ Summary created for session {session_id}")
+        
+        return summary
+        
+    except Exception as e:
+        print(f"🚨 Failed to create summary: {e}")
+        return "대화 요약 생성 실패"
+
+async def optimize_conversation_for_tokens(session_id: str) -> List[Dict]:
+    """토큰 사용량에 따른 대화 최적화"""
+    messages = messages_db.get(session_id, [])
+    
+    if not messages:
+        return []
+    
+    current_tokens = calculate_conversation_tokens(messages)
+    print(f"📊 Current conversation tokens: {current_tokens}")
+    
+    # 토큰 한계 초과 시 처리
+    if current_tokens > MAX_CONVERSATION_TOKENS or len(messages) > MAX_MESSAGES_PER_SESSION:
+        print(f"🚨 Token limit exceeded, optimizing conversation...")
+        
+        # 1. 대화 요약 생성 (아직 없다면)
+        if session_id not in conversation_summaries:
+            await create_conversation_summary(session_id, messages[:-10])  # 최근 10개 제외하고 요약
+        
+        # 2. 최근 메시지만 유지 (시스템 메시지 + 요약 + 최근 대화)
+        recent_messages = messages[-15:]  # 최근 15개 메시지만 유지
+        
+        # 3. 요약을 시스템 메시지로 삽입
+        summary = conversation_summaries.get(session_id, "")
+        if summary:
+            summary_message = {
+                "role": "system",
+                "content": f"이전 대화 요약: {summary}\n\n위 내용을 참고하여 지속적이고 일관된 대화를 이어가세요."
+            }
+            optimized_messages = [summary_message] + recent_messages
+        else:
+            optimized_messages = recent_messages
+        
+        # 4. 최적화된 메시지로 업데이트
+        messages_db[session_id] = optimized_messages
+        
+        # 5. 토큰 사용량 업데이트
+        new_tokens = calculate_conversation_tokens(optimized_messages)
+        update_token_usage(session_id, current_tokens, new_tokens, optimized=True)
+        
+        print(f"✅ Conversation optimized: {current_tokens} → {new_tokens} tokens")
+        return optimized_messages
+    
+    else:
+        # 토큰 사용량 추적
+        update_token_usage(session_id, current_tokens, current_tokens)
+        return messages
+
+def update_token_usage(session_id: str, old_tokens: int, new_tokens: int, optimized: bool = False):
+    """토큰 사용량 업데이트"""
+    if session_id not in token_usage_db:
+        token_usage_db[session_id] = {
+            "total_tokens": 0,
+            "messages_count": 0,
+            "optimizations": 0,
+            "last_updated": datetime.now().isoformat()
+        }
+    
+    usage = token_usage_db[session_id]
+    usage["total_tokens"] = new_tokens
+    usage["messages_count"] = len(messages_db.get(session_id, []))
+    usage["last_updated"] = datetime.now().isoformat()
+    
+    if optimized:
+        usage["optimizations"] += 1
+        usage["tokens_saved"] = usage.get("tokens_saved", 0) + (old_tokens - new_tokens)
+
+async def get_optimized_conversation_messages(session_id: str, max_messages: int = 20) -> List[Dict]:
+    """최적화된 대화 메시지 가져오기"""
+    # 먼저 토큰 최적화 수행
+    optimized_messages = await optimize_conversation_for_tokens(session_id)
+    
+    # 요청된 최대 메시지 수로 제한
+    if len(optimized_messages) > max_messages:
+        # 시스템 메시지가 있다면 유지하고 나머지를 제한
+        system_messages = [msg for msg in optimized_messages if msg.get("role") == "system"]
+        user_assistant_messages = [msg for msg in optimized_messages if msg.get("role") in ["user", "assistant"]]
+        
+        # 최근 메시지들 선택
+        recent_messages = user_assistant_messages[-(max_messages - len(system_messages)):]
+        return system_messages + recent_messages
+    
+    return optimized_messages
 
 # Google 서비스 도구 정의
 def get_google_tools():
@@ -362,10 +712,9 @@ async def execute_google_function(function_name: str, arguments: dict):
             return result
             
         elif function_name == "get_emails":
-            result = await gmail_service.get_emails(
+            result = await gmail_service.get_messages(
                 query=arguments.get("query", ""),
-                max_results=arguments.get("max_results", 10),
-                time_period=arguments.get("time_period", "this_week")
+                max_results=arguments.get("max_results", 10)
             )
             return result
             
@@ -386,6 +735,707 @@ async def execute_google_function(function_name: str, arguments: dict):
     except Exception as e:
         print(f"Google function execution error: {e}")
         return {"error": f"함수 실행 중 오류가 발생했습니다: {str(e)}"}
+
+# 개선된 통합 API 함수 (Responses API + Assistant API)
+async def create_response_with_best_api(
+    session_id: str,
+    model: str,
+    instructions: str, 
+    user_input: str,
+    conversation_messages: List[Dict],
+    available_tools: List[Dict],
+    needs_web_search: bool,
+    model_config: Dict
+) -> str:
+    """
+    최적의 OpenAI API를 선택하여 응답 생성
+    - Assistant API (복잡한 대화, 도구 사용)
+    - Responses API (웹 검색, 간단한 도구 사용)
+    - Chat Completions API (폴백)
+    """
+    
+    # 1. Assistant API 사용 조건 확인
+    use_assistant_api = (
+        model_config.get("supports_assistant", False) and
+        not needs_web_search  # 웹 검색이 필요하지 않은 경우 (도구 유무 무관)
+    )
+    
+    print(f"🔍 API Selection Debug:")
+    print(f"  - Model: {model}")
+    print(f"  - supports_assistant: {model_config.get('supports_assistant', False)}")
+    print(f"  - needs_web_search: {needs_web_search}")
+    print(f"  - available_tools: {len(available_tools) if available_tools else 0}")
+    print(f"  - use_assistant_api: {use_assistant_api}")
+    
+    if use_assistant_api:
+        print("🎯 Using Assistant API for complex conversation with tools")
+        return await create_response_with_assistant_api(
+            session_id, user_input, model, model_config, instructions
+        )
+    
+    # 2. Responses API 사용 (기존 로직)
+    return await create_response_with_responses_api_fallback(
+        model, instructions, user_input, conversation_messages, 
+        available_tools, needs_web_search, model_config
+    )
+
+# 기존 Responses API 함수 (이름 변경)
+async def create_response_with_responses_api_fallback(
+    model: str,
+    instructions: str, 
+    user_input: str,
+    conversation_messages: List[Dict],
+    available_tools: List[Dict],
+    needs_web_search: bool,
+    model_config: Dict
+) -> str:
+    """
+    Responses API를 사용한 응답 생성 (Assistant API 폴백)
+    Google Functions와 웹 검색을 지원
+    강화된 에러 처리 포함
+    """
+    
+    print(f"🔍 create_response_with_responses_api_fallback called with:")
+    print(f"  - Model: {model}")
+    print(f"  - Instructions present: {bool(instructions)}")
+    print(f"  - User input: {user_input}")
+    print(f"  - Conversation messages: {len(conversation_messages)}")
+    print(f"  - Available tools: {len(available_tools)}")
+    print(f"  - Needs web search: {needs_web_search}")
+    print(f"  - Model config: {model_config}")
+    
+    # 1. 웹 검색이 필요한 경우
+    if needs_web_search and model_config.get("supports_web_search", False):
+        print("🔍 Using Responses API with web search")
+        
+        async def web_search_call():
+            return await client.responses.create(
+                model=model,
+                instructions=instructions,
+                input=user_input,
+                tools=[{"type": "web_search"}]
+            )
+        
+        response = await safe_openai_call_with_retry(web_search_call, user_content=user_input)
+        
+        if isinstance(response, dict) and "error" in response:
+            return response["error"]
+        
+        return extract_response_content(response, include_sources=True)
+    
+    # 2. Google 도구가 필요한 경우
+    elif available_tools:
+        print("🛠️ Using Responses API with Google tools")
+        
+        # Google 도구를 Responses API 형식으로 변환
+        responses_tools = convert_tools_for_responses_api(available_tools)
+        
+        async def tools_call():
+            return await client.responses.create(
+                model=model,
+                instructions=instructions,
+                input=user_input,
+                tools=responses_tools
+            )
+        
+        response = await safe_openai_call_with_retry(tools_call, user_content=user_input)
+        
+        if isinstance(response, dict) and "error" in response:
+            return response["error"]
+        
+        return await process_tool_calls_in_response(response)
+    
+    # 3. 일반 대화
+    else:
+        print("💬 Using Responses API for general conversation")
+        
+        async def general_call():
+            return await client.responses.create(
+                model=model,
+                instructions=instructions,
+                input=user_input
+            )
+        
+        response = await safe_openai_call_with_retry(general_call, user_content=user_input)
+        
+        if isinstance(response, dict) and "error" in response:
+            # Responses API 완전 실패 시 Chat Completions로 폴백
+            print("⚠️ Responses API completely failed, trying Chat Completions fallback")
+            return await safe_fallback_to_chat_completions(
+                model, conversation_messages, available_tools, model_config, user_input
+            )
+        
+        return extract_response_content(response)
+
+def extract_response_content(response, include_sources: bool = False) -> str:
+    """Responses API 응답에서 텍스트 내용 추출"""
+    content = ""
+    sources = []
+    
+    for output_item in response.output:
+        if output_item.type == 'message' and hasattr(output_item, 'content'):
+            for content_item in output_item.content:
+                if content_item.type == 'output_text':
+                    content += content_item.text
+                    
+                    # 웹 검색 소스 추출
+                    if include_sources and hasattr(content_item, 'annotations'):
+                        for annotation in content_item.annotations:
+                            if annotation.type == 'url_citation':
+                                sources.append({
+                                    'title': getattr(annotation, 'title', ''),
+                                    'url': getattr(annotation, 'url', ''),
+                                })
+    
+    # 소스 정보 추가
+    if include_sources and sources:
+        content += "\n\n**참고 출처:**\n"
+        for i, source in enumerate(sources, 1):
+            content += f"{i}. [{source['title']}]({source['url']})\n"
+        print(f"📚 Found {len(sources)} web search sources")
+    
+    return content
+
+def convert_tools_for_responses_api(chat_tools: List[Dict]) -> List[Dict]:
+    """Chat Completions API 도구를 Responses API 형식으로 변환"""
+    responses_tools = []
+    
+    for tool in chat_tools:
+        if tool.get("type") == "function":
+            # Google 함수들을 Responses API 형식으로 변환
+            responses_tools.append({
+                "type": "function",
+                "function": tool["function"]
+            })
+    
+    return responses_tools
+
+async def process_tool_calls_in_response(response) -> str:
+    """Responses API에서 도구 호출 결과 처리"""
+    content = ""
+    
+    for output_item in response.output:
+        if output_item.type == 'message' and hasattr(output_item, 'content'):
+            for content_item in output_item.content:
+                if content_item.type == 'output_text':
+                    content += content_item.text
+                elif content_item.type == 'tool_call':
+                    # 도구 호출 실행
+                    function_name = content_item.function.name
+                    function_args = json.loads(content_item.function.arguments)
+                    
+                    print(f"🔧 Executing tool: {function_name}({function_args})")
+                    result = await execute_google_function(function_name, function_args)
+                    
+                    # 결과 포맷팅
+                    if function_name == "get_calendar_events" and isinstance(result, list):
+                        content += "\n\n" + format_calendar_events_as_table(result)
+                    else:
+                        content += f"\n\n**{function_name} 결과:**\n{json.dumps(result, ensure_ascii=False, indent=2)}"
+    
+    return content
+
+async def fallback_to_chat_completions(
+    model: str, 
+    messages: List[Dict], 
+    tools: List[Dict],
+    model_config: Dict
+) -> str:
+    """Chat Completions API로 폴백 (기존 버전)"""
+    print("⚠️ Falling back to Chat Completions API")
+    
+    chat_params = {
+        "model": model,
+        "messages": messages,
+        "max_tokens": model_config["max_tokens"],
+        "temperature": model_config["temperature"]
+    }
+    
+    if tools:
+        chat_params["tools"] = tools
+        chat_params["tool_choice"] = "auto"
+    
+    response = await client.chat.completions.create(**chat_params)
+    
+    # Function calls 처리
+    if response.choices[0].message.tool_calls:
+        content = response.choices[0].message.content or ""
+        
+        for tool_call in response.choices[0].message.tool_calls:
+            function_name = tool_call.function.name
+            function_args = json.loads(tool_call.function.arguments)
+            
+            result = await execute_google_function(function_name, function_args)
+            
+            if function_name == "get_calendar_events" and isinstance(result, list):
+                content += "\n\n" + format_calendar_events_as_table(result)
+            else:
+                content += f"\n\n**{function_name} 결과:**\n{json.dumps(result, ensure_ascii=False, indent=2)}"
+        
+        return content
+    
+    return response.choices[0].message.content
+
+async def safe_fallback_to_chat_completions(
+    model: str, 
+    messages: List[Dict], 
+    tools: List[Dict],
+    model_config: Dict,
+    user_content: str
+) -> str:
+    """안전한 Chat Completions API 폴백 (에러 처리 포함)"""
+    print("🛡️ Safe fallback to Chat Completions API")
+    
+    async def chat_call():
+        chat_params = {
+            "model": model,
+            "messages": messages,
+            "max_tokens": model_config["max_tokens"],
+            "temperature": model_config["temperature"]
+        }
+        
+        if tools:
+            chat_params["tools"] = tools
+            chat_params["tool_choice"] = "auto"
+        
+        return await client.chat.completions.create(**chat_params)
+    
+    response = await safe_openai_call_with_retry(
+        chat_call, 
+        max_retries=2,  # 폴백이므로 재시도 횟수 줄임
+        user_content=user_content
+    )
+    
+    if isinstance(response, dict) and "error" in response:
+        return response["error"]
+    
+    # Function calls 처리
+    if response.choices[0].message.tool_calls:
+        content = response.choices[0].message.content or ""
+        
+        for tool_call in response.choices[0].message.tool_calls:
+            function_name = tool_call.function.name
+            function_args = json.loads(tool_call.function.arguments)
+            
+            result = await execute_google_function(function_name, function_args)
+            
+            if function_name == "get_calendar_events" and isinstance(result, list):
+                content += "\n\n" + format_calendar_events_as_table(result)
+            else:
+                content += f"\n\n**{function_name} 결과:**\n{json.dumps(result, ensure_ascii=False, indent=2)}"
+        
+        return content
+    
+    return response.choices[0].message.content
+
+# Assistant API 관련 함수들
+async def get_or_create_assistant(session_id: str, model: str, instructions: str = None) -> str:
+    """세션용 Assistant를 가져오거나 생성"""
+    
+    # 이미 Assistant가 있는지 확인
+    if session_id in assistants_db:
+        assistant_id = assistants_db[session_id]
+        try:
+            # Assistant 존재 확인
+            assistant = await client.beta.assistants.retrieve(assistant_id)
+            print(f"🤖 Using existing assistant: {assistant_id}")
+            return assistant_id
+        except Exception as e:
+            print(f"⚠️ Existing assistant not found: {e}")
+            # Assistant가 삭제되었다면 새로 생성
+            del assistants_db[session_id]
+    
+    # 새 Assistant 생성
+    try:
+        print(f"🆕 Creating new assistant for session: {session_id}")
+        
+        # Google 도구들을 Assistant 형식으로 변환
+        tools = []
+        if GOOGLE_SERVICES_AVAILABLE and auth_service.is_authenticated():
+            tools.extend(get_google_tools())
+            print(f"🛠️ Added {len(tools)} Google tools to assistant")
+        
+        # 벡터 스토어 생성 또는 가져오기 (선택적)
+        tool_resources = {}
+        try:
+            vector_store_id = await create_or_get_vector_store(session_id)
+            if vector_store_id:
+                tool_resources["file_search"] = {
+                    "vector_store_ids": [vector_store_id]
+                }
+                # 파일 검색 도구 추가
+                tools.append({"type": "file_search"})
+                print(f"🗂️ Added vector store to assistant: {vector_store_id}")
+        except Exception as vs_error:
+            print(f"⚠️ Vector store creation failed, continuing without: {vs_error}")
+        
+        # instructions가 제공되지 않은 경우 기본값 사용
+        if not instructions:
+            instructions = """당신은 NSales Pro의 전문적인 영업 AI 도우미입니다. 
+
+주요 역할:
+- 영업 데이터 분석 및 인사이트 제공
+- 프로젝트 정보 조회 및 관리 지원
+- 업무 관련 질문에 대한 전문적 답변
+- Google Calendar 및 Gmail 통합 기능 활용
+
+지침:
+- 항상 한국어로 친근하고 전문적으로 답변하세요
+- 이전 대화 내용을 기억하고 문맥을 유지하세요
+- Google 서비스 도구를 적극 활용하여 실제 데이터를 제공하세요
+- 최신 정보가 필요한 경우 웹 검색을 활용하세요
+
+Google 서비스 멘션:
+- @캘린더 → 캘린더 일정 조회
+- @메일 → 이메일 조회/발송  
+- @일정생성 → 새 일정 생성
+- @빈시간 → 빈 시간 검색"""
+
+        # Assistant 생성 (벡터 스토어 리소스 포함)
+        assistant_params = {
+            "name": f"NSales Pro Assistant - {session_id[:8]}",
+            "instructions": instructions,
+            "model": model,
+            "tools": tools
+        }
+        
+        # 벡터 스토어가 있는 경우 tool_resources 추가
+        if tool_resources:
+            assistant_params["tool_resources"] = tool_resources
+        
+        assistant = await client.beta.assistants.create(**assistant_params)
+        
+        assistant_id = assistant.id
+        assistants_db[session_id] = assistant_id
+        print(f"✅ Created assistant: {assistant_id}")
+        
+        return assistant_id
+        
+    except Exception as e:
+        print(f"🚨 Failed to create assistant: {e}")
+        raise e
+
+async def get_or_create_thread(session_id: str) -> str:
+    """세션용 Thread를 가져오거나 생성하고 기존 대화 히스토리 동기화"""
+    
+    # 이미 Thread가 있는지 확인
+    if session_id in threads_db:
+        thread_id = threads_db[session_id]
+        try:
+            # Thread 존재 확인
+            thread = await client.beta.threads.retrieve(thread_id)
+            print(f"🧵 Using existing thread: {thread_id}")
+            return thread_id
+        except Exception as e:
+            print(f"⚠️ Existing thread not found: {e}")
+            # Thread가 삭제되었다면 새로 생성
+            del threads_db[session_id]
+    
+    # 새 Thread 생성
+    try:
+        print(f"🆕 Creating new thread for session: {session_id}")
+        
+        # 기존 세션 메시지들을 Thread에 추가할 메시지로 준비
+        initial_messages = []
+        session_messages = messages_db.get(session_id, [])
+        
+        # 최근 20개 메시지만 Thread에 포함 (토큰 절약)
+        recent_messages = session_messages[-20:] if len(session_messages) > 20 else session_messages
+        
+        for msg in recent_messages:
+            # Assistant API Thread는 system 메시지를 지원하지 않으므로 제외
+            if msg.get("role") in ["user", "assistant"]:
+                initial_messages.append({
+                    "role": msg["role"],
+                    "content": msg["content"]
+                })
+        
+        # Thread 생성 (기존 메시지 포함)
+        if initial_messages:
+            thread = await client.beta.threads.create(messages=initial_messages)
+            print(f"📚 Thread created with {len(initial_messages)} existing messages")
+        else:
+            thread = await client.beta.threads.create()
+            print(f"📝 Empty thread created")
+        
+        thread_id = thread.id
+        threads_db[session_id] = thread_id
+        print(f"✅ Created thread: {thread_id}")
+        
+        return thread_id
+        
+    except Exception as e:
+        print(f"🚨 Failed to create thread: {e}")
+        raise e
+
+async def create_response_with_assistant_api(
+    session_id: str,
+    user_input: str,
+    model: str,
+    model_config: Dict,
+    instructions: str = None
+) -> str:
+    """Assistant API를 사용한 응답 생성"""
+    
+    try:
+        print(f"🎯 Using Assistant API for session: {session_id}")
+        print(f"🔍 Session messages count: {len(messages_db.get(session_id, []))}")
+        
+        # Assistant와 Thread 준비
+        assistant_id = await get_or_create_assistant(session_id, model, instructions)
+        thread_id = await get_or_create_thread(session_id)
+        
+        print(f"📝 Assistant ID: {assistant_id}")
+        print(f"🧵 Thread ID: {thread_id}")
+        
+        # 사용자 메시지를 Thread에 추가
+        await client.beta.threads.messages.create(
+            thread_id=thread_id,
+            role="user",
+            content=user_input
+        )
+        
+        # Run 생성 및 실행
+        async def assistant_call():
+            return await client.beta.threads.runs.create_and_poll(
+                thread_id=thread_id,
+                assistant_id=assistant_id,
+                timeout=60  # 60초 타임아웃
+            )
+        
+        run = await safe_openai_call_with_retry(assistant_call, user_content=user_input)
+        
+        if isinstance(run, dict) and "error" in run:
+            return run["error"]
+        
+        # Run 상태 확인
+        if run.status == 'completed':
+            # 최신 메시지 가져오기
+            messages = await client.beta.threads.messages.list(
+                thread_id=thread_id,
+                order="desc",
+                limit=1
+            )
+            
+            if messages.data:
+                latest_message = messages.data[0]
+                if latest_message.role == "assistant" and latest_message.content:
+                    # 텍스트 내용 추출
+                    content = ""
+                    for content_block in latest_message.content:
+                        if content_block.type == "text":
+                            content += content_block.text.value
+                    
+                    print(f"✅ Assistant response completed")
+                    return content
+        
+        elif run.status == 'requires_action':
+            # 도구 호출 처리
+            print(f"🔧 Assistant requires action: tool calls")
+            return await handle_assistant_tool_calls(run, thread_id)
+        
+        elif run.status in ['failed', 'expired', 'cancelled']:
+            error_msg = f"Assistant 실행 실패: {run.status}"
+            if hasattr(run, 'last_error') and run.last_error:
+                error_msg += f" - {run.last_error.message}"
+            return error_msg
+        
+        else:
+            return f"Assistant 실행 상태: {run.status}. 잠시 후 다시 시도해주세요."
+            
+    except Exception as e:
+        return handle_openai_error(e, user_content=user_input)
+
+async def handle_assistant_tool_calls(run, thread_id: str) -> str:
+    """Assistant의 도구 호출 처리"""
+    
+    try:
+        tool_outputs = []
+        
+        for tool_call in run.required_action.submit_tool_outputs.tool_calls:
+            function_name = tool_call.function.name
+            function_args = json.loads(tool_call.function.arguments)
+            
+            print(f"🔧 Assistant tool call: {function_name}({function_args})")
+            
+            # Google 함수 실행
+            result = await execute_google_function(function_name, function_args)
+            
+            # 결과 포맷팅
+            if function_name == "get_calendar_events" and isinstance(result, list):
+                output = format_calendar_events_as_table(result)
+            else:
+                output = json.dumps(result, ensure_ascii=False, indent=2)
+            
+            tool_outputs.append({
+                "tool_call_id": tool_call.id,
+                "output": output
+            })
+        
+        # 도구 출력 제출 및 Run 완료 대기
+        completed_run = await client.beta.threads.runs.submit_tool_outputs_and_poll(
+            thread_id=thread_id,
+            run_id=run.id,
+            tool_outputs=tool_outputs
+        )
+        
+        if completed_run.status == 'completed':
+            # 최신 응답 가져오기
+            messages = await client.beta.threads.messages.list(
+                thread_id=thread_id,
+                order="desc",
+                limit=1
+            )
+            
+            if messages.data:
+                latest_message = messages.data[0]
+                if latest_message.role == "assistant" and latest_message.content:
+                    content = ""
+                    for content_block in latest_message.content:
+                        if content_block.type == "text":
+                            content += content_block.text.value
+                    
+                    print(f"✅ Assistant tool calls completed")
+                    return content
+        
+        return f"도구 호출 완료되었지만 응답을 가져올 수 없습니다. 상태: {completed_run.status}"
+        
+    except Exception as e:
+        print(f"🚨 Assistant tool call error: {e}")
+        return f"도구 실행 중 오류가 발생했습니다: {str(e)}"
+
+# 체계적인 OpenAI 에러 처리 함수들
+def handle_openai_error(e: Exception, user_content: str = "", request_id: str = None) -> str:
+    """
+    OpenAI API 에러를 체계적으로 처리하고 사용자 친화적인 메시지 반환
+    """
+    print(f"🚨 OpenAI API Error: {type(e).__name__}: {e}")
+    
+    # Request ID 로깅 (디버깅용)
+    if request_id:
+        print(f"🔍 Request ID: {request_id}")
+    elif hasattr(e, 'request_id'):
+        print(f"🔍 Request ID: {e.request_id}")
+    
+    if isinstance(e, openai.APIConnectionError):
+        return handle_connection_error(e)
+    elif isinstance(e, openai.RateLimitError):
+        return handle_rate_limit_error(e)
+    elif isinstance(e, openai.AuthenticationError):
+        return handle_auth_error(e)
+    elif isinstance(e, openai.PermissionDeniedError):
+        return handle_permission_error(e)
+    elif isinstance(e, openai.NotFoundError):
+        return handle_not_found_error(e)
+    elif isinstance(e, openai.UnprocessableEntityError):
+        return handle_validation_error(e, user_content)
+    elif isinstance(e, openai.InternalServerError):
+        return handle_server_error(e)
+    elif isinstance(e, openai.BadRequestError):
+        return handle_bad_request_error(e, user_content)
+    else:
+        return handle_generic_error(e, user_content)
+
+def handle_connection_error(e: openai.APIConnectionError) -> str:
+    """네트워크 연결 에러 처리"""
+    print(f"🌐 Connection Error: {e}")
+    return "네트워크 연결에 문제가 있습니다. 인터넷 연결을 확인하고 잠시 후 다시 시도해주세요."
+
+def handle_rate_limit_error(e: openai.RateLimitError) -> str:
+    """API 속도 제한 에러 처리"""
+    print(f"⏱️ Rate Limit Error: {e}")
+    return "현재 요청이 많아 처리가 지연되고 있습니다. 잠시 후 다시 시도해주세요."
+
+def handle_auth_error(e: openai.AuthenticationError) -> str:
+    """인증 에러 처리"""
+    print(f"🔐 Authentication Error: {e}")
+    return "AI 서비스 인증에 문제가 있습니다. 관리자에게 문의해주세요."
+
+def handle_permission_error(e: openai.PermissionDeniedError) -> str:
+    """권한 에러 처리"""
+    print(f"🚫 Permission Error: {e}")
+    return "AI 서비스 접근 권한이 없습니다. 관리자에게 문의해주세요."
+
+def handle_not_found_error(e: openai.NotFoundError) -> str:
+    """리소스 없음 에러 처리"""
+    print(f"❓ Not Found Error: {e}")
+    return "요청한 AI 모델이나 리소스를 찾을 수 없습니다. 다른 모델을 선택해주세요."
+
+def handle_validation_error(e: openai.UnprocessableEntityError, user_content: str) -> str:
+    """입력 검증 에러 처리"""
+    print(f"⚠️ Validation Error: {e}")
+    
+    error_message = str(e).lower()
+    if "context_length_exceeded" in error_message or "maximum context length" in error_message:
+        return "메시지가 너무 길어서 처리할 수 없습니다. 더 짧은 메시지로 나누어 보내주세요."
+    elif "invalid_request" in error_message:
+        return "요청 형식에 문제가 있습니다. 다시 시도해주세요."
+    else:
+        return f"입력 내용에 문제가 있습니다: {user_content[:50]}{'...' if len(user_content) > 50 else ''}"
+
+def handle_server_error(e: openai.InternalServerError) -> str:
+    """서버 에러 처리"""
+    print(f"🔥 Server Error: {e}")
+    return "AI 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요."
+
+def handle_bad_request_error(e: openai.BadRequestError, user_content: str) -> str:
+    """잘못된 요청 에러 처리"""
+    print(f"❌ Bad Request Error: {e}")
+    
+    error_message = str(e).lower()
+    if "safety" in error_message or "policy" in error_message:
+        return "요청한 내용이 AI 사용 정책에 위배됩니다. 다른 방식으로 질문해주세요."
+    elif "model" in error_message:
+        return "선택한 AI 모델에 문제가 있습니다. 다른 모델을 선택해주세요."
+    else:
+        return "요청에 문제가 있습니다. 내용을 확인하고 다시 시도해주세요."
+
+def handle_generic_error(e: Exception, user_content: str) -> str:
+    """일반 에러 처리"""
+    print(f"🔍 Generic Error: {type(e).__name__}: {e}")
+    return f"예상치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+
+async def safe_openai_call_with_retry(
+    api_call_func,
+    max_retries: int = 3,
+    base_delay: float = 1.0,
+    user_content: str = ""
+):
+    """
+    재시도 로직이 포함된 안전한 OpenAI API 호출
+    """
+    last_exception = None
+    
+    for attempt in range(max_retries):
+        try:
+            # API 호출 시도
+            response = await api_call_func()
+            
+            # Request ID 추출 및 로깅
+            if hasattr(response, '_request_id'):
+                print(f"✅ OpenAI Request ID: {response._request_id}")
+            
+            return response
+            
+        except (openai.RateLimitError, openai.APIConnectionError, openai.InternalServerError) as e:
+            last_exception = e
+            
+            # 재시도 가능한 에러들
+            if attempt < max_retries - 1:
+                delay = base_delay * (2 ** attempt)  # 지수 백오프
+                print(f"🔄 Retry {attempt + 1}/{max_retries} after {delay}s due to: {type(e).__name__}")
+                await asyncio.sleep(delay)
+            else:
+                print(f"❌ Max retries exceeded for {type(e).__name__}")
+                
+        except Exception as e:
+            # 재시도 불가능한 에러들
+            last_exception = e
+            print(f"💥 Non-retryable error: {type(e).__name__}: {e}")
+            break
+    
+    # 모든 재시도 실패 시 에러 처리
+    return {"error": handle_openai_error(last_exception, user_content)}
 
 # Pydantic 모델들
 class ChatMessage(BaseModel):
@@ -447,58 +1497,231 @@ class ChatStreamChunk(BaseModel):
     sessionId: str
     isComplete: bool = False
 
-# 파일 처리 함수들
-async def extract_text_from_pdf(file_content: bytes) -> str:
-    """PDF 파일에서 텍스트 추출"""
+# 📁 개선된 파일 처리 시스템 (OpenAI Files API + 로컬 폴백)
+async def process_file_with_openai(file_content: bytes, filename: str, content_type: str, session_id: str = None, add_to_vector_store: bool = False) -> str:
+    """OpenAI Files API를 사용한 고급 파일 처리 (벡터 스토어 통합)"""
+    try:
+        print(f"🔍 Processing file with OpenAI: {filename} ({content_type})")
+        
+        # OpenAI Files API에 파일 업로드
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{filename}") as temp_file:
+            temp_file.write(file_content)
+            temp_file.flush()
+            
+            # OpenAI Files API 업로드
+            file_object = await client.files.create(
+                file=open(temp_file.name, "rb"),
+                purpose="assistants"  # 문서 분석용
+            )
+            
+            print(f"✅ File uploaded to OpenAI: {file_object.id}")
+            
+            # 파일 처리 완료까지 대기
+            await client.files.wait_for_processing(file_object.id)
+            
+            # 벡터 스토어에 추가 (선택적)
+            if add_to_vector_store and session_id:
+                try:
+                    vector_store_id = await create_or_get_vector_store(session_id)
+                    if await add_file_to_vector_store(vector_store_id, file_object.id):
+                        print(f"📚 File added to vector store for future reference")
+                        # 벡터 스토어에 추가된 경우 파일을 삭제하지 않음
+                        file_should_be_deleted = False
+                    else:
+                        file_should_be_deleted = True
+                except Exception as vs_error:
+                    print(f"⚠️ Failed to add file to vector store: {vs_error}")
+                    file_should_be_deleted = True
+            else:
+                file_should_be_deleted = True
+            
+            # Assistant API를 통해 파일 분석
+            analysis_result = await analyze_file_with_assistant(file_object.id, filename)
+            
+            # 파일 정리 (벡터 스토어에 추가되지 않은 경우만)
+            if file_should_be_deleted:
+                try:
+                    await client.files.delete(file_object.id)
+                    print(f"🗑️ Cleaned up file: {file_object.id}")
+                except:
+                    pass  # 삭제 실패는 무시
+            
+            # 임시 파일 정리
+            os.unlink(temp_file.name)
+            
+            return analysis_result
+            
+    except Exception as e:
+        print(f"🚨 OpenAI Files API error: {e}")
+        # 폴백: 로컬 처리
+        return await process_file_locally(file_content, filename, content_type)
+
+async def analyze_file_with_assistant(file_id: str, filename: str) -> str:
+    """Assistant API를 사용하여 파일 분석"""
+    try:
+        # 임시 Assistant 생성 (파일 분석 전용)
+        assistant = await client.beta.assistants.create(
+            name="Document Analyzer",
+            instructions="""당신은 전문적인 문서 분석 AI입니다. 
+            
+업무:
+- 업로드된 문서의 내용을 정확하게 추출하고 분석
+- 한국어와 영어 문서 모두 처리 가능
+- 문서의 핵심 내용, 구조, 중요 정보를 요약
+
+응답 형식:
+1. 📄 문서 요약: 주요 내용 요약
+2. 📋 핵심 정보: 중요한 데이터, 수치, 날짜 등
+3. 📝 전체 텍스트: 원본 텍스트 (구조화된 형태)
+
+한국어로 응답해주세요.""",
+            model="gpt-4o",
+            tools=[{"type": "file_search"}]
+        )
+        
+        # Thread 생성
+        thread = await client.beta.threads.create()
+        
+        # 파일과 함께 메시지 생성
+        message = await client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=f"다음 파일을 분석해주세요: {filename}",
+            attachments=[{
+                "file_id": file_id,
+                "tools": [{"type": "file_search"}]
+            }]
+        )
+        
+        # Assistant 실행
+        run = await client.beta.threads.runs.create_and_poll(
+            thread_id=thread.id,
+            assistant_id=assistant.id,
+            timeout=60
+        )
+        
+        if run.status == 'completed':
+            # 응답 메시지 가져오기
+            messages = await client.beta.threads.messages.list(
+                thread_id=thread.id,
+                order="desc",
+                limit=1
+            )
+            
+            if messages.data:
+                response_content = ""
+                for content_block in messages.data[0].content:
+                    if content_block.type == "text":
+                        response_content += content_block.text.value
+                
+                # 정리
+                await client.beta.assistants.delete(assistant.id)
+                
+                return response_content
+        
+        # 실패 시 폴백
+        await client.beta.assistants.delete(assistant.id)
+        raise Exception(f"Assistant API run failed: {run.status}")
+        
+    except Exception as e:
+        print(f"🚨 Assistant file analysis error: {e}")
+        raise e
+
+async def process_file_locally(file_content: bytes, filename: str, content_type: str) -> str:
+    """로컬 파일 처리 (폴백)"""
+    print(f"🔄 Fallback to local processing: {filename}")
+    
+    try:
+        if content_type == "application/pdf" or filename.lower().endswith('.pdf'):
+            return await extract_text_from_pdf_local(file_content)
+        elif content_type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"] or filename.lower().endswith('.docx'):
+            return await extract_text_from_docx_local(file_content)
+        elif content_type.startswith('image/'):
+            return await extract_text_from_image_local(file_content)
+        elif content_type == "text/plain" or filename.lower().endswith('.txt'):
+            return file_content.decode('utf-8', errors='ignore')
+        else:
+            return f"지원하지 않는 파일 형식: {content_type}"
+    except Exception as e:
+        return f"로컬 파일 처리 오류: {str(e)}"
+
+# 로컬 처리 함수들 (기존 함수들을 이름 변경)
+async def extract_text_from_pdf_local(file_content: bytes) -> str:
+    """PDF 파일에서 텍스트 추출 (로컬)"""
     try:
         pdf_file = io.BytesIO(file_content)
         pdf_reader = PyPDF2.PdfReader(pdf_file)
         text = ""
         for page in pdf_reader.pages:
             text += page.extract_text() + "\n"
-        return text.strip()
+        return f"📄 PDF 문서 내용:\n\n{text.strip()}"
     except Exception as e:
         return f"PDF 읽기 오류: {str(e)}"
 
-async def extract_text_from_docx(file_content: bytes) -> str:
-    """DOCX 파일에서 텍스트 추출"""
+async def extract_text_from_docx_local(file_content: bytes) -> str:
+    """DOCX 파일에서 텍스트 추출 (로컬)"""
     try:
         doc_file = io.BytesIO(file_content)
         doc = docx.Document(doc_file)
         text = ""
         for paragraph in doc.paragraphs:
             text += paragraph.text + "\n"
-        return text.strip()
+        return f"📄 Word 문서 내용:\n\n{text.strip()}"
     except Exception as e:
         return f"DOCX 읽기 오류: {str(e)}"
 
-async def extract_text_from_image(file_content: bytes) -> str:
-    """이미지에서 OCR로 텍스트 추출"""
+async def extract_text_from_image_local(file_content: bytes) -> str:
+    """이미지에서 OCR로 텍스트 추출 (로컬)"""
     try:
         image = Image.open(io.BytesIO(file_content))
         text = pytesseract.image_to_string(image, lang='kor+eng')
-        return text.strip() if text.strip() else "이미지에서 텍스트를 찾을 수 없습니다."
+        extracted_text = text.strip() if text.strip() else "이미지에서 텍스트를 찾을 수 없습니다."
+        return f"🖼️ 이미지 OCR 결과:\n\n{extracted_text}"
     except Exception as e:
         return f"이미지 OCR 오류: {str(e)}"
 
-async def process_uploaded_file(file: UploadFile) -> str:
-    """업로드된 파일을 처리하여 텍스트 추출"""
+async def process_uploaded_file(file: UploadFile, session_id: str = None, add_to_vector_store: bool = False) -> str:
+    """업로드된 파일을 처리하여 텍스트 추출 (OpenAI Files API 우선 사용, 벡터 스토어 통합)"""
     try:
         file_content = await file.read()
-        file_type = file.content_type.lower()
-        filename = file.filename.lower()
+        file_type = file.content_type.lower() if file.content_type else ""
+        filename = file.filename or "unknown_file"
         
-        if file_type == "application/pdf" or filename.endswith('.pdf'):
-            return await extract_text_from_pdf(file_content)
-        elif file_type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"] or filename.endswith('.docx'):
-            return await extract_text_from_docx(file_content)
-        elif file_type.startswith('image/'):
-            return await extract_text_from_image(file_content)
-        elif file_type == "text/plain" or filename.endswith('.txt'):
-            return file_content.decode('utf-8', errors='ignore')
+        print(f"📁 Processing uploaded file: {filename} ({file_type})")
+        
+        # 파일 크기 확인 (OpenAI 제한: 512MB)
+        file_size_mb = len(file_content) / (1024 * 1024)
+        
+        # 지원되는 파일 형식 확인
+        supported_types = [
+            "application/pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "text/plain"
+        ]
+        
+        supported_extensions = [".pdf", ".docx", ".txt"]
+        is_supported_type = (
+            file_type in supported_types or 
+            any(filename.lower().endswith(ext) for ext in supported_extensions) or
+            file_type.startswith('image/')
+        )
+        
+        # OpenAI Files API 사용 조건
+        use_openai_files = (
+            is_supported_type and 
+            file_size_mb < 500 and  # 512MB 제한보다 약간 낮게
+            file_type != "text/plain"  # 텍스트 파일은 로컬에서 처리
+        )
+        
+        if use_openai_files:
+            print(f"🚀 Using OpenAI Files API for enhanced processing")
+            return await process_file_with_openai(file_content, filename, file_type, session_id, add_to_vector_store)
         else:
-            return f"지원하지 않는 파일 형식: {file_type}"
+            print(f"🔄 Using local processing (file too large or unsupported)")
+            return await process_file_locally(file_content, filename, file_type)
+            
     except Exception as e:
+        print(f"🚨 File processing error: {e}")
         return f"파일 처리 오류: {str(e)}"
 
 # 유틸리티 함수들
@@ -725,6 +1948,36 @@ async def get_message_history(session_id: str):
         totalCount=len(messages)
     )
 
+@app.get("/api/v1/chat/sessions/{session_id}/tokens")
+async def get_token_usage(session_id: str):
+    """세션의 토큰 사용량 정보 조회"""
+    if session_id not in sessions_db:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # 현재 토큰 사용량 계산
+    current_messages = messages_db.get(session_id, [])
+    current_tokens = calculate_conversation_tokens(current_messages)
+    
+    # 저장된 토큰 사용량 정보
+    usage_info = token_usage_db.get(session_id, {
+        "total_tokens": current_tokens,
+        "messages_count": len(current_messages),
+        "optimizations": 0,
+        "tokens_saved": 0,
+        "last_updated": datetime.now().isoformat()
+    })
+    
+    # 실시간 정보 업데이트
+    usage_info.update({
+        "current_tokens": current_tokens,
+        "max_tokens": MAX_CONVERSATION_TOKENS,
+        "optimization_threshold": SUMMARY_TRIGGER_TOKENS,
+        "has_summary": session_id in conversation_summaries,
+        "efficiency_percentage": round((1 - current_tokens / MAX_CONVERSATION_TOKENS) * 100, 1) if current_tokens < MAX_CONVERSATION_TOKENS else 0
+    })
+    
+    return usage_info
+
 @app.post("/api/v1/chat/messages/with-files")
 async def send_message_with_files(
     content: str = Form(...),
@@ -740,13 +1993,14 @@ async def send_message_with_files(
         
         session_messages = messages_db.get(sessionId, [])
         
-        # 파일 처리
+        # 파일 처리 (벡터 스토어에 자동 추가)
         file_contents = []
         if files:
             for file in files:
                 if file.filename:  # 파일이 실제로 업로드된 경우
                     print(f"Processing file: {file.filename}, type: {file.content_type}")
-                    file_text = await process_uploaded_file(file)
+                    # 파일을 벡터 스토어에 추가하여 향후 검색 가능하도록 함
+                    file_text = await process_uploaded_file(file, sessionId, add_to_vector_store=True)
                     file_contents.append(f"[파일: {file.filename}]\n{file_text}")
         
         # 메시지 내용 구성 (텍스트 + 파일 내용)
@@ -790,106 +2044,34 @@ async def send_message_with_files(
             print(f"Conversation length: {len(conversation_messages)} messages")
             print(f"Files processed: {len(file_contents)}")
             
-            # 웹 검색 여부는 form 데이터에서 확인
-            web_search = form.get('webSearch', 'false').lower() == 'true'
-            needs_web_search = web_search
+            # 웹 검색 여부는 form 데이터에서 확인 (일단 False로 설정)
+            needs_web_search = False  # 파일 업로드 시에는 웹 검색 비활성화
             
-            if needs_web_search and model_config["supports_web_search"]:
-                print("🔍 Web search detected - using Responses API with web search")
-                try:
-                    # OpenAI Responses API를 사용한 웹 검색
-                    response = await client.responses.create(
-                        model=selected_model,
-                        input=content,
-                        tools=[
-                            {
-                                "type": "web_search"
-                            }
-                        ]
-                    )
-                    
-                    # Extract message content from output
-                    ai_content = ""
-                    sources = []
-                    
-                    for output_item in response.output:
-                        if output_item.type == 'message' and hasattr(output_item, 'content'):
-                            for content_item in output_item.content:
-                                if content_item.type == 'output_text':
-                                    ai_content += content_item.text
-                                    
-                                    # Extract URL citations from annotations
-                                    if hasattr(content_item, 'annotations'):
-                                        for annotation in content_item.annotations:
-                                            if annotation.type == 'url_citation':
-                                                sources.append({
-                                                    'title': getattr(annotation, 'title', ''),
-                                                    'url': getattr(annotation, 'url', ''),
-                                                    'snippet': ''
-                                                })
-                    
-                    # Add sources to the content if found
-                    if sources:
-                        sources_text = "\n\n**참고 출처:**\n"
-                        for i, source in enumerate(sources, 1):
-                            sources_text += f"{i}. [{source['title']}]({source['url']})\n"
-                        ai_content += sources_text
-                        print(f"📚 Found {len(sources)} web search sources")
-                except Exception as e:
-                    print(f"Responses API error, falling back to chat completions: {e}")
-                    # Responses API가 작동하지 않으면 일반 채팅으로 폴백
-                    response = await client.chat.completions.create(
-                        model="gpt-4o",
-                        messages=conversation_messages,
-                        max_tokens=1500,
-                        temperature=0.7
-                    )
-                    ai_content = response.choices[0].message.content
-            else:
-                # 기본 채팅 API 호출 (Google 도구 포함)
-                chat_params = {
-                    "model": selected_model,
-                    "messages": conversation_messages,
-                    "max_tokens": model_config["max_tokens"],
-                    "temperature": model_config["temperature"]
-                }
-                
-                # Google 도구가 있으면 추가
-                if available_tools:
-                    chat_params["tools"] = available_tools
-                    chat_params["tool_choice"] = "auto"
-                    print(f"🛠️ Function Calling 활성화: {len(available_tools)}개 도구")
-                    print(f"🔍 도구 목록: {[tool['function']['name'] for tool in available_tools]}")
-                    print(f"🔍 요청 내용: {request.content}")
-                
-                response = await client.chat.completions.create(**chat_params)
-                
-                # Function calls가 있는지 확인
-                if response.choices[0].message.tool_calls:
-                    print(f"🔧 Function 호출 감지: {len(response.choices[0].message.tool_calls)}개")
-                    
-                    function_results = []
-                    for tool_call in response.choices[0].message.tool_calls:
-                        function_name = tool_call.function.name
-                        function_args = json.loads(tool_call.function.arguments)
-                        
-                        print(f"🔧 실행 중: {function_name}({function_args})")
-                        result = await execute_google_function(function_name, function_args)
-                        function_results.append(f"[{function_name} 결과]\n{json.dumps(result, ensure_ascii=False, indent=2)}")
-                    
-                    # 함수 결과를 AI 응답에 포함
-                    ai_content = response.choices[0].message.content or ""
-                    if function_results:
-                        ai_content += "\n\n" + "\n\n".join(function_results)
-                        print(f"📋 함수 실행 결과가 응답에 추가됨")
-                else:
-                    ai_content = response.choices[0].message.content
+            # 파일이 포함된 시스템 프롬프트
+            system_prompt = "당신은 NSales Pro의 영업 AI 도우미입니다. 영업 데이터 분석, 프로젝트 정보 조회, 업무 관련 질문에 도움을 주세요. 한국어로 친근하고 전문적으로 답변해주세요. 첨부된 파일의 내용을 분석하여 관련된 답변을 제공해주세요."
+            
+            # 사용 가능한 도구 목록 구성
+            available_tools = []
+            if GOOGLE_SERVICES_AVAILABLE and auth_service.is_authenticated():
+                available_tools.extend(get_google_tools())
+            
+            # 최적의 OpenAI API 선택하여 사용
+            ai_content = await create_response_with_best_api(
+                sessionId,
+                selected_model,
+                system_prompt,
+                message_content,  # 파일 내용이 포함된 메시지
+                conversation_messages,
+                available_tools,
+                needs_web_search,
+                model_config
+            )
             
             print(f"OpenAI Response: {ai_content}")
             
         except Exception as e:
-            print(f"OpenAI API Error: {e}")
-            ai_content = f"죄송합니다. 현재 AI 서비스에 일시적인 문제가 있습니다. 첨부하신 파일을 포함한 '{content}'에 대한 답변을 준비하고 있습니다. 잠시 후 다시 시도해주세요."
+            # 개선된 에러 처리
+            ai_content = handle_openai_error(e, user_content=content)
         
         # AI 응답 저장
         ai_message = ChatMessage(
@@ -958,18 +2140,18 @@ async def send_message(request: ChatRequest):
     elif GOOGLE_SERVICES_AVAILABLE and auth_service.is_authenticated():
         system_prompt += "\n\n**Google 서비스 연동 안내:**\n사용자가 캘린더, 일정, 스케줄, Gmail, 이메일 관련 질문을 하면 다음 함수들을 적극 활용하세요:\n- get_calendar_events: 캘린더 일정 조회 (오늘, 이번주, 이번달 등)\n- create_calendar_event: 새 일정 생성\n- send_email: 이메일 전송\n- get_emails: 이메일 조회\n- find_free_time: 빈 시간 찾기\n\n사용자가 '캘린더', '일정', '스케줄' 등의 키워드를 사용하면 반드시 해당 함수를 호출하여 실제 데이터를 제공하세요."
     
-    # OpenAI API에 전달할 메시지 구성
-    conversation_messages = [
-        {"role": "system", "content": system_prompt}
-    ]
+    # 📊 토큰 최적화된 대화 메시지 구성
+    optimized_messages = await get_optimized_conversation_messages(request.sessionId, max_messages=18)
     
-    # 기존 대화 내용 추가 (최근 10개 메시지만 유지하여 토큰 절약)
-    recent_messages = session_messages[-20:] if len(session_messages) > 20 else session_messages
-    for msg in recent_messages:
-        conversation_messages.append({
-            "role": msg["role"],
-            "content": msg["content"]
-        })
+    conversation_messages = [{"role": "system", "content": system_prompt}]
+    
+    # 최적화된 메시지 추가
+    for msg in optimized_messages:
+        if msg.get("role") != "system":  # 시스템 메시지는 이미 추가됨
+            conversation_messages.append({
+                "role": msg["role"],
+                "content": msg["content"]
+            })
     
     # 현재 사용자 메시지 추가
     conversation_messages.append({"role": "user", "content": request.content})
@@ -984,134 +2166,31 @@ async def send_message(request: ChatRequest):
         available_tools.extend(get_google_tools())
         print(f"🛠️ Google 도구 {len(get_google_tools())}개 추가됨")
     
-    # OpenAI API 호출
+    # 개선된 OpenAI API 호출 (Responses API 우선 사용)
     try:
         print(f"Using model: {selected_model} ({model_config['name']})")
-        print(f"OpenAI API Key: {os.getenv('OPENAI_API_KEY')[:20]}...")  # 디버깅용
-        print(f"Conversation length: {len(conversation_messages)} messages")  # 디버깅용
+        print(f"Conversation length: {len(conversation_messages)} messages")
         
-        # 웹 검색 여부는 요청에서 확인
+        # 웹 검색 여부 확인
         needs_web_search = getattr(request, 'webSearch', False)
-        search_content = request.content
         
-        # 웹 검색은 지원하는 모델에서만 가능
-        if needs_web_search and model_config["supports_web_search"]:
-            print("🔍 Web search detected - using Responses API with web search")
-            try:
-                # OpenAI Responses API를 사용한 웹 검색
-                response = await client.responses.create(
-                    model=selected_model,
-                    input=search_content,
-                    tools=[
-                        {
-                            "type": "web_search"
-                        }
-                    ]
-                )
-                
-                # Extract message content from output
-                ai_content = ""
-                sources = []
-                
-                for output_item in response.output:
-                    if output_item.type == 'message' and hasattr(output_item, 'content'):
-                        for content_item in output_item.content:
-                            if content_item.type == 'output_text':
-                                ai_content += content_item.text
-                                
-                                # Extract URL citations from annotations
-                                if hasattr(content_item, 'annotations'):
-                                    for annotation in content_item.annotations:
-                                        if annotation.type == 'url_citation':
-                                            sources.append({
-                                                'title': getattr(annotation, 'title', ''),
-                                                'url': getattr(annotation, 'url', ''),
-                                                'snippet': ''
-                                            })
-                
-                # Add sources to the content if found
-                if sources:
-                    sources_text = "\n\n**참고 출처:**\n"
-                    for i, source in enumerate(sources, 1):
-                        sources_text += f"{i}. [{source['title']}]({source['url']})\n"
-                    ai_content += sources_text
-                    print(f"📚 Found {len(sources)} web search sources")
-            except Exception as e:
-                print(f"Responses API error, falling back to chat completions: {e}")
-                # Responses API가 작동하지 않으면 일반 채팅으로 폴백
-                response = await client.chat.completions.create(
-                    model=selected_model,
-                    messages=conversation_messages,
-                    max_tokens=model_config["max_tokens"],
-                    temperature=model_config["temperature"]
-                )
-                ai_content = response.choices[0].message.content
-        else:
-            # 기본 채팅 API 호출 (Google 도구 포함)
-            chat_params = {
-                "model": selected_model,
-                "messages": conversation_messages,
-                "max_tokens": model_config["max_tokens"],
-                "temperature": model_config["temperature"]
-            }
-            
-            # Google 도구가 있으면 추가
-            if available_tools:
-                chat_params["tools"] = available_tools
-                chat_params["tool_choice"] = "auto"
-                print(f"🛠️ Function Calling 활성화: {len(available_tools)}개 도구")
-                print(f"🔍 도구 목록: {[tool['function']['name'] for tool in available_tools]}")
-                print(f"🔍 요청 내용: {request.content}")
-            
-            response = await client.chat.completions.create(**chat_params)
-            
-            # Function calls가 있는지 확인
-            if response.choices[0].message.tool_calls:
-                print(f"🔧 Function 호출 감지: {len(response.choices[0].message.tool_calls)}개")
-                
-                function_results = []
-                for tool_call in response.choices[0].message.tool_calls:
-                    function_name = tool_call.function.name
-                    function_args = json.loads(tool_call.function.arguments)
-                    
-                    print(f"🔧 실행 중: {function_name}({function_args})")
-                    result = await execute_google_function(function_name, function_args)
-                    function_results.append(f"[{function_name} 결과]\n{json.dumps(result, ensure_ascii=False, indent=2)}")
-                
-                # 함수 결과가 있으면 AI가 해석하도록 처리
-                if function_results:
-                    # 첫 번째 함수 결과만 사용 (여러 함수 호출시 고려 필요)
-                    first_tool_call = response.choices[0].message.tool_calls[0]
-                    first_result = await execute_google_function(first_tool_call.function.name, json.loads(first_tool_call.function.arguments))
-                    
-                    # 결과가 빈 리스트이면 적절한 메시지로 변환
-                    if isinstance(first_result, list) and len(first_result) == 0:
-                        if first_tool_call.function.name == "get_calendar_events":
-                            ai_content = "해당 기간에 예정된 일정이 없습니다. 자유로운 시간을 보내세요! 😊"
-                        else:
-                            ai_content = "조회된 결과가 없습니다."
-                    elif "error" in str(first_result):
-                        ai_content = f"죄송합니다. {first_tool_call.function.name} 실행 중 문제가 발생했습니다: {first_result.get('error', str(first_result))}"
-                    else:
-                        # 캘린더 일정은 표 형태로 포맷팅
-                        if first_tool_call.function.name == "get_calendar_events" and isinstance(first_result, list):
-                            ai_content = format_calendar_events_as_table(first_result)
-                        else:
-                            # 다른 함수는 기본 JSON 형태
-                            ai_content = f"{response.choices[0].message.content or ''}\n\n조회 결과:\n{json.dumps(first_result, ensure_ascii=False, indent=2)}"
-                    
-                    print(f"📋 함수 결과 해석 완료: {first_tool_call.function.name}")
-                else:
-                    ai_content = response.choices[0].message.content or ""
-            else:
-                ai_content = response.choices[0].message.content
+        # 최적의 OpenAI API 선택하여 사용
+        ai_content = await create_response_with_best_api(
+            request.sessionId,
+            selected_model, 
+            system_prompt, 
+            request.content, 
+            conversation_messages,
+            available_tools,
+            needs_web_search,
+            model_config
+        )
         
-        print(f"OpenAI Response: {ai_content}")  # 디버깅용
+        print(f"OpenAI Response: {ai_content}")
         
     except Exception as e:
-        # OpenAI API 오류 시 폴백 응답
-        print(f"OpenAI API Error: {e}")  # 디버깅용
-        ai_content = f"죄송합니다. 현재 AI 서비스에 일시적인 문제가 있습니다. '{request.content}'에 대한 답변을 준비하고 있습니다. 잠시 후 다시 시도해주세요."
+        # 개선된 에러 처리
+        ai_content = handle_openai_error(e, user_content=request.content)
     
     # AI 응답 저장
     ai_message = ChatMessage(
@@ -1127,68 +2206,523 @@ async def send_message(request: ChatRequest):
     
     return ChatResponse(**ai_message.dict())
 
-# 스트리밍 채팅 (임시로 일반 API 사용)
+# 스트리밍 채팅 (통합 API 선택 로직 사용)
 @app.post("/api/v1/chat/stream")
 async def stream_chat(request: ChatRequest):
-    """스트리밍 채팅 API - 임시로 일반 API로 폴백"""
-    try:
-        # 일반 API로 처리
-        response = await send_message(request)
+    """통합 API 선택을 사용한 스트리밍 채팅"""
+    
+    # 세션 존재 확인
+    if request.sessionId not in sessions_db:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # 사용자 메시지 저장
+    user_message = ChatMessage(
+        id=generate_id(),
+        content=request.content,
+        role="user",
+        timestamp=datetime.now(),
+        sessionId=request.sessionId
+    )
+    
+    if request.sessionId not in messages_db:
+        messages_db[request.sessionId] = []
+    
+    messages_db[request.sessionId].append(user_message.dict())
+    
+    # 모델 선택 및 설정
+    selected_model = request.model if request.model in AVAILABLE_MODELS else "gpt-4o"
+    model_config = AVAILABLE_MODELS[selected_model]
+    
+    # 세션의 기존 메시지 히스토리 가져오기
+    session_messages = messages_db.get(request.sessionId, [])
+    
+    # Google 서비스 사용 안내를 포함한 시스템 프롬프트 구성
+    system_prompt = "당신은 NSales Pro의 영업 AI 도우미입니다. 영업 데이터 분석, 프로젝트 정보 조회, 업무 관련 질문에 도움을 주세요. 한국어로 친근하고 전문적으로 답변해주세요. 이전 대화 내용을 기억하고 문맥을 유지하여 답변하세요. 최신 정보가 필요하거나 실시간 데이터, 뉴스, 시장 동향 등을 질문받으면 웹 검색을 적극 활용하여 정확하고 최신의 정보를 제공하세요."
+    
+    # 멘션 기반 서비스 활성화 로직
+    mention_detected = False
+    google_mention_keywords = ['@캘린더', '@메일', '@일정생성', '@빈시간']
+    
+    for keyword in google_mention_keywords:
+        if keyword in request.content:
+            mention_detected = True
+            break
+    
+    # Google 서비스가 사용 가능하고 멘션이 감지된 경우 안내 추가
+    if GOOGLE_SERVICES_AVAILABLE and auth_service.is_authenticated() and mention_detected:
+        system_prompt += "\n\n**🎯 Google 서비스 멘션 감지됨:**\n사용자가 @멘션을 사용했습니다. 다음 함수를 반드시 호출하여 요청을 처리하세요:\n- @캘린더 → get_calendar_events 함수 호출\n- @메일 → get_emails 또는 send_email 함수 호출\n- @일정생성 → create_calendar_event 함수 호출\n- @빈시간 → find_free_time 함수 호출\n\n멘션이 포함된 요청은 반드시 해당 함수를 실행하여 실제 데이터를 제공해야 합니다."
+    elif GOOGLE_SERVICES_AVAILABLE and auth_service.is_authenticated():
+        system_prompt += "\n\n**🛠️ Google 서비스 활용 가능:**\n캘린더 조회, 이메일 관리, 일정 생성 등의 요청 시 Google 함수를 적극 활용하여 실제 데이터를 제공해주세요."
+    
+    # 📊 토큰 최적화된 대화 메시지 구성 (스트리밍)
+    optimized_messages = await get_optimized_conversation_messages(request.sessionId, max_messages=18)
+    
+    conversation_messages = [{"role": "system", "content": system_prompt}]
+    
+    # 최적화된 메시지 추가 (현재 메시지는 제외)
+    for msg in optimized_messages:
+        if msg.get("role") != "system":  # 시스템 메시지는 이미 추가됨
+            conversation_messages.append({
+                "role": msg["role"],
+                "content": msg["content"]
+            })
+    
+    # 현재 사용자 메시지 추가
+    conversation_messages.append({
+        "role": "user",
+        "content": request.content
+    })
+    
+    # Google 도구 준비
+    available_tools = []
+    if GOOGLE_SERVICES_AVAILABLE and auth_service.is_authenticated():
+        available_tools.extend(get_google_tools())
+        print(f"🛠️ Google 도구 {len(get_google_tools())}개 추가됨")
+    
+    # 웹 검색 여부 확인
+    needs_web_search = getattr(request, 'webSearch', False)
+    
+    # 통합 API를 사용해서 스트리밍 응답 생성
+    return await stream_with_unified_api(
+        request.sessionId,
+        selected_model,
+        system_prompt,
+        request.content,
+        conversation_messages,
+        available_tools,
+        needs_web_search,
+        model_config,
+        user_message
+    )
+
+async def stream_with_unified_api(
+    session_id: str,
+    model: str,
+    instructions: str,
+    user_input: str,
+    conversation_messages: List[Dict],
+    available_tools: List[Dict],
+    needs_web_search: bool,
+    model_config: Dict,
+    user_message: ChatMessage
+):
+    """통합 API 선택을 사용한 스트리밍 응답 생성"""
+    
+    async def generate_unified_stream():
+        ai_message_id = generate_id()
+        full_content = ""
         
-        # 응답을 스트리밍 형태로 변환
-        content = response.content  # response.aiMessage.content가 아니라 response.content
-        session_id = request.sessionId
-        message_id = response.id  # response.aiMessage.id가 아니라 response.id
-        
-        async def generate_stream():
-            # 문자별로 스트리밍
-            for i, char in enumerate(content):
-                chunk = ChatStreamChunk(
-                    id=message_id,
-                    content=char,
-                    role="assistant",
-                    timestamp=datetime.now(),
-                    sessionId=session_id,
-                    isComplete=i == len(content) - 1
-                )
-                yield f"data: {chunk.json()}\n\n"
-                await asyncio.sleep(0.01)
-        
-        return StreamingResponse(
-            generate_stream(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "Cache-Control"
+        try:
+            # 1. 통합 API 선택 로직 실행
+            print(f"🔍 Stream API Selection Debug:")
+            print(f"  - Model: {model}")
+            print(f"  - supports_assistant: {model_config.get('supports_assistant', False)}")
+            print(f"  - needs_web_search: {needs_web_search}")
+            print(f"  - available_tools: {len(available_tools) if available_tools else 0}")
+            
+            # Assistant API는 현재 스트리밍 미지원이므로 가능한 API 사용
+            # 먼저 Chat Completions로 시도 (더 안정적)
+            use_responses_api = needs_web_search and model_config.get("supports_web_search", False)
+            
+            if use_responses_api:
+                print("🌐 Using Responses API for streaming")
+                # Responses API 스트리밍
+                async for chunk_str in stream_with_responses_api(
+                    model, instructions, user_input, conversation_messages,
+                    available_tools, needs_web_search, model_config, ai_message_id, session_id
+                ):
+                    # chunk_str은 이미 "data: {...}\n\n" 형태
+                    if chunk_str.startswith("data:"):
+                        try:
+                            chunk_data = json.loads(chunk_str[5:].strip())
+                            full_content += chunk_data.get("content", "")
+                        except:
+                            pass
+                    yield chunk_str
+            else:
+                print("💬 Using Chat Completions API for streaming")
+                # Chat Completions 스트리밍 (폴백)
+                async for chunk_str in stream_with_chat_completions_fallback(
+                    model, conversation_messages, ai_message_id, session_id
+                ):
+                    # chunk_str은 이미 "data: {...}\n\n" 형태
+                    if chunk_str.startswith("data:"):
+                        try:
+                            chunk_data = json.loads(chunk_str[5:].strip())
+                            full_content += chunk_data.get("content", "")
+                        except:
+                            pass
+                    yield chunk_str
+                    
+        except Exception as e:
+            print(f"🚨 Streaming error: {e}")
+            print(f"🚨 Error type: {type(e)}")
+            print(f"🚨 Error details: {str(e)}")
+            import traceback
+            print(f"🚨 Traceback: {traceback.format_exc()}")
+            error_content = handle_openai_error(e, user_content=user_input)
+            
+            error_chunk = {
+                "id": ai_message_id,
+                "content": error_content,
+                "role": "assistant",
+                "timestamp": datetime.now().isoformat(),
+                "sessionId": session_id,
+                "isComplete": True
             }
-        )
-    except Exception as e:
-        print(f"Streaming error: {e}")
-        # 에러 발생시 폴백 응답
-        error_chunk = ChatStreamChunk(
-            id="error",
-            content="죄송합니다. 현재 AI 서비스에 일시적인 문제가 있습니다. 잠시 후 다시 시도해주세요.",
+            yield f"data: {json.dumps(error_chunk)}\n\n"
+            full_content = error_content
+        
+        # AI 응답 저장
+        ai_message = ChatMessage(
+            id=ai_message_id,
+            content=full_content,
             role="assistant",
             timestamp=datetime.now(),
-            sessionId=request.sessionId,
-            isComplete=True
+            sessionId=session_id
         )
         
-        async def error_stream():
-            yield f"data: {error_chunk.json()}\n\n"
+        messages_db[session_id].append(ai_message.dict())
+        update_session_message_count(session_id)
+    
+    return StreamingResponse(
+        generate_unified_stream(),
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Content-Type": "text/event-stream",
+        }
+    )
+
+async def stream_with_responses_api(
+    model: str,
+    instructions: str,
+    user_input: str,
+    conversation_messages: List[Dict],
+    available_tools: List[Dict],
+    needs_web_search: bool,
+    model_config: Dict,
+    ai_message_id: str,
+    session_id: str
+):
+    """Responses API를 사용한 스트리밍"""
+    
+    # Responses API는 스트리밍 미지원이므로 일반 응답 후 청크로 나누어 전송
+    try:
+        print(f"🔍 Calling Responses API fallback with:")
+        print(f"  - Model: {model}")
+        print(f"  - Instructions length: {len(instructions) if instructions else 0}")
+        print(f"  - User input: {user_input[:50]}...")
+        print(f"  - Conversation messages: {len(conversation_messages)}")
+        print(f"  - Available tools: {len(available_tools)}")
+        print(f"  - Needs web search: {needs_web_search}")
         
-        return StreamingResponse(
-            error_stream(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "Cache-Control"
+        ai_content = await create_response_with_responses_api_fallback(
+            model, instructions, user_input, conversation_messages,
+            available_tools, needs_web_search, model_config
+        )
+        
+        print(f"✅ Responses API success, content length: {len(ai_content) if ai_content else 0}")
+        
+        # 텍스트를 청크로 나누어 스트리밍 시뮬레이션
+        words = ai_content.split()
+        current_content = ""
+        
+        for i, word in enumerate(words):
+            current_content += word + " "
+            
+            chunk_data = {
+                "id": ai_message_id,
+                "content": word + " ",
+                "role": "assistant", 
+                "timestamp": datetime.now().isoformat(),
+                "sessionId": session_id,
+                "isComplete": False
             }
+            
+            yield f"data: {json.dumps(chunk_data)}\n\n"
+            
+            # 단어 간 약간의 딜레이 (자연스러운 스트리밍 효과)
+            await asyncio.sleep(0.05)
+        
+        # 완료 청크
+        final_chunk = {
+            "id": ai_message_id,
+            "content": "",
+            "role": "assistant",
+            "timestamp": datetime.now().isoformat(),
+            "sessionId": session_id,
+            "isComplete": True
+        }
+        yield f"data: {json.dumps(final_chunk)}\n\n"
+        
+    except Exception as e:
+        print(f"🚨 Responses API streaming error: {e}")
+        raise e
+
+async def stream_with_chat_completions_fallback(
+    model: str,
+    conversation_messages: List[Dict],
+    ai_message_id: str,
+    session_id: str
+):
+    """Chat Completions API를 사용한 스트리밍 폴백"""
+    
+    try:
+        stream = await client.chat.completions.create(
+            model=model,
+            messages=conversation_messages,
+            stream=True,
+            max_tokens=4000,
+            temperature=0.7
         )
+        
+        async for chunk in stream:
+            if chunk.choices[0].delta.content:
+                content = chunk.choices[0].delta.content
+                
+                chunk_data = {
+                    "id": ai_message_id,
+                    "content": content,
+                    "role": "assistant",
+                    "timestamp": datetime.now().isoformat(),
+                    "sessionId": session_id,
+                    "isComplete": False
+                }
+                
+                yield f"data: {json.dumps(chunk_data)}\n\n"
+        
+        # 완료 청크
+        final_chunk = {
+            "id": ai_message_id,
+            "content": "",
+            "role": "assistant",
+            "timestamp": datetime.now().isoformat(),
+            "sessionId": session_id,
+            "isComplete": True
+        }
+        yield f"data: {json.dumps(final_chunk)}\n\n"
+        
+    except Exception as e:
+        print(f"🚨 Chat Completions streaming error: {e}")
+        raise e
+
+async def stream_with_realtime_api(request: ChatRequest, user_message: ChatMessage, model: str):
+    """OpenAI Realtime API를 사용한 진짜 스트리밍"""
+    
+    async def generate_realtime_stream():
+        ai_message_id = generate_id()
+        full_content = ""
+        
+        try:
+            print(f"🎙️ Using Realtime API with model: {model}")
+            
+            async with client.beta.realtime.connect(model=model) as connection:
+                # 세션 설정 (텍스트 모드)
+                await connection.session.update(session={'modalities': ['text']})
+                
+                # 대화 아이템 생성
+                await connection.conversation.item.create(
+                    item={
+                        "type": "message",
+                        "role": "user",
+                        "content": [{"type": "input_text", "text": request.content}],
+                    }
+                )
+                
+                # 응답 생성 시작
+                await connection.response.create()
+                
+                # 실시간 이벤트 처리
+                async for event in connection:
+                    if event.type == 'response.text.delta':
+                        # 실시간 텍스트 델타
+                        delta_text = event.delta
+                        full_content += delta_text
+                        
+                        chunk = ChatStreamChunk(
+                            id=ai_message_id,
+                            content=delta_text,
+                            role="assistant",
+                            timestamp=datetime.now(),
+                            sessionId=request.sessionId,
+                            isComplete=False
+                        )
+                        yield f"data: {chunk.json()}\n\n"
+                    
+                    elif event.type == 'response.text.done':
+                        # 텍스트 완료
+                        print(f"✅ Realtime text complete")
+                    
+                    elif event.type == 'response.done':
+                        # 전체 응답 완료
+                        final_chunk = ChatStreamChunk(
+                            id=ai_message_id,
+                            content="",
+                            role="assistant",
+                            timestamp=datetime.now(),
+                            sessionId=request.sessionId,
+                            isComplete=True
+                        )
+                        yield f"data: {final_chunk.json()}\n\n"
+                        break
+                    
+                    elif event.type == 'error':
+                        # 에러 처리
+                        error_msg = f"Realtime API 오류: {event.error.message}"
+                        print(f"🚨 Realtime API Error: {error_msg}")
+                        
+                        error_chunk = ChatStreamChunk(
+                            id=ai_message_id,
+                            content=error_msg,
+                            role="assistant",
+                            timestamp=datetime.now(),
+                            sessionId=request.sessionId,
+                            isComplete=True
+                        )
+                        yield f"data: {error_chunk.json()}\n\n"
+                        break
+            
+            # AI 응답 저장
+            if full_content:
+                ai_message = ChatMessage(
+                    id=ai_message_id,
+                    content=full_content,
+                    role="assistant",
+                    timestamp=datetime.now(),
+                    sessionId=request.sessionId
+                )
+                
+                messages_db[request.sessionId].append(ai_message.dict())
+                update_session_message_count(request.sessionId)
+                
+        except Exception as e:
+            error_msg = handle_openai_error(e, user_content=request.content)
+            print(f"🚨 Realtime API Exception: {error_msg}")
+            
+            error_chunk = ChatStreamChunk(
+                id=ai_message_id,
+                content=error_msg,
+                role="assistant",
+                timestamp=datetime.now(),
+                sessionId=request.sessionId,
+                isComplete=True
+            )
+            yield f"data: {error_chunk.json()}\n\n"
+    
+    return StreamingResponse(
+        generate_realtime_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Cache-Control"
+        }
+    )
+
+async def stream_with_chat_completions(request: ChatRequest, user_message: ChatMessage, model: str):
+    """Chat Completions API를 사용한 스트리밍 (폴백)"""
+    
+    async def generate_chat_stream():
+        ai_message_id = generate_id()
+        full_content = ""
+        
+        try:
+            print(f"💬 Using Chat Completions streaming with model: {model}")
+            
+            # 세션 메시지 히스토리 구성
+            session_messages = messages_db.get(request.sessionId, [])
+            system_prompt = "당신은 NSales Pro의 영업 AI 도우미입니다. 한국어로 친근하고 전문적으로 답변해주세요."
+            
+            conversation_messages = [{"role": "system", "content": system_prompt}]
+            
+            # 최근 메시지들 추가
+            recent_messages = session_messages[-20:] if len(session_messages) > 20 else session_messages
+            for msg in recent_messages:
+                conversation_messages.append({
+                    "role": msg["role"],
+                    "content": msg["content"]
+                })
+            
+            # 현재 사용자 메시지 추가
+            conversation_messages.append({"role": "user", "content": request.content})
+            
+            # 스트리밍 요청
+            stream = await client.chat.completions.create(
+                model=model,
+                messages=conversation_messages,
+                max_tokens=2000,
+                temperature=0.7,
+                stream=True
+            )
+            
+            async for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    delta_content = chunk.choices[0].delta.content
+                    full_content += delta_content
+                    
+                    chunk_obj = ChatStreamChunk(
+                        id=ai_message_id,
+                        content=delta_content,
+                        role="assistant",
+                        timestamp=datetime.now(),
+                        sessionId=request.sessionId,
+                        isComplete=False
+                    )
+                    yield f"data: {chunk_obj.json()}\n\n"
+                
+                # 스트림 완료 체크
+                if chunk.choices[0].finish_reason:
+                    final_chunk = ChatStreamChunk(
+                        id=ai_message_id,
+                        content="",
+                        role="assistant",
+                        timestamp=datetime.now(),
+                        sessionId=request.sessionId,
+                        isComplete=True
+                    )
+                    yield f"data: {final_chunk.json()}\n\n"
+                    break
+            
+            # AI 응답 저장
+            if full_content:
+                ai_message = ChatMessage(
+                    id=ai_message_id,
+                    content=full_content,
+                    role="assistant",
+                    timestamp=datetime.now(),
+                    sessionId=request.sessionId
+                )
+                
+                messages_db[request.sessionId].append(ai_message.dict())
+                update_session_message_count(request.sessionId)
+                
+        except Exception as e:
+            error_msg = handle_openai_error(e, user_content=request.content)
+            print(f"🚨 Chat Completions Streaming Error: {error_msg}")
+            
+            error_chunk = ChatStreamChunk(
+                id=ai_message_id,
+                content=error_msg,
+                role="assistant",
+                timestamp=datetime.now(),
+                sessionId=request.sessionId,
+                isComplete=True
+            )
+            yield f"data: {error_chunk.json()}\n\n"
+    
+    return StreamingResponse(
+        generate_chat_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Cache-Control"
+        }
+    )
 
 # 원래 스트리밍 함수 (임시 비활성화)
 @app.post("/api/v1/chat/stream_disabled")
@@ -1392,7 +2926,7 @@ async def stream_chat_original(request: ChatRequest):
                     "temperature": model_config["temperature"]
                 }
                 
-                # Google 도구가 있으면 추가
+                # Google 도구가 있으면 추가 
                 if available_tools and not needs_web_search:
                     chat_params["tools"] = available_tools
                     chat_params["tool_choice"] = "auto"
@@ -1731,6 +3265,89 @@ async def regenerate_message(message_id: str):
                 return ChatResponse(**new_message.dict())
     
     raise HTTPException(status_code=404, detail="Message not found")
+
+# ===========================
+# 🗂️ 벡터 스토어 관리 API 엔드포인트
+# ===========================
+
+@app.get("/api/v1/vector-stores")
+async def list_available_vector_stores():
+    """사용 가능한 벡터 스토어 목록 조회"""
+    try:
+        stores = await list_vector_stores()
+        return {
+            "success": True,
+            "vector_stores": stores,
+            "total_count": len(stores)
+        }
+    except Exception as e:
+        logger.error(f"❌ Failed to list vector stores: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"벡터 스토어 목록 조회 실패: {str(e)}")
+
+@app.post("/api/v1/sessions/{session_id}/vector-store")
+async def create_session_vector_store(session_id: str, name: str = None):
+    """세션별 벡터 스토어 생성"""
+    try:
+        # 세션 존재 확인
+        if session_id not in sessions_db:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        vector_store_id = await create_or_get_vector_store(session_id, name)
+        return {
+            "success": True,
+            "vector_store_id": vector_store_id,
+            "session_id": session_id,
+            "message": "벡터 스토어가 성공적으로 생성되었습니다."
+        }
+    except Exception as e:
+        logger.error(f"❌ Failed to create vector store for session {session_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"벡터 스토어 생성 실패: {str(e)}")
+
+@app.post("/api/v1/sessions/{session_id}/vector-store/search")
+async def search_session_vector_store(session_id: str, query: str, limit: int = 5):
+    """세션별 벡터 스토어에서 검색"""
+    try:
+        # 세션 존재 확인
+        if session_id not in sessions_db:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        # 벡터 스토어 확인
+        if session_id not in vector_stores_db:
+            raise HTTPException(status_code=404, detail="Vector store not found for this session")
+        
+        vector_store_id = vector_stores_db[session_id]
+        search_results = await search_vector_store(vector_store_id, query, limit)
+        
+        return {
+            "success": True,
+            "query": query,
+            "results": search_results,
+            "total_results": len(search_results)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Failed to search vector store for session {session_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"벡터 스토어 검색 실패: {str(e)}")
+
+@app.post("/api/v1/knowledge-base/create")
+async def create_knowledge_base(documents: List[str], session_id: str = None):
+    """지식 베이스 생성 (문서 목록으로부터)"""
+    try:
+        if not documents:
+            raise HTTPException(status_code=400, detail="Documents list cannot be empty")
+        
+        vector_store_id = await create_knowledge_base_embeddings(documents, session_id)
+        return {
+            "success": True,
+            "vector_store_id": vector_store_id,
+            "documents_count": len(documents),
+            "session_id": session_id,
+            "message": "지식 베이스가 성공적으로 생성되었습니다."
+        }
+    except Exception as e:
+        logger.error(f"❌ Failed to create knowledge base: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"지식 베이스 생성 실패: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

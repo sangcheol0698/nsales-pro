@@ -150,7 +150,7 @@ class GoogleCalendarService:
         
         return self._service
     
-    async def get_events(self, start_date: str, end_date: str, max_results: int = 50) -> List[Dict]:
+    def get_events(self, start_date: str, end_date: str, max_results: int = 50) -> List[Dict]:
         """캘린더 이벤트 조회"""
         try:
             service = self._get_service()
@@ -195,7 +195,7 @@ class GoogleCalendarService:
             print(f"일정 조회 실패: {e}")
             return []
     
-    async def create_event(self, event_data: CalendarEvent) -> Dict:
+    def create_event(self, event_data: CalendarEvent) -> Dict:
         """캘린더 이벤트 생성"""
         try:
             service = self._get_service()
@@ -245,7 +245,7 @@ class GoogleCalendarService:
                 'error': f"일정 생성 실패: {e}"
             }
     
-    async def update_event(self, event_id: str, event_data: CalendarEvent) -> Dict:
+    def update_event(self, event_id: str, event_data: CalendarEvent) -> Dict:
         """캘린더 이벤트 수정"""
         try:
             service = self._get_service()
@@ -298,7 +298,7 @@ class GoogleCalendarService:
                 'error': f"일정 수정 실패: {e}"
             }
     
-    async def delete_event(self, event_id: str) -> Dict:
+    def delete_event(self, event_id: str) -> Dict:
         """캘린더 이벤트 삭제"""
         try:
             service = self._get_service()
@@ -342,7 +342,7 @@ class GoogleGmailService:
         
         return self._service
     
-    async def send_email(self, email_data: EmailMessage) -> Dict:
+    def send_email(self, email_data: EmailMessage) -> Dict:
         """이메일 전송"""
         try:
             import base64
@@ -397,7 +397,7 @@ class GoogleGmailService:
                 'error': f"이메일 전송 실패: {e}"
             }
     
-    async def get_messages(self, query: str = "", max_results: int = 10) -> List[Dict]:
+    def get_messages(self, query: str = "", max_results: int = 10) -> List[Dict]:
         """이메일 메시지 조회"""
         try:
             service = self._get_service()
@@ -456,6 +456,37 @@ class GoogleGmailService:
         except Exception as e:
             print(f"메시지 조회 실패: {e}")
             return []
+    
+    def get_unread_count(self) -> Dict:
+        """읽지 않은 이메일 수 조회"""
+        try:
+            service = self._get_service()
+            
+            # 읽지 않은 메시지 조회
+            results = service.users().messages().list(
+                userId='me',
+                q='is:unread'
+            ).execute()
+            
+            messages = results.get('messages', [])
+            unread_count = len(messages)
+            
+            return {
+                'success': True,
+                'unread_count': unread_count,
+                'message': f"읽지 않은 이메일: {unread_count}개"
+            }
+            
+        except HttpError as e:
+            return {
+                'success': False,
+                'error': f"Gmail API 오류: {e}"
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f"읽지 않은 메일 수 조회 실패: {e}"
+            }
 
 # 글로벌 서비스 인스턴스
 auth_service = GoogleAuthService()

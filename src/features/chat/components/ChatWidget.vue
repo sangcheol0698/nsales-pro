@@ -194,6 +194,18 @@ const sendMessage = async (content: string, files?: File[], model?: string, webS
         },
         (chunk) => {
           if (!chunk.isComplete) {
+            // Function Calling 상태 체크
+            if (chunk.functionCall) {
+              // Function 실행 상태를 별도로 처리
+              if (chunk.functionStatus === 'running') {
+                console.log(`🔄 Function ${chunk.functionCall} 실행 중...`)
+              } else if (chunk.functionStatus === 'completed') {
+                console.log(`✅ Function ${chunk.functionCall} 완료`)
+              } else if (chunk.functionStatus === 'error') {
+                console.log(`❌ Function ${chunk.functionCall} 오류`)
+              }
+            }
+            
             fullContent += chunk.content
             // 마지막 메시지 업데이트
             const lastMessage = messages.value[messages.value.length - 1]
@@ -326,6 +338,17 @@ const handleRegenerateMessage = async (messageId: string) => {
       },
       (chunk) => {
         if (!chunk.isComplete) {
+          // Function Calling 상태 체크
+          if (chunk.functionCall) {
+            if (chunk.functionStatus === 'running') {
+              console.log(`🔄 Function ${chunk.functionCall} 재실행 중...`)
+            } else if (chunk.functionStatus === 'completed') {
+              console.log(`✅ Function ${chunk.functionCall} 재실행 완료`)
+            } else if (chunk.functionStatus === 'error') {
+              console.log(`❌ Function ${chunk.functionCall} 재실행 오류`)
+            }
+          }
+          
           fullContent += chunk.content
           // 마지막 메시지 업데이트
           const lastMessage = messages.value[messages.value.length - 1]

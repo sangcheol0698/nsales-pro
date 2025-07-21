@@ -1496,6 +1496,8 @@ class ChatStreamChunk(BaseModel):
     timestamp: datetime
     sessionId: str
     isComplete: bool = False
+    functionCall: Optional[str] = None  # Function name if this chunk is from function execution
+    functionStatus: Optional[str] = None  # 'running', 'completed', 'error'
 
 # 📁 개선된 파일 처리 시스템 (OpenAI Files API + 로컬 폴백)
 async def process_file_with_openai(file_content: bytes, filename: str, content_type: str, session_id: str = None, add_to_vector_store: bool = False) -> str:
@@ -2276,13 +2278,28 @@ async def stream_chat(request: ChatRequest):
     # Google 도구 준비
     available_tools = []
     if GOOGLE_SERVICES_AVAILABLE and auth_service.is_authenticated():
-        available_tools.extend(get_google_tools())
-        print(f"🛠️ Google 도구 {len(get_google_tools())}개 추가됨")
+        available_tools.extend(GOOGLE_TOOLS)
+        print(f"🛠️ Google 도구 {len(GOOGLE_TOOLS)}개 추가됨")
+        print(f"🎯 멘션 감지: {mention_detected}")
+        if mention_detected:
+            print(f"🔥 강제 Function Calling 활성화 예정: @캘린더 → get_calendar_events")
     
     # 웹 검색 여부 확인
     needs_web_search = getattr(request, 'webSearch', False)
     
-    # 통합 API를 사용해서 스트리밍 응답 생성
+    # Google 멘션이 감지된 경우 직접 Function Calling 처리
+    if mention_detected and available_tools:
+        print("🎯 멘션 감지됨 - 직접 Function Calling 처리")
+        return await stream_with_direct_function_calling(
+            request.sessionId,
+            selected_model,
+            conversation_messages,
+            available_tools,
+            model_config,
+            user_message
+        )
+    
+    # 일반적인 경우 통합 API 사용
     return await stream_with_unified_api(
         request.sessionId,
         selected_model,
@@ -2292,7 +2309,8 @@ async def stream_chat(request: ChatRequest):
         available_tools,
         needs_web_search,
         model_config,
-        user_message
+        user_message,
+        mention_detected
     )
 
 async def stream_with_unified_api(
@@ -2304,7 +2322,8 @@ async def stream_with_unified_api(
     available_tools: List[Dict],
     needs_web_search: bool,
     model_config: Dict,
-    user_message: ChatMessage
+    user_message: ChatMessage,
+    mention_detected: bool = False
 ):
     """통합 API 선택을 사용한 스트리밍 응답 생성"""
     
@@ -2387,7 +2406,7 @@ async def stream_with_unified_api(
     
     return StreamingResponse(
         generate_unified_stream(),
-        media_type="text/plain",
+        media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
@@ -2765,6 +2784,7 @@ async def stream_chat_original(request: ChatRequest):
         
         # Google 서비스가 사용 가능하고 멘션이 감지된 경우 안내 추가
         if GOOGLE_SERVICES_AVAILABLE and auth_service.is_authenticated() and mention_detected:
+            print(f"🎯 Google 멘션 감지됨: {request.content}")
             system_prompt += "\n\n**🎯 Google 서비스 멘션 감지됨:**\n사용자가 @멘션을 사용했습니다. 다음 함수를 반드시 호출하여 요청을 처리하세요:\n- @캘린더 → get_calendar_events 함수 호출\n- @메일 → get_emails 또는 send_email 함수 호출\n- @일정생성 → create_calendar_event 함수 호출\n- @빈시간 → find_free_time 함수 호출\n\n멘션이 포함된 요청은 반드시 해당 함수를 실행하여 실제 데이터를 제공해야 합니다."
         elif GOOGLE_SERVICES_AVAILABLE and auth_service.is_authenticated():
             system_prompt += "\n\n**Google 서비스 연동 안내:**\n사용자가 캘린더, 일정, 스케줄, Gmail, 이메일 관련 질문을 하면 다음 함수들을 적극 활용하세요:\n- get_calendar_events: 캘린더 일정 조회 (오늘, 이번주, 이번달 등)\n- create_calendar_event: 새 일정 생성\n- send_email: 이메일 전송\n- get_emails: 이메일 조회\n- find_free_time: 빈 시간 찾기\n\n사용자가 '캘린더', '일정', '스케줄' 등의 키워드를 사용하면 반드시 해당 함수를 호출하여 실제 데이터를 제공하세요."
@@ -2795,6 +2815,12 @@ async def stream_chat_original(request: ChatRequest):
             
             # 사용 가능한 도구 목록 구성
             available_tools = []
+            print(f"🔍 Debug - mention_detected: {mention_detected}")
+            print(f"🔍 Debug - GOOGLE_SERVICES_AVAILABLE: {GOOGLE_SERVICES_AVAILABLE}")
+            print(f"🔍 Debug - is_authenticated: {auth_service.is_authenticated() if GOOGLE_SERVICES_AVAILABLE else 'N/A'}")
+            
+            # 웹 검색 여부는 프론트엔드에서 결정 (webSearch 파라미터로 전달)
+            needs_web_search = getattr(request, 'webSearch', False)
             
             # 웹 검색 도구 추가
             if needs_web_search and model_config["supports_web_search"]:
@@ -2804,9 +2830,7 @@ async def stream_chat_original(request: ChatRequest):
             if GOOGLE_SERVICES_AVAILABLE and auth_service.is_authenticated():
                 available_tools.extend(GOOGLE_TOOLS)
                 print(f"🔗 Google 서비스 도구 {len(GOOGLE_TOOLS)}개 추가됨")
-            
-            # 웹 검색 여부는 프론트엔드에서 결정 (webSearch 파라미터로 전달)
-            needs_web_search = getattr(request, 'webSearch', False)
+                print(f"🔍 사용 가능한 도구들: {[tool['function']['name'] for tool in GOOGLE_TOOLS]}")
             search_content = request.content
             
             if needs_web_search and model_config["supports_web_search"]:
@@ -2910,13 +2934,27 @@ async def stream_chat_original(request: ChatRequest):
                 except Exception as web_error:
                     print(f"Responses API error in stream, falling back to chat completions: {web_error}")
                     # 웹 검색 실패 시 일반 스트리밍으로 폴백
-                    stream = await client.chat.completions.create(
-                        model=selected_model,
-                        messages=conversation_messages,
-                        max_tokens=model_config["max_tokens"],
-                        temperature=model_config["temperature"],
-                        stream=True
-                    )
+                    # 스트리밍 파라미터 구성
+                    stream_params = {
+                        "model": selected_model,
+                        "messages": conversation_messages,
+                        "max_tokens": model_config["max_tokens"],
+                        "temperature": model_config["temperature"],
+                        "stream": True
+                    }
+                    
+                    # 도구가 있으면 추가
+                    if available_tools:
+                        stream_params["tools"] = available_tools
+                        # 멘션이 감지된 경우 Function Calling 강제 활성화
+                        if mention_detected:
+                            stream_params["tool_choice"] = {"type": "function", "function": {"name": "get_calendar_events"}}
+                            print(f"🎯 강제 Function Calling 활성화: get_calendar_events")
+                        else:
+                            stream_params["tool_choice"] = "auto"
+                        print(f"🛠️ 스트리밍 Function Calling 활성화: {len(available_tools)}개 도구")
+                    
+                    stream = await client.chat.completions.create(**stream_params)
             else:
                 # 임시로 스트리밍 대신 일반 API 사용
                 chat_params = {
@@ -2926,10 +2964,15 @@ async def stream_chat_original(request: ChatRequest):
                     "temperature": model_config["temperature"]
                 }
                 
-                # Google 도구가 있으면 추가 
-                if available_tools and not needs_web_search:
+                # 도구가 있으면 추가 (웹 검색 도구 또는 Google 도구)
+                if available_tools:
                     chat_params["tools"] = available_tools
-                    chat_params["tool_choice"] = "auto"
+                    # 멘션이 감지된 경우 Function Calling 강제 활성화
+                    if mention_detected:
+                        chat_params["tool_choice"] = {"type": "function", "function": {"name": "get_calendar_events"}}
+                        print(f"🎯 강제 Function Calling 활성화: get_calendar_events")
+                    else:
+                        chat_params["tool_choice"] = "auto"
                     print(f"🛠️ Function Calling 활성화: {len(available_tools)}개 도구")
                 
                 print(f"🔍 비스트리밍 파라미터: {chat_params}")
@@ -2957,13 +3000,15 @@ async def stream_chat_original(request: ChatRequest):
                                         role="assistant",
                                         timestamp=datetime.now(),
                                         sessionId=request.sessionId,
-                                        isComplete=False
+                                        isComplete=False,
+                                        functionCall=function_name,
+                                        functionStatus="running"
                                     )
                                     yield f"data: {status_chunk.json()}\n\n"
                                     await asyncio.sleep(0.02)
                                 
                                 # 함수 실행
-                                function_result = await FUNCTION_MAP[function_name](**function_args)
+                                function_result = FUNCTION_MAP[function_name](**function_args)
                                 
                                 # 결과를 스트리밍으로 출력
                                 result_content = f"✅ 결과:\n{function_result}\n\n"
@@ -2976,7 +3021,9 @@ async def stream_chat_original(request: ChatRequest):
                                         role="assistant",
                                         timestamp=datetime.now(),
                                         sessionId=request.sessionId,
-                                        isComplete=False
+                                        isComplete=False,
+                                        functionCall=function_name,
+                                        functionStatus="completed"
                                     )
                                     yield f"data: {result_chunk.json()}\n\n"
                                     await asyncio.sleep(0.02)
@@ -2992,7 +3039,9 @@ async def stream_chat_original(request: ChatRequest):
                                         role="assistant",
                                         timestamp=datetime.now(),
                                         sessionId=request.sessionId,
-                                        isComplete=False
+                                        isComplete=False,
+                                        functionCall=function_name,
+                                        functionStatus="error"
                                     )
                                     yield f"data: {error_chunk.json()}\n\n"
                                     await asyncio.sleep(0.02)
@@ -3097,12 +3146,14 @@ async def stream_chat_original(request: ChatRequest):
                                 role="assistant",
                                 timestamp=datetime.now(),
                                 sessionId=request.sessionId,
-                                isComplete=False
+                                isComplete=False,
+                                functionCall=function_name,
+                                functionStatus="running"
                             )
                             yield f"data: {status_chunk.json()}\n\n"
                             
                             # 함수 실행
-                            function_result = await FUNCTION_MAP[function_name](**function_args)
+                            function_result = FUNCTION_MAP[function_name](**function_args)
                             
                             # 결과를 스트리밍으로 출력
                             result_content = f"✅ 결과:\n{function_result}\n\n"
@@ -3115,7 +3166,9 @@ async def stream_chat_original(request: ChatRequest):
                                     role="assistant",
                                     timestamp=datetime.now(),
                                     sessionId=request.sessionId,
-                                    isComplete=False
+                                    isComplete=False,
+                                    functionCall=function_name,
+                                    functionStatus="completed"
                                 )
                                 yield f"data: {result_chunk.json()}\n\n"
                                 await asyncio.sleep(0.02)
@@ -3131,7 +3184,9 @@ async def stream_chat_original(request: ChatRequest):
                                     role="assistant",
                                     timestamp=datetime.now(),
                                     sessionId=request.sessionId,
-                                    isComplete=False
+                                    isComplete=False,
+                                    functionCall=function_name,
+                                    functionStatus="error"
                                 )
                                 yield f"data: {error_chunk.json()}\n\n"
                                 await asyncio.sleep(0.02)
@@ -3348,6 +3403,199 @@ async def create_knowledge_base(documents: List[str], session_id: str = None):
     except Exception as e:
         logger.error(f"❌ Failed to create knowledge base: {str(e)}")
         raise HTTPException(status_code=500, detail=f"지식 베이스 생성 실패: {str(e)}")
+
+async def stream_with_direct_function_calling(
+    session_id: str,
+    model: str,
+    conversation_messages: List[Dict],
+    available_tools: List[Dict],
+    model_config: Dict,
+    user_message: ChatMessage
+):
+    """멘션 감지 시 직접 Function Calling 실행"""
+    
+    async def generate_direct_function_stream():
+        ai_message_id = generate_id()
+        full_content = ""
+        
+        try:
+            print(f"🎯 Direct Function Calling - Model: {model}")
+            print(f"🔧 Available tools: {[tool['function']['name'] for tool in available_tools]}")
+            
+            # 자동 Function Calling (OpenAI가 적절한 함수 선택)
+            chat_params = {
+                "model": model,
+                "messages": conversation_messages,
+                "max_tokens": model_config["max_tokens"],
+                "temperature": model_config["temperature"],
+                "tools": available_tools,
+                "tool_choice": "auto",  # Let OpenAI choose the appropriate function
+                "stream": True
+            }
+            
+            print(f"🚀 Creating stream with auto Function Calling...")
+            print(f"📝 Last user message: {user_message.content}")
+            stream = await client.chat.completions.create(**chat_params)
+            
+            tool_calls = []
+            current_tool_call = None
+            
+            async for chunk in stream:
+                delta = chunk.choices[0].delta
+                finish_reason = chunk.choices[0].finish_reason
+                
+                print(f"🔄 Stream chunk - finish_reason: {finish_reason}, delta: content={bool(delta.content)}, tool_calls={bool(delta.tool_calls)}")
+                
+                # 일반 텍스트 콘텐츠 처리
+                if delta.content:
+                    print(f"📝 Content chunk: {delta.content[:50]}...")
+                    content_chunk = ChatStreamChunk(
+                        id=ai_message_id,
+                        content=delta.content,
+                        role="assistant",
+                        timestamp=datetime.now(),
+                        sessionId=session_id,
+                        isComplete=False
+                    )
+                    yield f"data: {content_chunk.json()}\n\n"
+                    full_content += delta.content
+                
+                # Function Calling 처리
+                if delta.tool_calls:
+                    print(f"🔧 Tool call delta detected: {delta.tool_calls}")
+                    for tool_call_delta in delta.tool_calls:
+                        if tool_call_delta.index == 0:
+                            if current_tool_call is None:
+                                current_tool_call = {
+                                    "id": tool_call_delta.id or "",
+                                    "function": {
+                                        "name": tool_call_delta.function.name or "",
+                                        "arguments": tool_call_delta.function.arguments or ""
+                                    }
+                                }
+                                print(f"🆕 New tool call: {current_tool_call['function']['name']}")
+                            else:
+                                # 함수 arguments 누적
+                                current_tool_call["function"]["arguments"] += tool_call_delta.function.arguments or ""
+                                print(f"📝 Accumulating arguments: {current_tool_call['function']['arguments'][:100]}...")
+                
+                # 스트림 완료 체크
+                if finish_reason == "tool_calls" and current_tool_call:
+                    print(f"✅ Tool calls completed: {current_tool_call}")
+                    tool_calls.append(current_tool_call)
+                    break
+                elif finish_reason == "stop":
+                    print("⏹️ Stream finished with stop")
+                    break
+            
+            # Function 호출 실행
+            if tool_calls:
+                print(f"🔧 Executing {len(tool_calls)} function calls")
+                
+                for tool_call in tool_calls:
+                    function_name = tool_call["function"]["name"]
+                    function_args = json.loads(tool_call["function"]["arguments"])
+                    
+                    print(f"📞 Calling function: {function_name}({function_args})")
+                    
+                    if function_name in FUNCTION_MAP:
+                        try:
+                            # 실행 상태 표시
+                            status_chunk = ChatStreamChunk(
+                                id=ai_message_id,
+                                content=f"\n\n🔄 {function_name} 실행 중...\n",
+                                role="assistant",
+                                timestamp=datetime.now(),
+                                sessionId=session_id,
+                                isComplete=False,
+                                functionCall=function_name,
+                                functionStatus="running"
+                            )
+                            yield f"data: {status_chunk.json()}\n\n"
+                            
+                            # 함수 실행
+                            function_result = FUNCTION_MAP[function_name](**function_args)
+                            
+                            # 결과를 스트리밍으로 출력
+                            result_content = f"✅ {function_name} 결과:\n{function_result}\n\n"
+                            full_content += result_content
+                            
+                            for char in result_content:
+                                result_chunk = ChatStreamChunk(
+                                    id=ai_message_id,
+                                    content=char,
+                                    role="assistant",
+                                    timestamp=datetime.now(),
+                                    sessionId=session_id,
+                                    isComplete=False,
+                                    functionCall=function_name,
+                                    functionStatus="completed"
+                                )
+                                yield f"data: {result_chunk.json()}\n\n"
+                                await asyncio.sleep(0.01)
+                                
+                        except Exception as e:
+                            error_content = f"❌ {function_name} 실행 오류: {str(e)}\n\n"
+                            full_content += error_content
+                            
+                            for char in error_content:
+                                error_chunk = ChatStreamChunk(
+                                    id=ai_message_id,
+                                    content=char,
+                                    role="assistant",
+                                    timestamp=datetime.now(),
+                                    sessionId=session_id,
+                                    isComplete=False,
+                                    functionCall=function_name,
+                                    functionStatus="error"
+                                )
+                                yield f"data: {error_chunk.json()}\n\n"
+                                await asyncio.sleep(0.01)
+            
+            # 완료 신호
+            final_chunk = ChatStreamChunk(
+                id=ai_message_id,
+                content="",
+                role="assistant",
+                timestamp=datetime.now(),
+                sessionId=session_id,
+                isComplete=True
+            )
+            yield f"data: {final_chunk.json()}\n\n"
+            
+            # AI 응답 저장
+            ai_message = ChatMessage(
+                id=ai_message_id,
+                content=full_content,
+                role="assistant",
+                timestamp=datetime.now(),
+                sessionId=session_id
+            )
+            messages_db[session_id].append(ai_message.dict())
+            update_session_message_count(session_id)
+            
+        except Exception as e:
+            error_msg = f"❌ Direct Function Calling 오류: {str(e)}"
+            print(error_msg)
+            
+            error_chunk = ChatStreamChunk(
+                id=ai_message_id,
+                content=error_msg,
+                role="assistant",
+                timestamp=datetime.now(),
+                sessionId=session_id,
+                isComplete=True
+            )
+            yield f"data: {error_chunk.json()}\n\n"
+    
+    return StreamingResponse(
+        generate_direct_function_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive"
+        }
+    )
 
 if __name__ == "__main__":
     import uvicorn

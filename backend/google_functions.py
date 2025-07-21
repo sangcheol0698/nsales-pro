@@ -20,25 +20,29 @@ GOOGLE_TOOLS = [
         "type": "function",
         "function": {
             "name": "get_calendar_events",
-            "description": "사용자의 Google 캘린더에서 특정 기간의 일정을 조회합니다. 일정 확인, 스케줄 검토, 빈 시간 찾기 등에 사용합니다.",
+            "description": "사용자의 Google 캘린더에서 일정을 조회합니다. '오늘 일정', '이번주 일정', '이번달 일정', '내일 일정' 등의 자연어 요청을 처리합니다. 현재 날짜는 2025년 7월 21일입니다.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "start_date": {
                         "type": "string",
-                        "description": "시작 날짜 (YYYY-MM-DD 형식, 예: 2025-07-20)"
+                        "description": "시작 날짜 (YYYY-MM-DD 형식). 예: 오늘=2025-07-21, 이번주=2025-07-21, 이번달=2025-07-01, 내일=2025-07-22"
                     },
                     "end_date": {
                         "type": "string", 
-                        "description": "종료 날짜 (YYYY-MM-DD 형식, 예: 2025-07-27)"
+                        "description": "종료 날짜 (YYYY-MM-DD 형식). 예: 오늘=2025-07-21, 이번주=2025-07-27, 이번달=2025-07-31, 내일=2025-07-22"
                     },
                     "max_results": {
                         "type": "integer",
                         "description": "최대 조회할 일정 수 (기본값: 50)",
                         "default": 50
+                    },
+                    "month": {
+                        "type": "string",
+                        "description": "특정 월 조회 (YYYY-MM 형식, 예: 2025-07). 이 파라미터를 사용하면 start_date, end_date는 무시됩니다."
                     }
                 },
-                "required": ["start_date", "end_date"]
+                "required": []
             }
         }
     },
@@ -225,7 +229,7 @@ GOOGLE_TOOLS = [
 ]
 
 # AI 함수 구현
-async def get_calendar_events(start_date: str, end_date: str, max_results: int = 50) -> str:
+def get_calendar_events(start_date: str = None, end_date: str = None, max_results: int = 50, **kwargs) -> str:
     """캘린더 일정 조회 함수"""
     try:
         if not auth_service.is_authenticated():
@@ -233,7 +237,44 @@ async def get_calendar_events(start_date: str, end_date: str, max_results: int =
                 "error": "Google 인증이 필요합니다. /api/v1/google/auth 에서 인증을 완료해주세요."
             }, ensure_ascii=False)
         
-        events = await calendar_service.get_events(start_date, end_date, max_results)
+        # 파라미터 검증 및 변환
+        if 'month' in kwargs:
+            # month 파라미터가 있는 경우 start_date, end_date로 변환
+            month_str = kwargs['month']
+            try:
+                if '-' in month_str:  # YYYY-MM 형식
+                    year, month = month_str.split('-')
+                    year, month = int(year), int(month)
+                else:  # 현재 연도의 월로 가정
+                    from datetime import datetime
+                    year = datetime.now().year
+                    month = int(month_str)
+                    
+                # 해당 월의 첫째 날과 마지막 날 계산
+                from datetime import datetime, timedelta
+                first_day = datetime(year, month, 1)
+                if month == 12:
+                    last_day = datetime(year + 1, 1, 1) - timedelta(days=1)
+                else:
+                    last_day = datetime(year, month + 1, 1) - timedelta(days=1)
+                    
+                start_date = first_day.strftime('%Y-%m-%d')
+                end_date = last_day.strftime('%Y-%m-%d')
+            except:
+                return json.dumps({
+                    "error": f"잘못된 month 파라미터입니다: {month_str}. YYYY-MM 형식으로 입력해주세요."
+                }, ensure_ascii=False)
+        
+        # 현재 날짜 기반으로 기본값 설정
+        if not start_date or not end_date:
+            from datetime import datetime
+            today = datetime.now()
+            if not start_date:
+                start_date = today.strftime('%Y-%m-%d')
+            if not end_date:
+                end_date = today.strftime('%Y-%m-%d')
+        
+        events = calendar_service.get_events(start_date, end_date, max_results)
         
         if not events:
             return json.dumps({
@@ -274,7 +315,7 @@ async def get_calendar_events(start_date: str, end_date: str, max_results: int =
             "error": f"일정 조회 중 오류가 발생했습니다: {str(e)}"
         }, ensure_ascii=False)
 
-async def create_calendar_event(
+def create_calendar_event(
     summary: str,
     start_datetime: str,
     end_datetime: str,
@@ -314,7 +355,7 @@ async def create_calendar_event(
             attendees=attendees or []
         )
         
-        result = await calendar_service.create_event(event_data)
+        result = calendar_service.create_event(event_data)
         
         if result['success']:
             return json.dumps({
@@ -333,7 +374,7 @@ async def create_calendar_event(
             "error": f"일정 생성 중 오류가 발생했습니다: {str(e)}"
         }, ensure_ascii=False)
 
-async def update_calendar_event(
+def update_calendar_event(
     event_id: str,
     summary: str = "",
     description: str = "",
@@ -357,7 +398,7 @@ async def update_calendar_event(
             location=location
         )
         
-        result = await calendar_service.update_event(event_id, event_data)
+        result = calendar_service.update_event(event_id, event_data)
         
         return json.dumps(result, ensure_ascii=False)
         
@@ -366,7 +407,7 @@ async def update_calendar_event(
             "error": f"일정 수정 중 오류가 발생했습니다: {str(e)}"
         }, ensure_ascii=False)
 
-async def delete_calendar_event(event_id: str) -> str:
+def delete_calendar_event(event_id: str) -> str:
     """캘린더 일정 삭제 함수"""
     try:
         if not auth_service.is_authenticated():
@@ -374,7 +415,7 @@ async def delete_calendar_event(event_id: str) -> str:
                 "error": "Google 인증이 필요합니다. /api/v1/google/auth 에서 인증을 완료해주세요."
             }, ensure_ascii=False)
         
-        result = await calendar_service.delete_event(event_id)
+        result = calendar_service.delete_event(event_id)
         
         return json.dumps(result, ensure_ascii=False)
         
@@ -383,7 +424,7 @@ async def delete_calendar_event(event_id: str) -> str:
             "error": f"일정 삭제 중 오류가 발생했습니다: {str(e)}"
         }, ensure_ascii=False)
 
-async def send_email(
+def send_email(
     to: List[str],
     subject: str,
     body: str,
@@ -406,7 +447,7 @@ async def send_email(
             html_body=html_body
         )
         
-        result = await gmail_service.send_email(email_data)
+        result = gmail_service.send_email(email_data)
         
         return json.dumps(result, ensure_ascii=False)
         
@@ -415,7 +456,7 @@ async def send_email(
             "error": f"이메일 전송 중 오류가 발생했습니다: {str(e)}"
         }, ensure_ascii=False)
 
-async def get_emails(query: str = "", max_results: int = 10) -> str:
+def get_emails(query: str = "", max_results: int = 10) -> str:
     """이메일 조회 함수"""
     try:
         if not auth_service.is_authenticated():
@@ -423,7 +464,7 @@ async def get_emails(query: str = "", max_results: int = 10) -> str:
                 "error": "Google 인증이 필요합니다. /api/v1/google/auth 에서 인증을 완료해주세요."
             }, ensure_ascii=False)
         
-        messages = await gmail_service.get_messages(query, max_results)
+        messages = gmail_service.get_messages(query, max_results)
         
         if not messages:
             query_desc = f"'{query}' 조건의 " if query else ""
@@ -442,7 +483,7 @@ async def get_emails(query: str = "", max_results: int = 10) -> str:
             "error": f"이메일 조회 중 오류가 발생했습니다: {str(e)}"
         }, ensure_ascii=False)
 
-async def find_free_time(
+def find_free_time(
     start_date: str,
     end_date: str,
     duration_minutes: int = 60,
@@ -456,7 +497,7 @@ async def find_free_time(
             }, ensure_ascii=False)
         
         # 기간 내 모든 일정 조회
-        events = await calendar_service.get_events(start_date, end_date)
+        events = calendar_service.get_events(start_date, end_date)
         
         # 빈 시간 계산 로직
         free_slots = []

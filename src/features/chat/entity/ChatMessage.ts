@@ -36,6 +36,8 @@ export interface ChatStreamChunk {
   timestamp: Date | string
   sessionId: string
   isComplete: boolean
+  functionCall?: string // Function name if this chunk is from function execution
+  functionStatus?: 'running' | 'completed' | 'error' // Function execution status
 }
 
 export const createChatMessage = (

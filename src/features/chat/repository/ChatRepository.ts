@@ -5,6 +5,8 @@ import type {
   ChatResponse,
   ChatSession,
   ChatStreamChunk,
+  EnhancedChatRequest,
+  ToolsStatus,
 } from '../entity/ChatMessage';
 import type { ChatHistory, ChatSearch, ChatSessionList } from '../entity/ChatSearch';
 
@@ -116,5 +118,56 @@ export class ChatRepository {
   // 프로덕션에서는 필요 없음 (서버에서 초기 데이터 제공)
   async initializeDemoData(): Promise<void> {
     // 서버에서 자동으로 데모 데이터를 제공하므로 아무것도 하지 않음
+  }
+
+  // ===== Enhanced Chat API with Tools =====
+
+  /**
+   * Enhanced Chat API로 메시지 전송 (Tools 지원)
+   */
+  async sendEnhancedMessage(
+    request: EnhancedChatRequest,
+    onChunk: (chunk: ChatStreamChunk) => void,
+    onError?: (error: Error) => void
+  ): Promise<void> {
+    try {
+      await fetchEventSource(`${this.baseURL}/chat/enhanced`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+        onmessage: (event) => {
+          try {
+            const chunk: ChatStreamChunk = JSON.parse(event.data);
+            onChunk(chunk);
+          } catch (error) {
+            console.error('Failed to parse Enhanced SSE chunk:', error);
+          }
+        },
+        onerror: (error) => {
+          console.error('Enhanced SSE connection error:', error);
+          onError?.(error instanceof Error ? error : new Error('Enhanced SSE connection failed'));
+        },
+      });
+    } catch (error) {
+      onError?.(error instanceof Error ? error : new Error('Enhanced stream failed'));
+    }
+  }
+
+  /**
+   * Tools 시스템 상태 조회
+   */
+  async getToolsStatus(): Promise<ToolsStatus> {
+    const response = await axios.get(`${this.baseURL}/tools/status`);
+    return response.data;
+  }
+
+  /**
+   * 사용 가능한 도구 목록 조회
+   */
+  async getAvailableTools(): Promise<{ tools: Record<string, ToolInfo[]>; schemas: any[] }> {
+    const response = await axios.get(`${this.baseURL}/tools/list`);
+    return response.data;
   }
 }

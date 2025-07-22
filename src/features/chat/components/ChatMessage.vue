@@ -23,6 +23,19 @@
             {{ message.role === 'user' ? '나' : 'AI Assistant' }}
           </span>
           <span>{{ formatTime(message.timestamp) }}</span>
+          
+          <!-- Tool 실행 상태 표시 -->
+          <div v-if="message.toolCall" class="flex items-center gap-2 ml-2">
+            <div class="h-1 w-1 bg-current rounded-full"></div>
+            <div class="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium"
+                 :class="getToolStatusClass(message.toolStatus)">
+              <component :is="getToolStatusIcon(message.toolStatus)" class="h-3 w-3" :class="{ 'animate-spin': message.toolStatus === 'running' }" />
+              <span>{{ message.toolCall }}</span>
+              <span v-if="message.toolStatus === 'running'">실행 중...</span>
+              <span v-else-if="message.toolStatus === 'completed'">완료</span>
+              <span v-else-if="message.toolStatus === 'error'">오류</span>
+            </div>
+          </div>
         </div>
 
         <!-- 메시지 내용 -->
@@ -132,7 +145,7 @@ import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { marked } from 'marked'
 import { codeToHtml } from 'shiki'
 import he from 'he'
-import { Copy, RefreshCw, Trash2 } from 'lucide-vue-next'
+import { Copy, RefreshCw, Trash2, Play, CheckCircle, XCircle, Loader2 } from 'lucide-vue-next'
 import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
 import { Button } from '@/core/components/ui/button'
 import { useToast } from '@/core/composables'
@@ -366,6 +379,34 @@ const regenerateMessage = () => {
 // 메시지 삭제 함수
 const deleteMessage = () => {
   emit('delete', props.message.id)
+}
+
+// Tool 상태에 따른 CSS 클래스 반환
+const getToolStatusClass = (status?: string) => {
+  switch (status) {
+    case 'running':
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+    case 'completed':
+      return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+    case 'error':
+      return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+    default:
+      return 'bg-muted text-muted-foreground'
+  }
+}
+
+// Tool 상태에 따른 아이콘 반환
+const getToolStatusIcon = (status?: string) => {
+  switch (status) {
+    case 'running':
+      return Loader2
+    case 'completed':
+      return CheckCircle
+    case 'error':
+      return XCircle
+    default:
+      return Play
+  }
 }
 
 // 코드 블록 복사 함수를 전역으로 등록

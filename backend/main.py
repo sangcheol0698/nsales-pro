@@ -32,6 +32,17 @@ except ImportError as e:
     GOOGLE_TOOLS = []
     FUNCTION_MAP = {}
 
+# 새로운 AI Tools 시스템 import
+try:
+    from tools.manager import tool_manager
+    TOOLS_SYSTEM_AVAILABLE = True
+    print("✅ AI Tools 시스템이 성공적으로 로드되었습니다.")
+    print(f"📊 등록된 도구 상태: {tool_manager.get_status()}")
+except ImportError as e:
+    print(f"⚠️ AI Tools 시스템 로드 실패: {e}")
+    TOOLS_SYSTEM_AVAILABLE = False
+    tool_manager = None
+
 # .env 파일 로드
 load_dotenv()
 
@@ -3516,23 +3527,30 @@ async def stream_with_direct_function_calling(
                             # 함수 실행
                             function_result = FUNCTION_MAP[function_name](**function_args)
                             
-                            # 결과를 스트리밍으로 출력
-                            result_content = f"✅ {function_name} 결과:\n{function_result}\n\n"
+                            # 구조화된 결과 생성
+                            structured_result = {
+                                "type": "function_result",
+                                "function_name": function_name,
+                                "result": function_result,
+                                "timestamp": datetime.now().isoformat()
+                            }
+                            
+                            # UI에서 사용할 수 있는 구조화된 결과 스트리밍
+                            result_content = f"```json\n{json.dumps(structured_result, indent=2, ensure_ascii=False)}\n```\n\n"
                             full_content += result_content
                             
-                            for char in result_content:
-                                result_chunk = ChatStreamChunk(
-                                    id=ai_message_id,
-                                    content=char,
-                                    role="assistant",
-                                    timestamp=datetime.now(),
-                                    sessionId=session_id,
-                                    isComplete=False,
-                                    functionCall=function_name,
-                                    functionStatus="completed"
-                                )
-                                yield f"data: {result_chunk.json()}\n\n"
-                                await asyncio.sleep(0.01)
+                            # 결과를 한 번에 스트리밍
+                            result_chunk = ChatStreamChunk(
+                                id=ai_message_id,
+                                content=result_content,
+                                role="assistant",
+                                timestamp=datetime.now(),
+                                sessionId=session_id,
+                                isComplete=False,
+                                functionCall=function_name,
+                                functionStatus="completed"
+                            )
+                            yield f"data: {result_chunk.json()}\n\n"
                                 
                         except Exception as e:
                             error_content = f"❌ {function_name} 실행 오류: {str(e)}\n\n"
@@ -3596,6 +3614,362 @@ async def stream_with_direct_function_calling(
             "Connection": "keep-alive"
         }
     )
+
+# ===========================
+# 🛠️ 새로운 AI Tools 시스템 API
+# ===========================
+
+@app.get("/api/v1/tools/status")
+async def get_tools_status():
+    """AI Tools 시스템 상태 조회"""
+    if not TOOLS_SYSTEM_AVAILABLE:
+        return {"available": False, "error": "Tools 시스템을 사용할 수 없습니다."}
+    
+    status = tool_manager.get_status()
+    tools_info = tool_manager.registry.get_available_tools_info()
+    
+    return {
+        "available": True,
+        "status": status,
+        "tools": tools_info,
+        "google_auth_status": auth_service.is_authenticated() if GOOGLE_SERVICES_AVAILABLE else False
+    }
+
+
+@app.get("/api/v1/tools/list")
+async def list_available_tools():
+    """사용 가능한 모든 도구 목록 조회"""
+    if not TOOLS_SYSTEM_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Tools 시스템을 사용할 수 없습니다.")
+    
+    return {
+        "tools": tool_manager.registry.get_available_tools_info(),
+        "schemas": tool_manager.registry.get_openai_schemas()
+    }
+
+
+class EnhancedChatRequest(BaseModel):
+    message: str
+    sessionId: Optional[str] = None
+    model: str = "gpt-4o"
+    use_tools: bool = True
+    tool_categories: Optional[List[str]] = None  # ["calendar", "email", "crm", "utility"]
+
+
+class EnhancedChatStreamChunk(BaseModel):
+    id: str
+    content: str
+    role: str
+    timestamp: datetime
+    sessionId: str
+    isComplete: bool = False
+    # Tools 관련 필드
+    toolCall: Optional[str] = None
+    toolStatus: Optional[str] = None  # "running", "completed", "error"
+    toolResult: Optional[Dict] = None
+
+
+@app.post("/api/v1/chat/enhanced")
+async def enhanced_chat_stream(request: EnhancedChatRequest):
+    """새로운 AI Tools 시스템을 사용하는 향상된 채팅 API"""
+    
+    if not TOOLS_SYSTEM_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Tools 시스템을 사용할 수 없습니다.")
+    
+    session_id = request.sessionId or str(uuid.uuid4())
+    
+    # 세션 초기화
+    if session_id not in messages_db:
+        messages_db[session_id] = []
+        sessions_db[session_id] = {
+            "id": session_id,
+            "createdAt": datetime.now(),
+            "messageCount": 0,
+            "model": request.model
+        }
+    
+    async def generate_enhanced_stream():
+        ai_message_id = str(uuid.uuid4())
+        full_content = ""
+        
+        try:
+            # 사용자 메시지 저장
+            user_message = ChatMessage(
+                id=str(uuid.uuid4()),
+                content=request.message,
+                role="user", 
+                timestamp=datetime.now(),
+                sessionId=session_id
+            )
+            messages_db[session_id].append(user_message.dict())
+            
+            # 대화 히스토리 구성
+            conversation_messages = []
+            for msg in messages_db[session_id]:
+                conversation_messages.append({
+                    "role": msg["role"],
+                    "content": msg["content"]
+                })
+            
+            # 사용할 도구들 선택
+            available_tools = []
+            if request.use_tools:
+                if request.tool_categories:
+                    # 특정 카테고리의 도구만 사용
+                    for category in request.tool_categories:
+                        tools_in_category = tool_manager.registry.get_tools_by_category(category)
+                        available_tools.extend([tool.get_schema() for tool in tools_in_category])
+                else:
+                    # 모든 도구 사용
+                    available_tools = tool_manager.registry.get_openai_schemas()
+            
+            print(f"🛠️ Using {len(available_tools)} tools for enhanced chat")
+            
+            # OpenAI Chat Completions API 호출
+            response = await client.chat.completions.create(
+                model=request.model,
+                messages=conversation_messages,
+                tools=available_tools if available_tools else None,
+                stream=True,
+                temperature=0.7
+            )
+            
+            # 스트리밍 응답 처리
+            tool_calls = []
+            current_tool_call = None
+            
+            async for chunk in response:
+                if chunk.choices[0].delta.content:
+                    content_piece = chunk.choices[0].delta.content
+                    full_content += content_piece
+                    
+                    # 내용 스트리밍
+                    stream_chunk = EnhancedChatStreamChunk(
+                        id=ai_message_id,
+                        content=content_piece,
+                        role="assistant",
+                        timestamp=datetime.now(),
+                        sessionId=session_id,
+                        isComplete=False
+                    )
+                    yield f"data: {stream_chunk.json()}\n\n"
+                
+                # Tool calls 감지
+                if chunk.choices[0].delta.tool_calls:
+                    for tool_call_delta in chunk.choices[0].delta.tool_calls:
+                        if tool_call_delta.index is not None:
+                            # 새로운 tool call 시작
+                            if len(tool_calls) <= tool_call_delta.index:
+                                tool_calls.append({
+                                    "id": "",
+                                    "type": "function",
+                                    "function": {"name": "", "arguments": ""}
+                                })
+                            
+                            current_tool_call = tool_calls[tool_call_delta.index]
+                            
+                            if tool_call_delta.id:
+                                current_tool_call["id"] = tool_call_delta.id
+                            if tool_call_delta.function.name:
+                                current_tool_call["function"]["name"] = tool_call_delta.function.name
+                            if tool_call_delta.function.arguments:
+                                current_tool_call["function"]["arguments"] += tool_call_delta.function.arguments
+            
+            # Tool calls 실행
+            if tool_calls:
+                print(f"🔧 Executing {len(tool_calls)} tool calls")
+                
+                for tool_call in tool_calls:
+                    function_name = tool_call["function"]["name"]
+                    
+                    # 실행 시작 알림
+                    start_chunk = EnhancedChatStreamChunk(
+                        id=ai_message_id,
+                        content=f"\n\n🔄 {function_name} 실행 중...\n",
+                        role="assistant", 
+                        timestamp=datetime.now(),
+                        sessionId=session_id,
+                        isComplete=False,
+                        toolCall=function_name,
+                        toolStatus="running"
+                    )
+                    yield f"data: {start_chunk.json()}\n\n"
+                    
+                    try:
+                        # 새로운 Tools 시스템으로 실행
+                        mock_tool_call = type('MockToolCall', (), {
+                            'function': type('MockFunction', (), {
+                                'name': function_name,
+                                'arguments': tool_call["function"]["arguments"]
+                            })()
+                        })()
+                        
+                        result = await tool_manager.registry.execute_tool_call(mock_tool_call)
+                        
+                        # 결과 파싱
+                        try:
+                            result_data = json.loads(result)
+                        except:
+                            result_data = {"success": False, "error": "결과 파싱 실패"}
+                        
+                        # 성공 결과 스트리밍
+                        if result_data.get("success"):
+                            result_content = f"✅ **{function_name} 완료**\n\n"
+                            if result_data.get("message"):
+                                result_content += f"📋 {result_data['message']}\n\n"
+                            
+                            # 구조화된 데이터가 있으면 표시
+                            if result_data.get("data"):
+                                result_content += f"```json\n{json.dumps(result_data['data'], indent=2, ensure_ascii=False)}\n```\n\n"
+                        else:
+                            result_content = f"❌ **{function_name} 실패**: {result_data.get('error', '알 수 없는 오류')}\n\n"
+                        
+                        full_content += result_content
+                        
+                        # 결과 스트리밍
+                        result_chunk = EnhancedChatStreamChunk(
+                            id=ai_message_id,
+                            content=result_content,
+                            role="assistant",
+                            timestamp=datetime.now(),
+                            sessionId=session_id,
+                            isComplete=False,
+                            toolCall=function_name,
+                            toolStatus="completed" if result_data.get("success") else "error",
+                            toolResult=result_data
+                        )
+                        yield f"data: {result_chunk.json()}\n\n"
+                        
+                    except Exception as e:
+                        error_content = f"❌ **{function_name} 오류**: {str(e)}\n\n"
+                        full_content += error_content
+                        
+                        error_chunk = EnhancedChatStreamChunk(
+                            id=ai_message_id,
+                            content=error_content,
+                            role="assistant",
+                            timestamp=datetime.now(),
+                            sessionId=session_id,
+                            isComplete=False,
+                            toolCall=function_name,
+                            toolStatus="error"
+                        )
+                        yield f"data: {error_chunk.json()}\n\n"
+                
+                # Tool calls 결과를 바탕으로 최종 응답 생성
+                if any(tool_calls):
+                    # Tool calls 메시지 추가
+                    messages_with_tools = conversation_messages + [
+                        {"role": "assistant", "content": "", "tool_calls": [
+                            {
+                                "id": tc["id"],
+                                "type": "function", 
+                                "function": {
+                                    "name": tc["function"]["name"],
+                                    "arguments": tc["function"]["arguments"]
+                                }
+                            } for tc in tool_calls
+                        ]}
+                    ]
+                    
+                    # Tool 실행 결과를 메시지에 추가
+                    for tc in tool_calls:
+                        tool_result = await tool_manager.registry.execute_tool_call(
+                            type('MockToolCall', (), {
+                                'function': type('MockFunction', (), {
+                                    'name': tc["function"]["name"],
+                                    'arguments': tc["function"]["arguments"]
+                                })()
+                            })()
+                        )
+                        messages_with_tools.append({
+                            "role": "tool", 
+                            "tool_call_id": tc["id"], 
+                            "content": tool_result
+                        })
+                    
+                    # 최종 응답 생성
+                    final_response = await client.chat.completions.create(
+                        model=request.model,
+                        messages=messages_with_tools,
+                        stream=True,
+                        temperature=0.7
+                    )
+                    
+                    summary_content = "\n\n💬 **AI 요약:**\n"
+                    full_content += summary_content
+                    
+                    summary_chunk = EnhancedChatStreamChunk(
+                        id=ai_message_id,
+                        content=summary_content,
+                        role="assistant",
+                        timestamp=datetime.now(),
+                        sessionId=session_id,
+                        isComplete=False
+                    )
+                    yield f"data: {summary_chunk.json()}\n\n"
+                    
+                    async for chunk in final_response:
+                        if chunk.choices[0].delta.content:
+                            content_piece = chunk.choices[0].delta.content
+                            full_content += content_piece
+                            
+                            stream_chunk = EnhancedChatStreamChunk(
+                                id=ai_message_id,
+                                content=content_piece,
+                                role="assistant",
+                                timestamp=datetime.now(),
+                                sessionId=session_id,
+                                isComplete=False
+                            )
+                            yield f"data: {stream_chunk.json()}\n\n"
+            
+            # 완료 신호
+            final_chunk = EnhancedChatStreamChunk(
+                id=ai_message_id,
+                content="",
+                role="assistant",
+                timestamp=datetime.now(),
+                sessionId=session_id,
+                isComplete=True
+            )
+            yield f"data: {final_chunk.json()}\n\n"
+            
+            # AI 응답 저장
+            ai_message = ChatMessage(
+                id=ai_message_id,
+                content=full_content,
+                role="assistant",
+                timestamp=datetime.now(),
+                sessionId=session_id
+            )
+            messages_db[session_id].append(ai_message.dict())
+            update_session_message_count(session_id)
+            
+        except Exception as e:
+            error_msg = f"❌ Enhanced Chat 오류: {str(e)}"
+            print(error_msg)
+            
+            error_chunk = EnhancedChatStreamChunk(
+                id=ai_message_id,
+                content=error_msg,
+                role="assistant",
+                timestamp=datetime.now(),
+                sessionId=session_id,
+                isComplete=True,
+                toolStatus="error"
+            )
+            yield f"data: {error_chunk.json()}\n\n"
+    
+    return StreamingResponse(
+        generate_enhanced_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive"
+        }
+    )
+
 
 if __name__ == "__main__":
     import uvicorn

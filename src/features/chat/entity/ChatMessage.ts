@@ -4,6 +4,10 @@ export interface ChatMessage {
   content: string
   timestamp: Date | string
   sessionId?: string
+  // Tool execution 관련 필드들
+  toolCall?: string // 실행된 도구 이름
+  toolStatus?: 'running' | 'completed' | 'error' // 도구 실행 상태
+  toolResult?: any // 도구 실행 결과
 }
 
 export interface ChatSession {
@@ -21,6 +25,31 @@ export interface ChatRequest {
   webSearch?: boolean
 }
 
+// Enhanced Chat API 요청 인터페이스
+export interface EnhancedChatRequest {
+  message: string
+  sessionId: string
+  model?: string
+  webSearch?: boolean
+}
+
+// Tool 관련 인터페이스들
+export interface ToolInfo {
+  name: string
+  description: string
+}
+
+export interface ToolsStatus {
+  available: boolean
+  status: {
+    total_tools: number
+    categories: Record<string, number>
+    tools: string[]
+  }
+  tools: Record<string, ToolInfo[]>
+  google_auth_status: boolean
+}
+
 export interface ChatResponse {
   id: string
   content: string
@@ -36,8 +65,10 @@ export interface ChatStreamChunk {
   timestamp: Date | string
   sessionId: string
   isComplete: boolean
-  functionCall?: string // Function name if this chunk is from function execution
-  functionStatus?: 'running' | 'completed' | 'error' // Function execution status
+  // Enhanced Chat API와 호환되도록 필드명 업데이트
+  toolCall?: string // 실행된 도구 이름
+  toolStatus?: 'running' | 'completed' | 'error' // 도구 실행 상태
+  toolResult?: any // 도구 실행 결과
 }
 
 export const createChatMessage = (

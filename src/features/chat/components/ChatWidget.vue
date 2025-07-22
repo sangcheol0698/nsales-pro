@@ -112,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, nextTick, onMounted, watch } from 'vue'
+import { ref, nextTick, onMounted, watch } from 'vue'
 import { Bot, RotateCcw, Minimize2, ChevronDown } from 'lucide-vue-next'
 import { Button } from '@/core/components/ui/button'
 import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
@@ -122,7 +122,7 @@ import ChatInput from './ChatInput.vue'
 import MessageSearch from './MessageSearch.vue'
 import KeyboardShortcuts from './KeyboardShortcuts.vue'
 import { ChatRepository } from '../repository/ChatRepository'
-import { createChatMessage, createChatSession } from '../entity/ChatMessage'
+import { createChatMessage } from '../entity/ChatMessage'
 import type { ChatMessage as ChatMessageType, ChatSession } from '../entity/ChatMessage'
 
 interface Props {
@@ -144,7 +144,7 @@ const showScrollToBottom = ref(false)
 const scrollAreaRef = ref()
 const chatInputRef = ref()
 
-const sendMessage = async (content: string, files?: File[], model?: string, webSearch?: boolean) => {
+const sendMessage = async (content: string, files?: File[], model?: string, webSearch?: boolean, useEnhancedAPI?: boolean) => {
   if ((!content.trim() && (!files || files.length === 0)) || isLoading.value) return
 
   isLoading.value = true
@@ -167,8 +167,10 @@ const sendMessage = async (content: string, files?: File[], model?: string, webS
         model,
         webSearch
       )
-    } else {
-      // 파일이 없는 경우 기존 스트리밍 API 사용
+    } else if (useEnhancedAPI) {
+      // Enhanced Chat API 사용 (AI Tools 지원)
+      console.log('🚀 Using Enhanced Chat API with Tools support')
+      
       // 사용자 메시지 추가
       const userMessage = createChatMessage('user', content, currentSession.value.id)
       messages.value.push(userMessage)
@@ -182,7 +184,86 @@ const sendMessage = async (content: string, files?: File[], model?: string, webS
       
       await scrollToBottom()
 
-      // 스트리밍으로 응답 받기
+      // Enhanced Chat API로 스트리밍 응답 받기
+      let fullContent = ''
+      let lastScrollTime = 0
+      await chatRepository.sendEnhancedMessage(
+        {
+          message: content,
+          sessionId: currentSession.value.id,
+          model: model || 'gpt-3.5-turbo',
+          webSearch: webSearch
+        },
+        (chunk) => {
+          if (!chunk.isComplete) {
+            // Tool 실행 상태 처리
+            if (chunk.toolCall) {
+              const lastMessage = messages.value[messages.value.length - 1]
+              if (lastMessage.role === 'assistant') {
+                lastMessage.toolCall = chunk.toolCall
+                lastMessage.toolStatus = chunk.toolStatus
+                lastMessage.toolResult = chunk.toolResult
+              }
+              
+              if (chunk.toolStatus === 'running') {
+                console.log(`🔧 Tool ${chunk.toolCall} 실행 중...`)
+              } else if (chunk.toolStatus === 'completed') {
+                console.log(`✅ Tool ${chunk.toolCall} 완료:`, chunk.toolResult)
+              } else if (chunk.toolStatus === 'error') {
+                console.log(`❌ Tool ${chunk.toolCall} 오류`)
+              }
+            }
+            
+            fullContent += chunk.content
+            // 마지막 메시지 업데이트
+            const lastMessage = messages.value[messages.value.length - 1]
+            if (lastMessage.role === 'assistant') {
+              lastMessage.content = fullContent
+            }
+            
+            // 스크롤 최적화
+            const hasCodeOrMarkdown = fullContent.includes('```') || 
+                                    fullContent.includes('##') || 
+                                    fullContent.includes('**') ||
+                                    fullContent.includes('[') ||
+                                    fullContent.includes('|')
+            
+            const scrollInterval = hasCodeOrMarkdown ? 50 : 100
+            const now = Date.now()
+            if (now - lastScrollTime > scrollInterval) {
+              scrollToBottom(hasCodeOrMarkdown)
+              lastScrollTime = now
+            }
+          }
+        },
+        (error) => {
+          console.error('Enhanced Chat error:', error)
+          toast.error('AI 응답 실패', {
+            description: 'AI Tools 시스템 응답 중 오류가 발생했습니다.',
+          })
+          
+          // 오류 발생 시 빈 AI 메시지 제거
+          if (messages.value[messages.value.length - 1]?.content === '') {
+            messages.value.pop()
+          }
+        }
+      )
+    } else {
+      // 기존 스트리밍 API 사용
+      // 사용자 메시지 추가
+      const userMessage = createChatMessage('user', content, currentSession.value.id)
+      messages.value.push(userMessage)
+      
+      // 스크롤을 최하단으로
+      await scrollToBottom()
+
+      // AI 응답을 위한 임시 메시지
+      const assistantMessage = createChatMessage('assistant', '', currentSession.value.id)
+      messages.value.push(assistantMessage)
+      
+      await scrollToBottom()
+
+      // 기존 스트리밍으로 응답 받기
       let fullContent = ''
       let lastScrollTime = 0
       await chatRepository.streamMessage(
@@ -194,15 +275,14 @@ const sendMessage = async (content: string, files?: File[], model?: string, webS
         },
         (chunk) => {
           if (!chunk.isComplete) {
-            // Function Calling 상태 체크
-            if (chunk.functionCall) {
-              // Function 실행 상태를 별도로 처리
-              if (chunk.functionStatus === 'running') {
-                console.log(`🔄 Function ${chunk.functionCall} 실행 중...`)
-              } else if (chunk.functionStatus === 'completed') {
-                console.log(`✅ Function ${chunk.functionCall} 완료`)
-              } else if (chunk.functionStatus === 'error') {
-                console.log(`❌ Function ${chunk.functionCall} 오류`)
+            // Tool Calling 상태 체크 (기존 API용)
+            if (chunk.toolCall) {
+              if (chunk.toolStatus === 'running') {
+                console.log(`🔄 Tool ${chunk.toolCall} 실행 중...`)
+              } else if (chunk.toolStatus === 'completed') {
+                console.log(`✅ Tool ${chunk.toolCall} 완료`)
+              } else if (chunk.toolStatus === 'error') {
+                console.log(`❌ Tool ${chunk.toolCall} 오류`)
               }
             }
             
@@ -212,14 +292,14 @@ const sendMessage = async (content: string, files?: File[], model?: string, webS
             if (lastMessage.role === 'assistant') {
               lastMessage.content = fullContent
             }
-            // 코드 블록이나 마크다운 감지 시 더 자주 스크롤
+            
             const hasCodeOrMarkdown = fullContent.includes('```') || 
                                     fullContent.includes('##') || 
                                     fullContent.includes('**') ||
                                     fullContent.includes('[') ||
                                     fullContent.includes('|')
             
-            const scrollInterval = hasCodeOrMarkdown ? 50 : 100 // 코드가 있으면 더 자주
+            const scrollInterval = hasCodeOrMarkdown ? 50 : 100
             const now = Date.now()
             if (now - lastScrollTime > scrollInterval) {
               scrollToBottom(hasCodeOrMarkdown)
@@ -239,12 +319,13 @@ const sendMessage = async (content: string, files?: File[], model?: string, webS
           }
         }
       )
-      
-      // 스트리밍 완료 후 최종 스크롤 (코드 블록 렌더링 완료 대기)
+    }
+    
+    // 파일이 없는 경우에만 스트리밍 완료 후 최종 스크롤
+    if (!files || files.length === 0) {
       setTimeout(() => {
         scrollToBottom(true)
       }, 300)
-      
       return // 스트리밍의 경우 여기서 종료
     }
 
@@ -338,14 +419,14 @@ const handleRegenerateMessage = async (messageId: string) => {
       },
       (chunk) => {
         if (!chunk.isComplete) {
-          // Function Calling 상태 체크
-          if (chunk.functionCall) {
-            if (chunk.functionStatus === 'running') {
-              console.log(`🔄 Function ${chunk.functionCall} 재실행 중...`)
-            } else if (chunk.functionStatus === 'completed') {
-              console.log(`✅ Function ${chunk.functionCall} 재실행 완료`)
-            } else if (chunk.functionStatus === 'error') {
-              console.log(`❌ Function ${chunk.functionCall} 재실행 오류`)
+          // Tool Calling 상태 체크
+          if (chunk.toolCall) {
+            if (chunk.toolStatus === 'running') {
+              console.log(`🔄 Tool ${chunk.toolCall} 재실행 중...`)
+            } else if (chunk.toolStatus === 'completed') {
+              console.log(`✅ Tool ${chunk.toolCall} 재실행 완료`)
+            } else if (chunk.toolStatus === 'error') {
+              console.log(`❌ Tool ${chunk.toolCall} 재실행 오류`)
             }
           }
           

@@ -57,6 +57,24 @@
           <span v-if="webSearchEnabled" class="ml-1.5 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
         </Button>
 
+        <!-- AI Tools 토글 -->
+        <Button
+          variant="outline"
+          size="sm"
+          @click="toolsEnabled = !toolsEnabled"
+          :disabled="disabled"
+          class="h-8 px-3 text-xs font-medium hover:bg-muted/50 transition-all duration-200"
+          :class="{ 
+            'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800': toolsEnabled,
+            'border-dashed': !toolsEnabled
+          }"
+          title="Google 캘린더, Gmail 등 AI Tools 사용"
+        >
+          <Wrench class="h-3 w-3 mr-1.5" />
+          AI Tools
+          <span v-if="toolsEnabled" class="ml-1.5 w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+        </Button>
+
         <!-- 우측 액션 버튼들 -->
         <div class="ml-auto flex items-center gap-1">
           <!-- 파일 첨부 -->
@@ -214,7 +232,7 @@
     </Transition>
     
     <!-- 상태 표시 -->
-    <div v-if="webSearchEnabled || selectedModel !== 'gpt-4o' || isRecording" class="flex items-center gap-2 mt-3">
+    <div v-if="webSearchEnabled || toolsEnabled || selectedModel !== 'gpt-4o' || isRecording" class="flex items-center gap-2 mt-3">
       <Transition
         enter-active-class="transition-all duration-300 ease-out"
         leave-active-class="transition-all duration-200 ease-in"
@@ -225,6 +243,19 @@
           <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
           <Search class="h-3 w-3 text-blue-600 dark:text-blue-400" />
           <span class="text-blue-700 dark:text-blue-300 font-medium text-xs">웹 검색 활성화</span>
+        </div>
+      </Transition>
+
+      <Transition
+        enter-active-class="transition-all duration-300 ease-out"
+        leave-active-class="transition-all duration-200 ease-in"
+        enter-from-class="opacity-0 scale-95 translate-x-2"
+        leave-to-class="opacity-0 scale-95 translate-x-2"
+      >
+        <div v-if="toolsEnabled" class="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 rounded-lg border border-emerald-200 dark:border-emerald-800">
+          <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+          <Wrench class="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+          <span class="text-emerald-700 dark:text-emerald-300 font-medium text-xs">AI Tools 활성화 (캘린더, 이메일 등)</span>
         </div>
       </Transition>
       
@@ -327,7 +358,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
-import { Send, Paperclip, Smile, Mic, Square, X, FileText, Bot, ChevronDown, Search } from 'lucide-vue-next'
+import { Send, Paperclip, Smile, Mic, Square, X, FileText, Bot, ChevronDown, Search, Wrench } from 'lucide-vue-next'
 import { Button } from '@/core/components/ui/button'
 import { Textarea } from '@/core/components/ui/textarea'
 import { useToast } from '@/core/composables'
@@ -339,7 +370,7 @@ interface Props {
 }
 
 interface Emits {
-  submit: [message: string, files?: File[], model?: string, webSearch?: boolean]
+  submit: [message: string, files?: File[], model?: string, webSearch?: boolean, useEnhancedAPI?: boolean]
 }
 
 interface EmojiItem {
@@ -370,6 +401,9 @@ const showModelSelector = ref(false)
 
 // 웹 검색 상태
 const webSearchEnabled = ref(false)
+
+// AI Tools 상태
+const toolsEnabled = ref(false)
 
 // 새로운 기능 상태
 const attachedFiles = ref<File[]>([])
@@ -514,8 +548,12 @@ const getCurrentModelName = () => {
 }
 
 const getPlaceholder = () => {
-  if (webSearchEnabled.value) {
+  if (webSearchEnabled.value && toolsEnabled.value) {
+    return '웹 검색 및 AI Tools가 활성화되었습니다. 최신 정보나 캘린더, 이메일을 물어보세요...'
+  } else if (webSearchEnabled.value) {
     return '웹 검색이 활성화되었습니다. 최신 정보를 물어보세요...'
+  } else if (toolsEnabled.value) {
+    return 'AI Tools가 활성화되었습니다. 캘린더 일정이나 이메일에 대해 물어보세요...'
   }
   return props.placeholder
 }
@@ -536,12 +574,14 @@ const handleSubmit = () => {
 
   const finalModel = selectedModel.value
   const webSearch = webSearchEnabled.value
+  const useEnhancedAPI = toolsEnabled.value
   
-  emit('submit', message, attachedFiles.value.length > 0 ? attachedFiles.value : undefined, finalModel, webSearch)
+  emit('submit', message, attachedFiles.value.length > 0 ? attachedFiles.value : undefined, finalModel, webSearch, useEnhancedAPI)
   
   inputMessage.value = ''
   attachedFiles.value = []
   webSearchEnabled.value = false // 전송 후 웹 검색 비활성화
+  // toolsEnabled는 지속적으로 유지 (사용자가 명시적으로 끌 때까지)
   
   nextTick(() => {
     adjustHeight()

@@ -562,16 +562,11 @@ onUnmounted(() => {
 }
 
 .markdown-content ol {
-  counter-reset: list-counter;
-}
-
-.markdown-content ol li {
-  counter-increment: list-counter;
-  position: relative;
+  list-style-type: decimal;
+  list-style-position: outside;
 }
 
 .markdown-content ol li::marker {
-  content: counter(list-counter) ". ";
   color: hsl(var(--primary));
   font-weight: 600;
 }
@@ -582,6 +577,14 @@ onUnmounted(() => {
 .markdown-content ul ol,
 .markdown-content ol ul {
   margin: 0.5em 0;
+}
+
+.markdown-content ol ol {
+  counter-reset: list-counter;
+}
+
+.markdown-content ol ol li::before {
+  left: -1.5rem;
 }
 
 /* 인용문 - 글래스모피즘 효과 */

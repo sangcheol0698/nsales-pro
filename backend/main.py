@@ -1696,7 +1696,7 @@ async def process_file_locally(file_content: bytes, filename: str, content_type:
             return await extract_text_from_pdf_local(file_content)
         elif content_type in [
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"] or filename.lower().endswith(
-                '.docx'):
+            '.docx'):
             return await extract_text_from_docx_local(file_content)
         elif content_type.startswith('image/'):
             return await extract_text_from_image_local(file_content)
@@ -3797,6 +3797,20 @@ async def enhanced_chat_stream(request: EnhancedChatRequest):
 
     session_id = request.sessionId or str(uuid.uuid4())
 
+    # 현재 한국 시간 정보 생성
+    korea_tz = timezone(timedelta(hours=9))
+    current_time_kst = datetime.now(korea_tz)
+
+    # Google 서비스 사용 안내를 포함한 시스템 프롬프트 구성
+    system_prompt = f"""당신은 NSales Pro의 영업 AI 도우미입니다. 영업 데이터 분석, 프로젝트 정보 조회, 업무 관련 질문에 도움을 주세요. 한국어로 친근하고 전문적으로 답변해주세요. 이전 대화 내용을 기억하고 문맥을 유지하여 답변하세요. 최신 정보가 필요하거나 실시간 데이터, 뉴스, 시장 동향 등을 질문받으면 웹 검색을 적극 활용하여 정확하고 최신의 정보를 제공하세요.
+
+**현재 시간 정보:**
+- 현재 날짜: {current_time_kst.strftime('%Y년 %m월 %d일 (%A)')}
+- 현재 시간: {current_time_kst.strftime('%H시 %M분')}
+- 시간대: 한국 표준시 (KST, UTC+9)
+
+"오늘", "이번 주", "이번 달" 등의 시간 표현을 사용할 때는 위의 한국 시간 기준으로 해석해주세요."""
+
     # 세션 초기화
     if session_id not in messages_db:
         messages_db[session_id] = []
@@ -3823,7 +3837,7 @@ async def enhanced_chat_stream(request: EnhancedChatRequest):
             messages_db[session_id].append(user_message.dict())
 
             # 대화 히스토리 구성
-            conversation_messages = []
+            conversation_messages = [{"role": "system", "content": system_prompt}]
             for msg in messages_db[session_id]:
                 conversation_messages.append({
                     "role": msg["role"],

@@ -58,17 +58,34 @@
           </div>
 
           <!-- Assistant 메시지 -->
-          <div
-            v-else-if="message.role === 'assistant'"
-            class="markdown-content prose prose-sm max-w-none dark:prose-invert"
-          >
-            <div v-if="isProcessing" class="flex items-center gap-2 text-muted-foreground">
-              <div class="w-2 h-2 bg-current rounded-full animate-bounce"></div>
-              <div class="w-2 h-2 bg-current rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-              <div class="w-2 h-2 bg-current rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-              <span class="text-sm">코드 하이라이트 중...</span>
+          <div v-else-if="message.role === 'assistant'">
+            <!-- Google Tools 결과 카드 -->
+            <div v-if="googleToolResult && googleToolResult.type !== 'text'" class="mb-3">
+              <GoogleCalendarCard
+                v-if="googleToolResult.type === 'calendar'"
+                :title="googleToolResult.title"
+                :events="googleToolResult.data as CalendarEvent[]"
+              />
+              <GmailCard
+                v-else-if="googleToolResult.type === 'gmail'"
+                :title="googleToolResult.title"
+                :emails="googleToolResult.data as EmailMessage[]"
+              />
             </div>
-            <div v-else v-html="formattedContent" />
+            
+            <!-- 일반 마크다운 내용 -->
+            <div
+              v-if="!googleToolResult || googleToolResult.type === 'text' || message.content.trim()"
+              class="markdown-content prose prose-sm max-w-none dark:prose-invert"
+            >
+              <div v-if="isProcessing" class="flex items-center gap-2 text-muted-foreground">
+                <div class="w-2 h-2 bg-current rounded-full animate-bounce"></div>
+                <div class="w-2 h-2 bg-current rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                <div class="w-2 h-2 bg-current rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                <span class="text-sm">코드 하이라이트 중...</span>
+              </div>
+              <div v-else v-html="formattedContent" />
+            </div>
           </div>
 
           <!-- User 메시지 -->
@@ -150,6 +167,10 @@ import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
 import { Button } from '@/core/components/ui/button'
 import { useToast } from '@/core/composables'
 import type { ChatMessage } from '../entity/ChatMessage'
+import GoogleCalendarCard from './GoogleCalendarCard.vue'
+import GmailCard from './GmailCard.vue'
+import { getGoogleToolResult } from '../utils/googleToolsParser'
+import type { CalendarEvent, EmailMessage } from '../utils/googleToolsParser'
 
 interface Props {
   message: ChatMessage
@@ -185,6 +206,11 @@ marked.setOptions({
 // 다크 모드 감지
 const isDarkMode = computed(() => {
   return document.documentElement.classList.contains('dark')
+})
+
+// Google Tools 결과 파싱
+const googleToolResult = computed(() => {
+  return getGoogleToolResult(props.message)
 })
 
 // Shiki로 코드 하이라이트 처리하는 함수

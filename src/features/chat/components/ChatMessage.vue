@@ -59,6 +59,7 @@
 
           <!-- Assistant 메시지 -->
           <div v-else-if="message.role === 'assistant'">
+            
             <!-- Google Tools 결과 카드 -->
             <div v-if="googleToolResult && googleToolResult.type !== 'text'" class="mb-3">
               <GoogleCalendarCard
@@ -167,8 +168,8 @@ import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
 import { Button } from '@/core/components/ui/button'
 import { useToast } from '@/core/composables'
 import type { ChatMessage } from '../entity/ChatMessage'
-import GoogleCalendarCard from './GoogleCalendarCard.vue'
-import GmailCard from './GmailCard.vue'
+import GoogleCalendarCard from './enhanced/EnhancedGoogleCalendarCard.vue'
+import GmailCard from './enhanced/EnhancedGmailCard.vue'
 import { getGoogleToolResult } from '../utils/googleToolsParser'
 import type { CalendarEvent, EmailMessage } from '../utils/googleToolsParser'
 
@@ -221,7 +222,6 @@ const highlightWithShiki = async (code: string, lang: string): Promise<string> =
   }
 
   try {
-    console.log('🎨 Highlighting with Shiki:', { lang, codeLength: code.length, theme: isDarkMode.value ? 'one-dark-pro' : 'github-light' })
     
     // 언어 매핑
     const langMap: Record<string, string> = {
@@ -290,8 +290,14 @@ const processContent = async () => {
 
   isProcessing.value = true
   try {
-    let html = marked(props.message.content)
-    console.log('Original marked HTML (first 200 chars):', html.substring(0, 200))
+    // Google Tools 결과가 있는 경우 JSON 코드 블록을 미리 제거
+    let content = props.message.content
+    if (googleToolResult.value) {
+      // JSON 마크다운 블록 패턴 제거
+      content = content.replace(/```json\s*[\s\S]*?\s*```/g, '')
+    }
+    
+    let html = marked(content)
     
     // 코드 블록 찾기
     const codeBlockRegex = /<pre><code(?:\s+class="([^"]*)")?[^>]*>([\s\S]*?)<\/code><\/pre>/g
@@ -311,11 +317,9 @@ const processContent = async () => {
       codeBlocks.push({ match: fullMatch, classAttr, code: plainCode, lang })
     }
     
-    console.log('Found code blocks:', codeBlocks.length)
     
     // 각 코드 블록을 Shiki로 처리
     for (const block of codeBlocks) {
-      console.log('Processing code block:', block.lang)
       const highlightedHtml = await highlightWithShiki(block.code, block.lang)
       
       // 복사 버튼과 함께 래핑

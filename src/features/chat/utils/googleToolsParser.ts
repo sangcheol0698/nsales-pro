@@ -37,12 +37,6 @@ interface ParsedToolResult {
  */
 export function parseGoogleToolResult(toolCall: string, toolResult: any, content: string): ParsedToolResult {
   try {
-    console.log('🔍 Google Tool 파싱:', {
-      toolCall,
-      toolResult: typeof toolResult,
-      toolResultData: toolResult,
-      contentLength: content?.length
-    })
     
     // Calendar 도구들 처리
     if (toolCall === 'get_calendar_events') {
@@ -142,12 +136,35 @@ function parseGmailResult(toolResult: any, content: string): ParsedToolResult {
 }
 
 function parseCalendarEvent(eventData: any): CalendarEvent {
+  // time 필드가 있는 경우 파싱 (예: "07/24 18:00 - 20:00")
+  let startTime, endTime
+  if (eventData.time) {
+    const timeParts = eventData.time.split(' - ')
+    if (timeParts.length === 2) {
+      // 현재 년도 추가하여 파싱
+      const currentYear = new Date().getFullYear()
+      const [startPart, endPart] = timeParts
+      
+      // "07/24 18:00" 형식 파싱
+      if (startPart.includes('/')) {
+        const [datePart, timePart] = startPart.split(' ')
+        const [month, day] = datePart.split('/')
+        startTime = new Date(`${currentYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${timePart}:00+09:00`).toISOString()
+        
+        // 종료 시간은 같은 날짜에 시간만 다름
+        if (endPart.includes(':')) {
+          endTime = new Date(`${currentYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${endPart}:00+09:00`).toISOString()
+        }
+      }
+    }
+  }
+
   return {
     id: eventData.id || generateId(),
     summary: eventData.summary || eventData.title,
     description: eventData.description,
-    start: eventData.start?.dateTime || eventData.start?.date || eventData.start,
-    end: eventData.end?.dateTime || eventData.end?.date || eventData.end,
+    start: startTime || eventData.start?.dateTime || eventData.start?.date || eventData.start,
+    end: endTime || eventData.end?.dateTime || eventData.end?.date || eventData.end,
     location: eventData.location,
     attendees: eventData.attendees,
     htmlLink: eventData.htmlLink,
@@ -175,20 +192,46 @@ function parseEmailMessage(emailData: any): EmailMessage {
 function extractEventsFromContent(content: string): CalendarEvent[] {
   const events: CalendarEvent[] = []
   
-  // 텍스트에서 이벤트 정보를 정규식으로 추출하는 로직
-  // 예: "제목: 회의, 시간: 2025-07-23 14:00-15:00"
-  const eventPattern = /제목:\s*([^,\n]+)[,\s]*시간:\s*([^,\n]+)/g
-  let match
-  
-  while ((match = eventPattern.exec(content)) !== null) {
-    const [, title, timeStr] = match
+  try {
+    // JSON 코드 블록에서 데이터 추출
+    const jsonBlockMatch = content.match(/```json\s*([\s\S]*?)\s*```/)
+    if (jsonBlockMatch) {
+      const jsonContent = jsonBlockMatch[1].trim()
+      
+      try {
+        const jsonData = JSON.parse(jsonContent)
+        
+        if (Array.isArray(jsonData)) {
+          // JSON 배열인 경우
+          events.push(...jsonData.map(parseCalendarEvent))
+        } else if (jsonData && typeof jsonData === 'object') {
+          // 단일 객체인 경우
+          events.push(parseCalendarEvent(jsonData))
+        }
+      } catch (jsonError) {
+        // JSON 파싱 실패 시 조용히 무시
+      }
+    }
     
-    events.push({
-      id: generateId(),
-      summary: title.trim(),
-      start: parseTimeString(timeStr),
-      description: '텍스트에서 추출된 일정'
-    })
+    // 기존 텍스트 패턴 매칭도 유지
+    if (events.length === 0) {
+      // "제목: 회의, 시간: 2025-07-23 14:00-15:00" 패턴
+      const eventPattern = /제목:\s*([^,\n]+)[,\s]*시간:\s*([^,\n]+)/g
+      let match
+      
+      while ((match = eventPattern.exec(content)) !== null) {
+        const [, title, timeStr] = match
+        
+        events.push({
+          id: generateId(),
+          summary: title.trim(),
+          start: parseTimeString(timeStr),
+          description: '텍스트에서 추출된 일정'
+        })
+      }
+    }
+  } catch (error) {
+    // 이벤트 추출 실패 시 조용히 무시
   }
   
   return events
@@ -197,21 +240,86 @@ function extractEventsFromContent(content: string): CalendarEvent[] {
 function extractEmailsFromContent(content: string): EmailMessage[] {
   const emails: EmailMessage[] = []
   
-  // 텍스트에서 메일 정보를 정규식으로 추출하는 로직
-  // 예: "보낸 사람: 홍길동 <hong@example.com>, 제목: 안녕하세요"
-  const emailPattern = /보낸\s*사람:\s*([^,\n]+)[,\s]*제목:\s*([^,\n]+)/g
-  let match
-  
-  while ((match = emailPattern.exec(content)) !== null) {
-    const [, from, subject] = match
+  try {
+    // JSON 코드 블록에서 데이터 추출
+    const jsonBlockMatch = content.match(/```json\s*([\s\S]*?)\s*```/)
+    if (jsonBlockMatch) {
+      const jsonContent = jsonBlockMatch[1].trim()
+      
+      try {
+        const jsonData = JSON.parse(jsonContent)
+        
+        if (Array.isArray(jsonData)) {
+          // JSON 배열인 경우
+          emails.push(...jsonData.map(parseEmailMessage))
+        } else if (jsonData && typeof jsonData === 'object') {
+          // 단일 객체인 경우
+          emails.push(parseEmailMessage(jsonData))
+        }
+      } catch (jsonError) {
+        // JSON 파싱 실패 시 조용히 무시
+      }
+    }
     
-    emails.push({
-      id: generateId(),
-      subject: subject.trim(),
-      from: from.trim(),
-      snippet: '텍스트에서 추출된 메일',
-      isRead: true
-    })
+    // 기존 텍스트 패턴 매칭도 유지
+    if (emails.length === 0) {
+      // 스크린샷에서 보이는 패턴: "제목: "How else would...", 보낸 사람: The Substack Post, 받은 날짜: 2025년 7월 22일"
+      const emailPattern1 = /제목:\s*"([^"]+)"\s*.*?보낸\s*사람:\s*([^\n,]+?)(?:\s+([^\n,]+@[^\s,]+))?\s*.*?받은\s*날짜:\s*([^\n]+)/gs
+      let match
+      
+      while ((match = emailPattern1.exec(content)) !== null) {
+        const [, subject, senderName, senderEmail, dateStr] = match
+        const from = senderEmail ? `${senderName.trim()} <${senderEmail.trim()}>` : senderName.trim()
+        
+        emails.push({
+          id: generateId(),
+          subject: subject.trim(),
+          from: from,
+          snippet: '텍스트에서 추출된 메일',
+          isRead: true,
+          date: parseDateString(dateStr) || new Date().toISOString()
+        })
+      }
+      
+      // 더 간단한 패턴들도 시도
+      if (emails.length === 0) {
+        // "제목: ..., 보낸 사람: ..." 패턴
+        const emailPattern2 = /제목:\s*"([^"]+)"[,\s]*.*?보낸\s*사람:\s*([^\n,]+)/g
+        
+        while ((match = emailPattern2.exec(content)) !== null) {
+          const [, subject, from] = match
+          
+          emails.push({
+            id: generateId(),
+            subject: subject.trim(),
+            from: from.trim(),
+            snippet: '텍스트에서 추출된 메일',
+            isRead: true,
+            date: new Date().toISOString()
+          })
+        }
+      }
+      
+      // "보낸 사람: ..., 제목: ..." 패턴
+      if (emails.length === 0) {
+        const emailPattern3 = /보낸\s*사람:\s*([^,\n]+)[,\s]*제목:\s*([^,\n]+)/g
+        
+        while ((match = emailPattern3.exec(content)) !== null) {
+          const [, from, subject] = match
+          
+          emails.push({
+            id: generateId(),
+            subject: subject.trim(),
+            from: from.trim(),
+            snippet: '텍스트에서 추출된 메일',
+            isRead: true,
+            date: new Date().toISOString()
+          })
+        }
+      }
+    }
+  } catch (error) {
+    // 메일 추출 실패 시 조용히 무시
   }
   
   return emails
@@ -239,6 +347,26 @@ function parseTimeString(timeStr: string): string {
   }
 }
 
+function parseDateString(dateStr: string): string | null {
+  // "2025년 7월 22일" 형식 파싱
+  try {
+    const koreanDateMatch = dateStr.match(/(\d{4})년\s*(\d+)월\s*(\d+)일/)
+    if (koreanDateMatch) {
+      const [, year, month, day] = koreanDateMatch
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toISOString()
+    }
+    
+    // ISO 형식이면 그대로 사용
+    if (dateStr.includes('T') || dateStr.includes('-')) {
+      return new Date(dateStr).toISOString()
+    }
+    
+    return null
+  } catch {
+    return null
+  }
+}
+
 function getToolDisplayName(toolCall: string): string {
   const displayNames: Record<string, string> = {
     'get_calendar_events': '캘린더 일정',
@@ -259,13 +387,6 @@ function generateId(): string {
  * 메시지가 Google Tools 결과를 포함하고 있는지 확인합니다.
  */
 export function hasGoogleToolResult(message: any): boolean {
-  console.log('🔍 Google Tool 결과 확인:', {
-    hasToolCall: !!message.toolCall,
-    toolCall: message.toolCall,
-    toolStatus: message.toolStatus,
-    hasToolResult: !!message.toolResult,
-    isGoogleTool: ['get_calendar_events', 'get_emails', 'create_calendar_event', 'send_email', 'find_free_time'].includes(message.toolCall)
-  })
   
   // toolResult가 없어도 Google 도구 호출이면 처리 시도
   return message.toolCall && 

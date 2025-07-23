@@ -50,6 +50,9 @@ npm run dev
 # Build for production
 npm run build
 
+# Type checking
+tsc -b
+
 # Linting and formatting
 npm run lint             # Check for issues
 npm run lint:fix         # Auto-fix issues
@@ -78,36 +81,40 @@ cp .env.example .env      # Then edit .env with OPENAI_API_KEY
 ### Frontend Architecture
 
 **Vue.js Application**
-- **Feature-based structure**: Organized by business domains (auth, chat, employee, member, etc.)
-- **Dependency Injection**: Uses `tsyringe` for service layer management
-- **Component Library**: Extensive UI component system with shadcn/ui-style components
+- **Feature-based structure**: Organized by business domains (auth, chat, employee, member, notice, partner, project, sales)
+- **Dependency Injection**: Uses `tsyringe` for service layer management with decorators (`@singleton()`, `@inject()`)
+- **Component Library**: Extensive UI component system with Reka UI (shadcn/ui-style components)
 - **State Management**: Pinia for global state, VueUse composables for reactive utilities
-- **Testing**: Vitest for unit tests, Cypress for E2E testing
+- **Testing**: Vitest for unit tests with jsdom environment, Cypress for E2E testing
 
 **Key Patterns:**
-- Repository pattern for data access (`features/*/repository/`)
-- Entity models for type safety (`features/*/entity/`)
+- Repository pattern for data access (`features/*/repository/`) with dependency injection
+- Entity models for type safety (`features/*/entity/`) using TypeScript interfaces
 - Composables for reusable logic (`core/composables/`)
-- Strict TypeScript with form validation (Vee-Validate + Zod)
+- Strict TypeScript with form validation (Vee-Validate + Zod schemas)
+- Feature modules contain: `components/`, `entity/`, `repository/`, `views/`, and sometimes `layouts/`
 
 **React Chat Widget**
 - Standalone embeddable widget for AI chat functionality
 - Session management with TypeScript interfaces
 - Tailwind CSS for styling consistency
+- EventSource for real-time streaming
 
 ### Backend Architecture
 
 **FastAPI Application** (`backend/`)
 - RESTful API with OpenAI integration (GPT-4o, GPT-4, GPT-3.5-turbo)
-- Google Services integration via Function Calling
-- File processing pipeline (PDF, DOCX, OCR)
+- Google Services integration via Function Calling system
+- File processing pipeline (PDF, DOCX, OCR with pytesseract)
+- Vector store support for knowledge base functionality
 - Memory-based storage (development) with database migration path
 
 **Key Services:**
 - `GoogleAuthService` - OAuth2 authentication
-- `GoogleCalendarService` - Calendar operations
-- `GoogleGmailService` - Email operations
+- `GoogleCalendarService` - Calendar operations (events, scheduling, free time finding)
+- `GoogleGmailService` - Email operations (send, receive, search)
 - Function Calling system for natural language → API translation
+- Tools management system with registry pattern
 
 ### Technology Stack
 
@@ -116,10 +123,11 @@ cp .env.example .env      # Then edit .env with OPENAI_API_KEY
 - TailwindCSS + Pretendard font
 - Reka UI components, Vue Router, Pinia
 - Vitest + Cypress for testing
+- TSyringe for dependency injection
 
 **Backend:**
 - FastAPI + Python 3.9+
-- OpenAI API integration
+- OpenAI API integration with streaming support
 - Google APIs (Calendar, Gmail)
 - File processing (PyPDF2, python-docx, pytesseract)
 
@@ -136,34 +144,44 @@ Follow `backend/google_setup.md` for OAuth2 configuration. Required files:
 - `backend/token.pickle` (auto-generated user tokens)
 
 ### Testing Strategy
-- **Unit Tests**: Vitest for component and service testing
+- **Unit Tests**: Vitest for component and service testing with jsdom environment
 - **E2E Tests**: Cypress for user workflow validation
 - **Integration**: Test API endpoints via Swagger UI at `localhost:8000/docs`
+- **Coverage**: V8 coverage provider with text, JSON, and HTML reporting
 
 ### Code Quality Tools
-- **Prettier**: Consistent formatting across all code
-- **ESLint**: Vue and React specific linting
-- **TypeScript**: Strict type checking
-- **Vue TSC**: Template type checking for Vue components
+- **Prettier**: Consistent formatting across all code with project-specific config
+- **ESLint**: Vue and React specific linting with TypeScript support
+- **TypeScript**: Strict type checking with `vue-tsc` for templates
+- **Babel**: Decorator support for tsyringe dependency injection
 
 ## Important Implementation Details
 
 ### Frontend Patterns
-- **Repository Pattern**: All API calls through repository classes with dependency injection
-- **Feature Modules**: Self-contained business logic with entities, repositories, and views
+- **Repository Pattern**: All API calls through repository classes with `@singleton()` decorator and `@inject()` for dependencies
+- **Feature Modules**: Self-contained business logic with entities, repositories, views, and components
 - **Type Safety**: Zod schemas for runtime validation, TypeScript interfaces for compile-time safety
-- **Component Architecture**: Reusable UI components with consistent API patterns
+- **Component Architecture**: Reusable UI components in `src/core/components/ui/` with consistent API patterns
+- **HTTP Client**: Centralized `HttpRepository` using Axios with error handling
+
+### Chat System Integration
+- **Streaming Support**: Server-Sent Events with `@microsoft/fetch-event-source`
+- **Enhanced Chat API**: Tools support with Google services integration
+- **File Upload**: Multipart form handling with various file types
+- **Vector Stores**: Knowledge base functionality with document indexing
 
 ### Backend Integration
 - **CORS Configuration**: Supports `localhost:5173`, `localhost:5174`, `localhost:3000`
 - **Streaming**: Server-Sent Events for real-time AI responses
-- **File Upload**: Multipart form handling with text extraction
+- **File Upload**: Multipart form handling with text extraction and OCR
 - **Function Calling**: Natural language triggers for Google API operations
+- **Tools System**: Registry-based tool management with status monitoring
 
 ### Migration Considerations
 - Backend uses in-memory storage (development only)
 - Production requires database implementation (SQLAlchemy + PostgreSQL recommended)
 - Frontend designed for scalable deployment with proper build optimization
+- Dependency injection pattern facilitates testing and modularity
 
 ## Testing Commands Reference
 
@@ -172,6 +190,7 @@ Follow `backend/google_setup.md` for OAuth2 configuration. Required files:
 npm run test                    # All unit tests
 npm run test:watch             # Watch mode
 npm run test:coverage          # Coverage report
+npm run test:ui                # Visual test interface
 npm run test:e2e               # Full E2E suite
 npm run test:e2e:dev          # Interactive E2E
 

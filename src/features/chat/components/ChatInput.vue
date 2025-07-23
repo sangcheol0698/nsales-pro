@@ -30,16 +30,24 @@
         <Button
           variant="outline"
           size="sm"
-          @click="() => { console.log('Model button clicked'); showModelSelector = !showModelSelector }"
+          @click="
+            () => {
+              console.log('Model button clicked');
+              showModelSelector = !showModelSelector;
+            }
+          "
           :disabled="disabled"
           data-model-trigger
           class="h-8 px-3 text-xs font-medium hover:bg-muted/50 relative border-dashed"
         >
           <Bot class="h-3 w-3 mr-1.5" />
           {{ getCurrentModelName() }}
-          <ChevronDown class="h-3 w-3 ml-1.5 transition-transform" :class="{ 'rotate-180': showModelSelector }" />
+          <ChevronDown
+            class="h-3 w-3 ml-1.5 transition-transform"
+            :class="{ 'rotate-180': showModelSelector }"
+          />
         </Button>
-        
+
         <!-- 웹 검색 토글 -->
         <Button
           variant="outline"
@@ -47,14 +55,18 @@
           @click="webSearchEnabled = !webSearchEnabled"
           :disabled="disabled"
           class="h-8 px-3 text-xs font-medium hover:bg-muted/50 transition-all duration-200"
-          :class="{ 
-            'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800': webSearchEnabled,
-            'border-dashed': !webSearchEnabled
+          :class="{
+            'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800':
+              webSearchEnabled,
+            'border-dashed': !webSearchEnabled,
           }"
         >
           <Search class="h-3 w-3 mr-1.5" />
           Web 검색
-          <span v-if="webSearchEnabled" class="ml-1.5 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+          <span
+            v-if="webSearchEnabled"
+            class="ml-1.5 w-2 h-2 bg-blue-500 rounded-full animate-pulse"
+          ></span>
         </Button>
 
         <!-- AI Tools 토글 -->
@@ -64,15 +76,19 @@
           @click="toolsEnabled = !toolsEnabled"
           :disabled="disabled"
           class="h-8 px-3 text-xs font-medium hover:bg-muted/50 transition-all duration-200"
-          :class="{ 
-            'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800': toolsEnabled,
-            'border-dashed': !toolsEnabled
+          :class="{
+            'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800':
+              toolsEnabled,
+            'border-dashed': !toolsEnabled,
           }"
           title="Google 캘린더, Gmail 등 AI Tools 사용"
         >
           <Wrench class="h-3 w-3 mr-1.5" />
           AI Tools
-          <span v-if="toolsEnabled" class="ml-1.5 w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+          <span
+            v-if="toolsEnabled"
+            class="ml-1.5 w-2 h-2 bg-emerald-500 rounded-full animate-pulse"
+          ></span>
         </Button>
 
         <!-- 우측 액션 버튼들 -->
@@ -87,7 +103,7 @@
           >
             <Paperclip class="h-3 w-3" />
           </Button>
-          
+
           <!-- 이모지 -->
           <Button
             variant="ghost"
@@ -99,7 +115,7 @@
           >
             <Smile class="h-3 w-3" />
           </Button>
-          
+
           <!-- 음성 입력 -->
           <Button
             variant="ghost"
@@ -118,8 +134,8 @@
       <!-- 입력 필드 -->
       <div class="relative">
         <!-- 멘션 추천 드롭다운 -->
-        <div 
-          v-if="showMentionSuggestions" 
+        <div
+          v-if="showMentionSuggestions"
           class="absolute bottom-full left-0 right-0 mb-2 bg-background border rounded-lg shadow-lg z-50 max-h-40 overflow-y-auto"
         >
           <div class="p-2">
@@ -154,7 +170,7 @@
           @compositionstart="handleCompositionStart"
           @compositionend="handleCompositionEnd"
         />
-        
+
         <!-- 전송 버튼 -->
         <Button
           type="submit"
@@ -167,7 +183,7 @@
         </Button>
       </div>
     </div>
-    
+
     <!-- 모델 선택 드롭다운 -->
     <Transition
       enter-active-class="transition-all duration-200 ease-out"
@@ -194,25 +210,38 @@
             <X class="h-3 w-3" />
           </Button>
         </div>
-        
+
         <div class="space-y-2">
-          <div v-if="Object.keys(availableModels).length === 0" class="text-sm text-muted-foreground p-3">
+          <div
+            v-if="Object.keys(availableModels).length === 0"
+            class="text-sm text-muted-foreground p-3"
+          >
             모델을 로딩 중입니다...
           </div>
           <button
             v-for="(model, key) in availableModels"
             :key="key"
-            @click="() => { console.log('Model clicked:', key); selectModel(key) }"
+            @click="
+              () => {
+                console.log('Model clicked:', key);
+                selectModel(key);
+              }
+            "
             class="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left hover:bg-muted/60 transition-all duration-150 group"
             :class="{ 'bg-primary/10 border border-primary/30 shadow-sm': selectedModel === key }"
           >
-            <div class="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 group-hover:from-primary/30 group-hover:to-primary/20 transition-all duration-200">
+            <div
+              class="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 group-hover:from-primary/30 group-hover:to-primary/20 transition-all duration-200"
+            >
               <Bot class="h-5 w-5 text-primary" />
             </div>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1">
                 <span class="font-medium text-sm">{{ model.name }}</span>
-                <span v-if="model.supports_web_search" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 font-medium">
+                <span
+                  v-if="model.supports_web_search"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 font-medium"
+                >
                   <Search class="h-2.5 w-2.5" />
                   Web
                 </span>
@@ -222,7 +251,11 @@
             <div v-if="selectedModel === key" class="text-primary flex-shrink-0">
               <div class="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
                 <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                  <path
+                    fill-rule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clip-rule="evenodd"
+                  />
                 </svg>
               </div>
             </div>
@@ -230,65 +263,7 @@
         </div>
       </div>
     </Transition>
-    
-    <!-- 상태 표시 -->
-    <div v-if="webSearchEnabled || toolsEnabled || selectedModel !== 'gpt-4o' || isRecording" class="flex items-center gap-2 mt-3">
-      <Transition
-        enter-active-class="transition-all duration-300 ease-out"
-        leave-active-class="transition-all duration-200 ease-in"
-        enter-from-class="opacity-0 scale-95 translate-x-2"
-        leave-to-class="opacity-0 scale-95 translate-x-2"
-      >
-        <div v-if="webSearchEnabled" class="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/30 px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800">
-          <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-          <Search class="h-3 w-3 text-blue-600 dark:text-blue-400" />
-          <span class="text-blue-700 dark:text-blue-300 font-medium text-xs">웹 검색 활성화</span>
-        </div>
-      </Transition>
 
-      <Transition
-        enter-active-class="transition-all duration-300 ease-out"
-        leave-active-class="transition-all duration-200 ease-in"
-        enter-from-class="opacity-0 scale-95 translate-x-2"
-        leave-to-class="opacity-0 scale-95 translate-x-2"
-      >
-        <div v-if="toolsEnabled" class="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 rounded-lg border border-emerald-200 dark:border-emerald-800">
-          <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-          <Wrench class="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-          <span class="text-emerald-700 dark:text-emerald-300 font-medium text-xs">AI Tools 활성화 (캘린더, 이메일 등)</span>
-        </div>
-      </Transition>
-      
-      <Transition
-        enter-active-class="transition-all duration-300 ease-out"
-        leave-active-class="transition-all duration-200 ease-in"
-        enter-from-class="opacity-0 scale-95 translate-x-2"
-        leave-to-class="opacity-0 scale-95 translate-x-2"
-      >
-        <div v-if="selectedModel !== 'gpt-4o'" class="flex items-center gap-2 bg-muted px-3 py-2 rounded-lg">
-          <Bot class="h-3 w-3 text-muted-foreground" />
-          <span class="text-muted-foreground font-medium text-xs">{{ getCurrentModelName() }}</span>
-        </div>
-      </Transition>
-    </div>
-
-    <!-- 로딩 상태 -->
-    <Transition
-      enter-active-class="transition-all duration-300 ease-out"
-      leave-active-class="transition-all duration-200 ease-in"
-      enter-from-class="opacity-0 translate-y-2"
-      leave-to-class="opacity-0 translate-y-2"
-    >
-      <div v-if="isLoading" class="flex items-center gap-3 mt-3 p-3 bg-muted/50 rounded-lg border border-dashed">
-        <div class="flex gap-1">
-          <div class="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
-          <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-          <div class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-        </div>
-        <span class="text-sm text-muted-foreground font-medium">AI가 응답하고 있습니다...</span>
-      </div>
-    </Transition>
-    
     <!-- 음성 입력 상태 -->
     <Transition
       enter-active-class="transition-all duration-300 ease-out"
@@ -296,12 +271,17 @@
       enter-from-class="opacity-0 translate-y-2"
       leave-to-class="opacity-0 translate-y-2"
     >
-      <div v-if="isRecording" class="flex items-center gap-3 mt-3 p-3 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800">
+      <div
+        v-if="isRecording"
+        class="flex items-center gap-3 mt-3 p-3 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800"
+      >
         <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-        <span class="text-sm text-red-700 dark:text-red-300 font-medium">음성 입력 중... (말하기를 멈추면 자동으로 전송됩니다)</span>
+        <span class="text-sm text-red-700 dark:text-red-300 font-medium"
+          >음성 입력 중... (말하기를 멈추면 자동으로 전송됩니다)</span
+        >
       </div>
     </Transition>
-    
+
     <!-- 이모지 선택기 -->
     <Transition
       enter-active-class="transition-all duration-300 ease-out"
@@ -328,7 +308,7 @@
             <X class="h-3 w-3" />
           </Button>
         </div>
-        
+
         <div class="grid grid-cols-8 gap-2 max-h-48 overflow-y-auto">
           <Button
             v-for="emoji in emojiList"
@@ -357,63 +337,81 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
-import { Send, Paperclip, Smile, Mic, Square, X, FileText, Bot, ChevronDown, Search, Wrench } from 'lucide-vue-next'
-import { Button } from '@/core/components/ui/button'
-import { Textarea } from '@/core/components/ui/textarea'
-import { useToast } from '@/core/composables'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
+import {
+  Send,
+  Paperclip,
+  Smile,
+  Mic,
+  Square,
+  X,
+  FileText,
+  Bot,
+  ChevronDown,
+  Search,
+  Wrench,
+} from 'lucide-vue-next';
+import { Button } from '@/core/components/ui/button';
+import { Textarea } from '@/core/components/ui/textarea';
+import { useToast } from '@/core/composables';
 
 interface Props {
-  disabled?: boolean
-  isLoading?: boolean
-  placeholder?: string
+  disabled?: boolean;
+  isLoading?: boolean;
+  placeholder?: string;
 }
 
 interface Emits {
-  submit: [message: string, files?: File[], model?: string, webSearch?: boolean, useEnhancedAPI?: boolean]
+  submit: [
+    message: string,
+    files?: File[],
+    model?: string,
+    webSearch?: boolean,
+    useEnhancedAPI?: boolean,
+  ];
 }
 
 interface EmojiItem {
-  unicode: string
-  name: string
-  category: string
+  unicode: string;
+  name: string;
+  category: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   disabled: false,
   isLoading: false,
   placeholder: '메시지를 입력하세요...',
-})
+});
 
-const emit = defineEmits<Emits>()
-const toast = useToast()
+const emit = defineEmits<Emits>();
+const toast = useToast();
 
 // 기본 상태
-const inputMessage = ref('')
-const textareaRef = ref<HTMLTextAreaElement>()
-const fileInputRef = ref<HTMLInputElement>()
-const isComposing = ref(false)
+const inputMessage = ref('');
+const textareaRef = ref<HTMLTextAreaElement>();
+const fileInputRef = ref<HTMLInputElement>();
+const isComposing = ref(false);
 
 // AI 모델 관련 상태
-const selectedModel = ref('gpt-4o')
-const availableModels = ref({})
-const showModelSelector = ref(false)
+const selectedModel = ref('gpt-4o');
+const availableModels = ref({});
+const showModelSelector = ref(false);
 
 // 웹 검색 상태
-const webSearchEnabled = ref(false)
+const webSearchEnabled = ref(false);
 
 // AI Tools 상태
-const toolsEnabled = ref(false)
+const toolsEnabled = ref(false);
 
 // 새로운 기능 상태
-const attachedFiles = ref<File[]>([])
-const showEmojiPicker = ref(false)
-const isRecording = ref(false)
+const attachedFiles = ref<File[]>([]);
+const showEmojiPicker = ref(false);
+const isRecording = ref(false);
 
 // 멘션 시스템 상태
-const showMentionSuggestions = ref(false)
-const selectedMentionIndex = ref(0)
-const mentionQuery = ref('')
+const showMentionSuggestions = ref(false);
+const selectedMentionIndex = ref(0);
+const mentionQuery = ref('');
 
 // 사용 가능한 멘션 목록
 const availableMentions = ref([
@@ -422,51 +420,52 @@ const availableMentions = ref([
     icon: '📅',
     description: 'Google Calendar 일정 관리',
     category: 'Google',
-    keywords: ['calendar', 'schedule', '일정', '캘린더']
+    keywords: ['calendar', 'schedule', '일정', '캘린더'],
   },
   {
     trigger: '@메일',
     icon: '📧',
     description: 'Gmail 이메일 관리',
     category: 'Google',
-    keywords: ['email', 'mail', '메일', '이메일']
+    keywords: ['email', 'mail', '메일', '이메일'],
   },
   {
     trigger: '@일정생성',
     icon: '➕',
     description: '새로운 캘린더 일정 생성',
     category: 'Google',
-    keywords: ['create', 'new', '생성', '새로운']
+    keywords: ['create', 'new', '생성', '새로운'],
   },
   {
     trigger: '@빈시간',
     icon: '🕐',
     description: '사용 가능한 시간 찾기',
     category: 'Google',
-    keywords: ['free', 'available', '빈시간', '가능한']
+    keywords: ['free', 'available', '빈시간', '가능한'],
   },
   {
     trigger: '@웹검색',
     icon: '🔍',
     description: '웹에서 최신 정보 검색',
     category: '검색',
-    keywords: ['web', 'search', '검색', '웹']
-  }
-])
+    keywords: ['web', 'search', '검색', '웹'],
+  },
+]);
 
 // 필터링된 멘션 목록
 const filteredMentions = computed(() => {
-  if (!mentionQuery.value) return availableMentions.value
-  
-  const query = mentionQuery.value.toLowerCase()
-  return availableMentions.value.filter(mention =>
-    mention.trigger.toLowerCase().includes(query) ||
-    mention.description.toLowerCase().includes(query) ||
-    mention.keywords.some(keyword => keyword.toLowerCase().includes(query))
-  )
-})
-const mediaRecorder = ref<MediaRecorder | null>(null)
-const recognition = ref<SpeechRecognition | null>(null)
+  if (!mentionQuery.value) return availableMentions.value;
+
+  const query = mentionQuery.value.toLowerCase();
+  return availableMentions.value.filter(
+    (mention) =>
+      mention.trigger.toLowerCase().includes(query) ||
+      mention.description.toLowerCase().includes(query) ||
+      mention.keywords.some((keyword) => keyword.toLowerCase().includes(query))
+  );
+});
+const mediaRecorder = ref<MediaRecorder | null>(null);
+const recognition = ref<SpeechRecognition | null>(null);
 
 // 이모지 데이터
 const emojiList: EmojiItem[] = [
@@ -540,354 +539,360 @@ const emojiList: EmojiItem[] = [
   { unicode: '💗', name: 'heartpulse', category: 'objects' },
   { unicode: '💘', name: 'cupid', category: 'objects' },
   { unicode: '💝', name: 'gift_heart', category: 'objects' },
-]
+];
 
 const getCurrentModelName = () => {
-  const model = availableModels.value[selectedModel.value]
-  return model?.name || 'GPT-4o'
-}
+  const model = availableModels.value[selectedModel.value];
+  return model?.name || 'GPT-4o';
+};
 
 const getPlaceholder = () => {
   if (webSearchEnabled.value && toolsEnabled.value) {
-    return '웹 검색 및 AI Tools가 활성화되었습니다. 최신 정보나 캘린더, 이메일을 물어보세요...'
+    return '웹 검색 및 AI Tools가 활성화되었습니다. 최신 정보나 캘린더, 이메일을 물어보세요...';
   } else if (webSearchEnabled.value) {
-    return '웹 검색이 활성화되었습니다. 최신 정보를 물어보세요...'
+    return '웹 검색이 활성화되었습니다. 최신 정보를 물어보세요...';
   } else if (toolsEnabled.value) {
-    return 'AI Tools가 활성화되었습니다. 캘린더 일정이나 이메일에 대해 물어보세요...'
+    return 'AI Tools가 활성화되었습니다. 캘린더 일정이나 이메일에 대해 물어보세요...';
   }
-  return props.placeholder
-}
+  return props.placeholder;
+};
 
 const selectModel = (modelKey: string) => {
-  console.log('Selecting model:', modelKey)
-  selectedModel.value = modelKey
-  showModelSelector.value = false
-  
+  console.log('Selecting model:', modelKey);
+  selectedModel.value = modelKey;
+  showModelSelector.value = false;
+
   toast.success('모델 변경됨', {
-    description: `${getCurrentModelName()}로 변경되었습니다.`
-  })
-}
+    description: `${getCurrentModelName()}로 변경되었습니다.`,
+  });
+};
 
 const handleSubmit = () => {
-  const message = inputMessage.value.trim()
-  if ((!message && attachedFiles.value.length === 0) || props.disabled || isComposing.value) return
+  const message = inputMessage.value.trim();
+  if ((!message && attachedFiles.value.length === 0) || props.disabled || isComposing.value) return;
 
-  const finalModel = selectedModel.value
-  const webSearch = webSearchEnabled.value
-  const useEnhancedAPI = toolsEnabled.value
-  
-  emit('submit', message, attachedFiles.value.length > 0 ? attachedFiles.value : undefined, finalModel, webSearch, useEnhancedAPI)
-  
-  inputMessage.value = ''
-  attachedFiles.value = []
-  webSearchEnabled.value = false // 전송 후 웹 검색 비활성화
+  const finalModel = selectedModel.value;
+  const webSearch = webSearchEnabled.value;
+  const useEnhancedAPI = toolsEnabled.value;
+
+  emit(
+    'submit',
+    message,
+    attachedFiles.value.length > 0 ? attachedFiles.value : undefined,
+    finalModel,
+    webSearch,
+    useEnhancedAPI
+  );
+
+  inputMessage.value = '';
+  attachedFiles.value = [];
+  webSearchEnabled.value = false; // 전송 후 웹 검색 비활성화
   // toolsEnabled는 지속적으로 유지 (사용자가 명시적으로 끌 때까지)
-  
+
   nextTick(() => {
-    adjustHeight()
-    focus()
-  })
-}
+    adjustHeight();
+    focus();
+  });
+};
 
 // 사용 가능한 모델 목록 로드
 const loadAvailableModels = async () => {
   try {
-    console.log('Loading models from API...')
-    const response = await fetch('http://localhost:8000/api/v1/models')
-    console.log('Response status:', response.status)
-    const data = await response.json()
-    console.log('Response data:', data)
-    availableModels.value = data.models
-    console.log('Available models loaded:', Object.keys(data.models))
+    console.log('Loading models from API...');
+    const response = await fetch('http://localhost:8000/api/v1/models');
+    console.log('Response status:', response.status);
+    const data = await response.json();
+    console.log('Response data:', data);
+    availableModels.value = data.models;
+    console.log('Available models loaded:', Object.keys(data.models));
   } catch (error) {
-    console.error('Failed to load available models:', error)
+    console.error('Failed to load available models:', error);
     toast.error('모델 로드 실패', {
-      description: '사용 가능한 AI 모델을 불러오는데 실패했습니다.'
-    })
+      description: '사용 가능한 AI 모델을 불러오는데 실패했습니다.',
+    });
   }
-}
+};
 
 // 멘션 관련 함수들
 const detectMention = () => {
-  const input = inputMessage.value
-  const cursorPos = textareaRef.value?.$el?.selectionStart || 0
-  
+  const input = inputMessage.value;
+  const cursorPos = textareaRef.value?.$el?.selectionStart || 0;
+
   // @ 문자를 찾기
-  const beforeCursor = input.substring(0, cursorPos)
-  const mentionMatch = beforeCursor.match(/@([^\s]*)$/)
-  
+  const beforeCursor = input.substring(0, cursorPos);
+  const mentionMatch = beforeCursor.match(/@([^\s]*)$/);
+
   if (mentionMatch) {
-    mentionQuery.value = mentionMatch[1]
-    showMentionSuggestions.value = true
-    selectedMentionIndex.value = 0
+    mentionQuery.value = mentionMatch[1];
+    showMentionSuggestions.value = true;
+    selectedMentionIndex.value = 0;
   } else {
-    showMentionSuggestions.value = false
-    mentionQuery.value = ''
+    showMentionSuggestions.value = false;
+    mentionQuery.value = '';
   }
-}
+};
 
 const selectMention = (mention: any) => {
-  const input = inputMessage.value
-  const cursorPos = textareaRef.value?.$el?.selectionStart || 0
-  
+  const input = inputMessage.value;
+  const cursorPos = textareaRef.value?.$el?.selectionStart || 0;
+
   // @ 문자 위치 찾기
-  const beforeCursor = input.substring(0, cursorPos)
-  const mentionMatch = beforeCursor.match(/@([^\s]*)$/)
-  
+  const beforeCursor = input.substring(0, cursorPos);
+  const mentionMatch = beforeCursor.match(/@([^\s]*)$/);
+
   if (mentionMatch) {
-    const mentionStart = beforeCursor.lastIndexOf('@')
-    const beforeMention = input.substring(0, mentionStart)
-    const afterCursor = input.substring(cursorPos)
-    
+    const mentionStart = beforeCursor.lastIndexOf('@');
+    const beforeMention = input.substring(0, mentionStart);
+    const afterCursor = input.substring(cursorPos);
+
     // 멘션 텍스트로 교체
-    inputMessage.value = beforeMention + mention.trigger + ' ' + afterCursor
-    
+    inputMessage.value = beforeMention + mention.trigger + ' ' + afterCursor;
+
     // 커서 위치 조정
     nextTick(() => {
-      const newPos = mentionStart + mention.trigger.length + 1
-      const textarea = textareaRef.value?.$el
+      const newPos = mentionStart + mention.trigger.length + 1;
+      const textarea = textareaRef.value?.$el;
       if (textarea) {
-        textarea.selectionStart = newPos
-        textarea.selectionEnd = newPos
+        textarea.selectionStart = newPos;
+        textarea.selectionEnd = newPos;
       }
-    })
+    });
   }
-  
-  showMentionSuggestions.value = false
-  mentionQuery.value = ''
-}
+
+  showMentionSuggestions.value = false;
+  mentionQuery.value = '';
+};
 
 const handleKeyDown = (event: KeyboardEvent) => {
   // 멘션 추천이 보일 때의 키보드 이벤트 처리
   if (showMentionSuggestions.value) {
     if (event.key === 'ArrowDown') {
-      event.preventDefault()
+      event.preventDefault();
       selectedMentionIndex.value = Math.min(
         selectedMentionIndex.value + 1,
         filteredMentions.value.length - 1
-      )
-      return
+      );
+      return;
     }
-    
+
     if (event.key === 'ArrowUp') {
-      event.preventDefault()
-      selectedMentionIndex.value = Math.max(selectedMentionIndex.value - 1, 0)
-      return
+      event.preventDefault();
+      selectedMentionIndex.value = Math.max(selectedMentionIndex.value - 1, 0);
+      return;
     }
-    
+
     if (event.key === 'Enter' || event.key === 'Tab') {
-      event.preventDefault()
+      event.preventDefault();
       if (filteredMentions.value[selectedMentionIndex.value]) {
-        selectMention(filteredMentions.value[selectedMentionIndex.value])
+        selectMention(filteredMentions.value[selectedMentionIndex.value]);
       }
-      return
+      return;
     }
-    
+
     if (event.key === 'Escape') {
-      event.preventDefault()
-      showMentionSuggestions.value = false
-      mentionQuery.value = ''
-      return
+      event.preventDefault();
+      showMentionSuggestions.value = false;
+      mentionQuery.value = '';
+      return;
     }
   }
-  
+
   // 일반적인 키보드 이벤트 처리
   if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault()
+    event.preventDefault();
     // 한글 입력 중이 아닐 때만 제출
     if (!isComposing.value) {
-      handleSubmit()
+      handleSubmit();
     }
   }
-  
+
   // Escape 키로 모달 닫기
   if (event.key === 'Escape') {
-    showModelSelector.value = false
-    showEmojiPicker.value = false
-    showMentionSuggestions.value = false
+    showModelSelector.value = false;
+    showEmojiPicker.value = false;
+    showMentionSuggestions.value = false;
   }
-}
+};
 
 const handleInput = () => {
-  adjustHeight()
-  detectMention()
-}
+  adjustHeight();
+  detectMention();
+};
 
 const handleCompositionStart = () => {
-  isComposing.value = true
-}
+  isComposing.value = true;
+};
 
 const handleCompositionEnd = () => {
-  isComposing.value = false
-}
+  isComposing.value = false;
+};
 
 const adjustHeight = () => {
-  const textareaComponent = textareaRef.value
-  if (!textareaComponent) return
+  const textareaComponent = textareaRef.value;
+  if (!textareaComponent) return;
 
   // Vue 컴포넌트에서 실제 DOM 요소 가져오기
-  const textarea = textareaComponent.$el || textareaComponent
-  if (!textarea || !textarea.style) return
+  const textarea = textareaComponent.$el || textareaComponent;
+  if (!textarea || !textarea.style) return;
 
-  textarea.style.height = 'auto'
-  const scrollHeight = textarea.scrollHeight
-  const maxHeight = 128 // max-h-32 = 8rem = 128px
-  
-  textarea.style.height = `${Math.min(scrollHeight, maxHeight)}px`
-}
+  textarea.style.height = 'auto';
+  const scrollHeight = textarea.scrollHeight;
+  const maxHeight = 128; // max-h-32 = 8rem = 128px
+
+  textarea.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
+};
 
 // 외부에서 포커스할 수 있도록 expose
 const focus = () => {
   try {
     if (textareaRef.value) {
       // Textarea 컴포넌트가 내부 input 요소를 가지고 있을 수 있으므로
-      const element = textareaRef.value.$el || textareaRef.value
+      const element = textareaRef.value.$el || textareaRef.value;
       if (element && typeof element.focus === 'function') {
-        element.focus()
+        element.focus();
       }
     }
   } catch (error) {
-    console.warn('Failed to focus textarea:', error)
+    console.warn('Failed to focus textarea:', error);
   }
-}
+};
 
 // 파일 관련 함수들
 const triggerFileInput = () => {
-  fileInputRef.value?.click()
-}
+  fileInputRef.value?.click();
+};
 
 const handleFileSelect = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const files = target.files
+  const target = event.target as HTMLInputElement;
+  const files = target.files;
   if (files) {
-    const newFiles = Array.from(files)
-    const validFiles = newFiles.filter(file => {
+    const newFiles = Array.from(files);
+    const validFiles = newFiles.filter((file) => {
       // 파일 크기 제한 (10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast.error('파일 크기 제한', {
-          description: `${file.name}은 10MB를 초과합니다.`
-        })
-        return false
+          description: `${file.name}은 10MB를 초과합니다.`,
+        });
+        return false;
       }
-      return true
-    })
-    
-    attachedFiles.value = [...attachedFiles.value, ...validFiles]
-    
+      return true;
+    });
+
+    attachedFiles.value = [...attachedFiles.value, ...validFiles];
+
     // 입력 필드 초기화
     if (target) {
-      target.value = ''
+      target.value = '';
     }
   }
-}
+};
 
 const removeFile = (fileToRemove: File) => {
-  attachedFiles.value = attachedFiles.value.filter(file => file !== fileToRemove)
-}
+  attachedFiles.value = attachedFiles.value.filter((file) => file !== fileToRemove);
+};
 
 // 이모지 관련 함수들
 const toggleEmojiPicker = () => {
-  showEmojiPicker.value = !showEmojiPicker.value
-  showModelSelector.value = false // 다른 모달 닫기
-}
+  showEmojiPicker.value = !showEmojiPicker.value;
+  showModelSelector.value = false; // 다른 모달 닫기
+};
 
 const insertEmoji = (emoji: EmojiItem) => {
-  const textarea = textareaRef.value
+  const textarea = textareaRef.value;
   if (textarea) {
-    const element = textarea.$el || textarea
-    const start = element.selectionStart
-    const end = element.selectionEnd
-    const text = inputMessage.value
-    
-    inputMessage.value = text.slice(0, start) + emoji.unicode + text.slice(end)
-    
+    const element = textarea.$el || textarea;
+    const start = element.selectionStart;
+    const end = element.selectionEnd;
+    const text = inputMessage.value;
+
+    inputMessage.value = text.slice(0, start) + emoji.unicode + text.slice(end);
+
     nextTick(() => {
-      element.selectionStart = element.selectionEnd = start + emoji.unicode.length
-      element.focus()
-    })
+      element.selectionStart = element.selectionEnd = start + emoji.unicode.length;
+      element.focus();
+    });
   } else {
-    inputMessage.value += emoji.unicode
+    inputMessage.value += emoji.unicode;
   }
-  
-  showEmojiPicker.value = false
-}
+
+  showEmojiPicker.value = false;
+};
 
 // 음성 입력 관련 함수들
 const initSpeechRecognition = () => {
   if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    recognition.value = new SpeechRecognition()
-    
-    recognition.value.continuous = true
-    recognition.value.interimResults = true
-    recognition.value.lang = 'ko-KR'
-    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition.value = new SpeechRecognition();
+
+    recognition.value.continuous = true;
+    recognition.value.interimResults = true;
+    recognition.value.lang = 'ko-KR';
+
     recognition.value.onresult = (event) => {
-      let transcript = ''
+      let transcript = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
         if (event.results[i].isFinal) {
-          transcript += event.results[i][0].transcript
+          transcript += event.results[i][0].transcript;
         }
       }
-      
+
       if (transcript) {
-        inputMessage.value = transcript
-        adjustHeight()
+        inputMessage.value = transcript;
+        adjustHeight();
       }
-    }
-    
+    };
+
     recognition.value.onend = () => {
       if (isRecording.value) {
         // 음성 입력이 끝나면 자동으로 전송
         if (inputMessage.value.trim()) {
-          handleSubmit()
+          handleSubmit();
         }
-        isRecording.value = false
+        isRecording.value = false;
       }
-    }
-    
+    };
+
     recognition.value.onerror = (event) => {
-      console.error('Speech recognition error:', event.error)
-      isRecording.value = false
+      console.error('Speech recognition error:', event.error);
+      isRecording.value = false;
       toast.error('음성 인식 오류', {
-        description: '음성 인식 중 오류가 발생했습니다.'
-      })
-    }
+        description: '음성 인식 중 오류가 발생했습니다.',
+      });
+    };
   }
-}
+};
 
 const toggleVoiceInput = () => {
   if (!recognition.value) {
     toast.error('음성 인식 불가', {
-      description: '이 브라우저에서는 음성 인식을 지원하지 않습니다.'
-    })
-    return
+      description: '이 브라우저에서는 음성 인식을 지원하지 않습니다.',
+    });
+    return;
   }
-  
-  if (isRecording.value) {
-    recognition.value.stop()
-    isRecording.value = false
-  } else {
-    inputMessage.value = ''
-    recognition.value.start()
-    isRecording.value = true
-    showModelSelector.value = false
-    showEmojiPicker.value = false
-  }
-}
 
+  if (isRecording.value) {
+    recognition.value.stop();
+    isRecording.value = false;
+  } else {
+    inputMessage.value = '';
+    recognition.value.start();
+    isRecording.value = true;
+    showModelSelector.value = false;
+    showEmojiPicker.value = false;
+  }
+};
 
 // 라이프사이클 훅
 onMounted(() => {
-  initSpeechRecognition()
-  loadAvailableModels()
-})
+  initSpeechRecognition();
+  loadAvailableModels();
+});
 
 onUnmounted(() => {
   if (recognition.value) {
-    recognition.value.stop()
+    recognition.value.stop();
   }
-})
+});
 
-defineExpose({ focus })
+defineExpose({ focus });
 </script>

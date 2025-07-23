@@ -103,7 +103,51 @@ export class ChatRepository {
 
   async getMessageHistory(sessionId: string): Promise<ChatHistory> {
     const response = await axios.get(`${this.baseURL}/chat/sessions/${sessionId}/messages`);
-    return response.data;
+    const data: ChatHistory = response.data;
+    
+    // Google Tools 메시지에서 JSON 마크다운 블록 제거
+    data.messages = data.messages.map(message => {
+      // Assistant 메시지이고 Google Tools를 사용한 경우
+      if (message.role === 'assistant' && 
+          message.toolCall && 
+          ['get_calendar_events', 'get_emails', 'create_calendar_event', 'send_email', 'find_free_time'].includes(message.toolCall) &&
+          message.toolStatus === 'completed') {
+        
+        // 디버깅을 위한 로그
+        console.log('🔍 원본 메시지 내용:', message.content);
+        console.log('🔍 메시지 길이:', message.content.length);
+        console.log('🔍 JSON 패턴 매치:', message.content.match(/```json/gi));
+        
+        // JSON 마크다운 블록 제거 (여러 패턴 시도)
+        let cleanedContent = message.content;
+        
+        // 가장 간단하고 확실한 방법: 코드 블록 전체 제거
+        const codeBlockPattern = /```[\s\S]*?```/g;
+        const matches = cleanedContent.match(codeBlockPattern);
+        
+        if (matches) {
+          console.log('🔍 찾은 코드 블록들:', matches);
+          matches.forEach((match, index) => {
+            // JSON을 포함하는 코드 블록만 제거
+            if (match.toLowerCase().includes('json') || match.includes('"id":') || match.includes('"title":')) {
+              console.log(`🗑️ 제거할 코드 블록 ${index + 1}:`, match.substring(0, 100) + '...');
+              cleanedContent = cleanedContent.replace(match, '');
+            }
+          });
+        }
+        
+        console.log('✨ 정리된 메시지 내용:', cleanedContent);
+        
+        return {
+          ...message,
+          content: cleanedContent.trim()
+        };
+      }
+      
+      return message;
+    });
+    
+    return data;
   }
 
   async deleteMessage(messageId: string): Promise<void> {

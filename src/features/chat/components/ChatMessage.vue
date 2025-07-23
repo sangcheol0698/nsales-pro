@@ -60,18 +60,9 @@
           <!-- Assistant 메시지 -->
           <div v-else-if="message.role === 'assistant'">
             
-            <!-- Google Tools 결과 카드 -->
+            <!-- Google Tools 결과 카드 (Collapsible) -->
             <div v-if="googleToolResult && googleToolResult.type !== 'text'" class="mb-3">
-              <GoogleCalendarCard
-                v-if="googleToolResult.type === 'calendar'"
-                :title="googleToolResult.title"
-                :events="googleToolResult.data as CalendarEvent[]"
-              />
-              <GmailCard
-                v-else-if="googleToolResult.type === 'gmail'"
-                :title="googleToolResult.title"
-                :emails="googleToolResult.data as EmailMessage[]"
-              />
+              <GoogleToolsCollapsible :google-tool-result="googleToolResult" />
             </div>
             
             <!-- 일반 마크다운 내용 -->
@@ -168,8 +159,7 @@ import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
 import { Button } from '@/core/components/ui/button'
 import { useToast } from '@/core/composables'
 import type { ChatMessage } from '../entity/ChatMessage'
-import GoogleCalendarCard from './enhanced/EnhancedGoogleCalendarCard.vue'
-import GmailCard from './enhanced/EnhancedGmailCard.vue'
+import GoogleToolsCollapsible from './GoogleToolsCollapsible.vue'
 import { getGoogleToolResult } from '../utils/googleToolsParser'
 import type { CalendarEvent, EmailMessage } from '../utils/googleToolsParser'
 
@@ -290,9 +280,13 @@ const processContent = async () => {
 
   isProcessing.value = true
   try {
-    // Google Tools 결과가 있는 경우 JSON 코드 블록을 미리 제거
+    // Google Tools 메시지인 경우 JSON 코드 블록을 미리 제거
     let content = props.message.content
-    if (googleToolResult.value) {
+    const isGoogleToolsMessage = props.message.toolCall && 
+      ['get_calendar_events', 'get_emails', 'create_calendar_event', 'send_email', 'find_free_time'].includes(props.message.toolCall) &&
+      props.message.toolStatus === 'completed'
+    
+    if (isGoogleToolsMessage) {
       // JSON 마크다운 블록 패턴 제거
       content = content.replace(/```json\s*[\s\S]*?\s*```/g, '')
     }
@@ -367,6 +361,13 @@ watch(isDarkMode, () => {
   if (props.message.role === 'assistant') {
     // 캐시 클리어 후 다시 처리
     highlightCache.clear()
+    processContent()
+  }
+})
+
+// googleToolResult가 변경될 때마다 콘텐츠 재처리
+watch(googleToolResult, () => {
+  if (props.message.role === 'assistant') {
     processContent()
   }
 })

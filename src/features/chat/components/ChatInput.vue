@@ -1,5 +1,15 @@
 <template>
-  <div class="p-4 relative">
+  <div 
+    ref="chatInputContainer"
+    class="p-4 relative transition-all duration-300"
+    :class="{
+      'bg-primary/5 border-primary/20': isDragOver,
+      'bg-background': !isDragOver
+    }"
+    @dragover.prevent="handleDragOver"
+    @dragleave.prevent="handleDragLeave"  
+    @drop.prevent="handleDrop"
+  >
     <!-- 첨부된 파일 미리보기 -->
     <div v-if="attachedFiles.length > 0" class="mb-3">
       <div class="flex flex-wrap gap-2">
@@ -18,6 +28,19 @@
           >
             <X class="h-3 w-3" />
           </Button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 드래그 앤 드롭 오버레이 -->
+    <div v-if="isDragOver" class="absolute inset-0 z-50 bg-primary/10 backdrop-blur-sm rounded-lg border-2 border-dashed border-primary flex items-center justify-center">
+      <div class="text-center space-y-3">
+        <div class="mx-auto w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center animate-pulse">
+          <Upload class="h-8 w-8 text-primary animate-bounce" />
+        </div>
+        <div>
+          <p class="text-sm font-medium text-primary">파일을 여기에 놓으세요</p>
+          <p class="text-xs text-primary/70">{{ draggedFileCount }}개 파일</p>
         </div>
       </div>
     </div>
@@ -350,6 +373,7 @@ import {
   ChevronDown,
   Search,
   Wrench,
+  Upload,
 } from 'lucide-vue-next';
 import { Button } from '@/core/components/ui/button';
 import { Textarea } from '@/core/components/ui/textarea';
@@ -394,7 +418,7 @@ const isComposing = ref(false);
 
 // AI 모델 관련 상태
 const selectedModel = ref('gpt-4o');
-const availableModels = ref({});
+const availableModels = ref<Record<string, any>>({});
 const showModelSelector = ref(false);
 
 // 웹 검색 상태
@@ -407,6 +431,11 @@ const toolsEnabled = ref(false);
 const attachedFiles = ref<File[]>([]);
 const showEmojiPicker = ref(false);
 const isRecording = ref(false);
+
+// 드래그 앤 드롭 상태
+const isDragOver = ref(false);
+const draggedFileCount = ref(0);
+const chatInputContainer = ref<HTMLDivElement>();
 
 // 멘션 시스템 상태
 const showMentionSuggestions = ref(false);
@@ -465,7 +494,7 @@ const filteredMentions = computed(() => {
   );
 });
 const mediaRecorder = ref<MediaRecorder | null>(null);
-const recognition = ref<SpeechRecognition | null>(null);
+const recognition = ref<any>(null);
 
 // 이모지 데이터
 const emojiList: EmojiItem[] = [
@@ -616,7 +645,8 @@ const loadAvailableModels = async () => {
 // 멘션 관련 함수들
 const detectMention = () => {
   const input = inputMessage.value;
-  const cursorPos = textareaRef.value?.$el?.selectionStart || 0;
+  const textarea = textareaRef.value as any;
+  const cursorPos = textarea?.$el?.selectionStart || textarea?.selectionStart || 0;
 
   // @ 문자를 찾기
   const beforeCursor = input.substring(0, cursorPos);
@@ -634,7 +664,8 @@ const detectMention = () => {
 
 const selectMention = (mention: any) => {
   const input = inputMessage.value;
-  const cursorPos = textareaRef.value?.$el?.selectionStart || 0;
+  const textarea = textareaRef.value as any;
+  const cursorPos = textarea?.$el?.selectionStart || textarea?.selectionStart || 0;
 
   // @ 문자 위치 찾기
   const beforeCursor = input.substring(0, cursorPos);
@@ -651,10 +682,11 @@ const selectMention = (mention: any) => {
     // 커서 위치 조정
     nextTick(() => {
       const newPos = mentionStart + mention.trigger.length + 1;
-      const textarea = textareaRef.value?.$el;
-      if (textarea) {
-        textarea.selectionStart = newPos;
-        textarea.selectionEnd = newPos;
+      const textarea = textareaRef.value as any;
+      const element = textarea?.$el || textarea;
+      if (element) {
+        element.selectionStart = newPos;
+        element.selectionEnd = newPos;
       }
     });
   }
@@ -789,6 +821,62 @@ const handleFileSelect = (event: Event) => {
 
 const removeFile = (fileToRemove: File) => {
   attachedFiles.value = attachedFiles.value.filter((file) => file !== fileToRemove);
+};
+
+// 드래그 앤 드롭 핸들러
+const handleDragOver = (event: DragEvent) => {
+  if (props.disabled) return;
+  isDragOver.value = true;
+  
+  // 드래그된 파일 개수 확인
+  const files = event.dataTransfer?.files;
+  if (files) {
+    draggedFileCount.value = files.length;
+  }
+};
+
+const handleDragLeave = (event: DragEvent) => {
+  if (props.disabled) return;
+  // 컨테이너 밖으로 나갔을 때만 isDragOver를 false로 설정
+  const rect = chatInputContainer.value?.getBoundingClientRect();
+  if (rect) {
+    const { clientX, clientY } = event;
+    if (
+      clientX < rect.left ||
+      clientX > rect.right ||
+      clientY < rect.top ||
+      clientY > rect.bottom
+    ) {
+      isDragOver.value = false;
+    }
+  }
+};
+
+const handleDrop = (event: DragEvent) => {
+  if (props.disabled) return;
+  isDragOver.value = false;
+  
+  const files = event.dataTransfer?.files;
+  if (files) {
+    const newFiles = Array.from(files);
+    const validFiles = newFiles.filter((file) => {
+      // 파일 크기 제한 (10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('파일 크기 제한', {
+          description: `${file.name}은 10MB를 초과합니다.`,
+        });
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length > 0) {
+      attachedFiles.value = [...attachedFiles.value, ...validFiles];
+      toast.success('파일 추가됨', {
+        description: `${validFiles.length}개 파일이 추가되었습니다.`,
+      });
+    }
+  }
 };
 
 // 이모지 관련 함수들

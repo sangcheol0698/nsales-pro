@@ -157,16 +157,108 @@ const sendMessage = async (content: string, files?: File[], model?: string, webS
 
     let response: any
     
-    // 파일이 첨부된 경우 파일 업로드 API 사용
+    // 파일이 첨부된 경우도 스트리밍 방식으로 처리
     if (files && files.length > 0) {
-      console.log('Sending message with files:', files.map(f => f.name))
-      response = await chatRepository.sendMessageWithFiles(
-        content,
-        currentSession.value.id,
-        files,
-        model,
-        webSearch
-      )
+      console.log('🖼️ Sending message with files (streaming):', files.map(f => f.name))
+      
+      // 사용자 메시지 먼저 추가 (파일 정보 포함)
+      const userMessage = createChatMessage('user', content, currentSession.value.id)
+      // 파일 정보를 메시지에 추가
+      userMessage.attachedFiles = files.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type
+      }))
+      messages.value.push(userMessage)
+      
+      await scrollToBottom()
+
+      // AI 응답을 위한 임시 메시지 (이미지 분석 중 상태)
+      const assistantMessage = createChatMessage('assistant', '', currentSession.value.id)
+      assistantMessage.isAnalyzing = true
+      assistantMessage.analyzingType = files.some(f => f.type.startsWith('image/')) ? 'image' : 'document'
+      messages.value.push(assistantMessage)
+      
+      await scrollToBottom()
+
+      // 파일 업로드 처리 (기존 API 사용 + 분석 상태 시뮬레이션)
+      try {
+        // 분석 시간 시뮬레이션 (이미지는 더 오래)
+        const analysisTime = files.some(f => f.type.startsWith('image/')) ? 2000 : 1000
+        
+        // 분석 시뮬레이션
+        setTimeout(() => {
+          if (assistantMessage.isAnalyzing) {
+            assistantMessage.isAnalyzing = false
+            delete assistantMessage.analyzingType
+          }
+        }, analysisTime)
+        
+        // 기존 파일 업로드 API 호출
+        const response = await chatRepository.sendMessageWithFiles(
+          content,
+          currentSession.value.id,
+          files,
+          model,
+          webSearch
+        )
+        
+        // 분석 완료 후 응답 처리
+        if (response?.userMessage && response?.aiMessage) {
+          // 기존 사용자 메시지와 분석 중 메시지 제거
+          if (messages.value.length >= 2) {
+            messages.value.splice(-2, 2)
+          }
+          
+          // 새로운 사용자 메시지 추가 (파일 정보 포함)
+          const newUserMessage = {
+            id: response.userMessage.id,
+            content: response.userMessage.content,
+            role: response.userMessage.role,
+            timestamp: new Date(response.userMessage.timestamp),
+            sessionId: response.userMessage.sessionId,
+            attachedFiles: files.map(file => ({
+              name: file.name,
+              size: file.size,
+              type: file.type
+            }))
+          }
+          messages.value.push(newUserMessage)
+          
+          // AI 응답 메시지 추가
+          messages.value.push({
+            id: response.aiMessage.id,
+            content: response.aiMessage.content,
+            role: response.aiMessage.role,
+            timestamp: new Date(response.aiMessage.timestamp),
+            sessionId: response.aiMessage.sessionId
+          })
+          
+          await scrollToBottom()
+          
+          toast.success('파일 분석 완료', {
+            description: `${files.length}개의 파일이 성공적으로 분석되었습니다.`
+          })
+        }
+      } catch (error) {
+        console.error('File upload error:', error)
+        
+        // 분석 실패 상태로 변경
+        if (assistantMessage.isAnalyzing) {
+          assistantMessage.isAnalyzing = false
+          assistantMessage.content = '파일 분석 중 오류가 발생했습니다.'
+        }
+        
+        toast.error('파일 업로드 실패', {
+          description: '파일 업로드 중 오류가 발생했습니다.',
+        })
+      }
+      
+      // 파일 업로드 완료 후 최종 스크롤
+      setTimeout(() => {
+        scrollToBottom(true)
+      }, 300)
+      return // 파일 업로드의 경우 여기서 종료
     } else if (useEnhancedAPI) {
       // Enhanced Chat API 사용 (AI Tools 지원)
       console.log('🚀 Using Enhanced Chat API with Tools support')

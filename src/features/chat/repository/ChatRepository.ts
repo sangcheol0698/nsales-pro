@@ -48,6 +48,52 @@ export class ChatRepository {
     return response.data;
   }
 
+  // TODO: 백엔드에 스트리밍 파일 업로드 엔드포인트 구현 후 활성화
+  // async sendMessageWithFilesStreaming(
+  //   content: string,
+  //   sessionId: string,
+  //   files: File[],
+  //   model?: string,
+  //   webSearch?: boolean,
+  //   onChunk: (chunk: ChatStreamChunk) => void,
+  //   onError?: (error: Error) => void
+  // ): Promise<void> {
+  //   try {
+  //     const formData = new FormData();
+  //     formData.append('content', content);
+  //     formData.append('sessionId', sessionId);
+  //     if (model) {
+  //       formData.append('model', model);
+  //     }
+  //     if (webSearch) {
+  //       formData.append('webSearch', 'true');
+  //     }
+  //     // 파일들을 FormData에 추가
+  //     files.forEach((file) => {
+  //       formData.append('files', file);
+  //     });
+
+  //     await fetchEventSource(`${this.baseURL}/chat/messages/with-files/stream`, {
+  //       method: 'POST',
+  //       body: formData,
+  //       onmessage: (event) => {
+  //         try {
+  //           const chunk: ChatStreamChunk = JSON.parse(event.data);
+  //           onChunk(chunk);
+  //         } catch (error) {
+  //           console.error('Failed to parse file upload SSE chunk:', error);
+  //         }
+  //       },
+  //       onerror: (error) => {
+  //         console.error('File upload SSE connection error:', error);
+  //         onError?.(error instanceof Error ? error : new Error('File upload SSE connection failed'));
+  //       },
+  //     });
+  //   } catch (error) {
+  //     onError?.(error instanceof Error ? error : new Error('File upload stream failed'));
+  //   }
+  // }
+
   async streamMessage(
     request: ChatRequest,
     onChunk: (chunk: ChatStreamChunk) => void,

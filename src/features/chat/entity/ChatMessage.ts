@@ -8,6 +8,15 @@ export interface ChatMessage {
   toolCall?: string // 실행된 도구 이름
   toolStatus?: 'running' | 'completed' | 'error' // 도구 실행 상태
   toolResult?: any // 도구 실행 결과
+  // 파일 첨부 관련 필드들
+  attachedFiles?: Array<{
+    name: string
+    size: number
+    type: string
+  }>
+  // 분석 상태 관련 필드들
+  isAnalyzing?: boolean
+  analyzingType?: 'image' | 'document'
 }
 
 export interface ChatSession {

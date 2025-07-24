@@ -47,8 +47,38 @@
               : 'bg-card text-card-foreground border-border/50',
           ]"
         >
+          <!-- 이미지/문서 분석 중 인디케이터 -->
+          <div v-if="message.isAnalyzing" class="flex items-center gap-3 text-muted-foreground mb-3 p-3 bg-muted/50 rounded-lg border border-muted">
+            <div class="relative">
+              <component 
+                :is="message.analyzingType === 'image' ? 'Image' : 'FileText'" 
+                class="h-5 w-5 text-blue-500"
+              />
+              <div class="absolute -inset-1">
+                <div class="w-7 h-7 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+              </div>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-sm font-medium text-blue-600 dark:text-blue-400">
+                  {{ message.analyzingType === 'image' ? '🖼️ 이미지 분석 중...' : '📄 문서 분석 중...' }}
+                </span>
+                <div class="flex gap-1">
+                  <div class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></div>
+                  <div class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                  <div class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                </div>
+              </div>
+              <p class="text-xs text-muted-foreground">
+                {{ message.analyzingType === 'image' 
+                    ? 'GPT-4o Vision이 이미지 내용을 분석하고 있습니다.' 
+                    : '문서 내용을 추출하고 분석하고 있습니다.' }}
+              </p>
+            </div>
+          </div>
+
           <!-- 타이핑 인디케이터 -->
-          <div v-if="isTyping" class="flex items-center gap-2 text-muted-foreground">
+          <div v-if="isTyping && !message.isAnalyzing" class="flex items-center gap-2 text-muted-foreground">
             <div class="flex gap-1">
               <div class="w-2 h-2 bg-current rounded-full animate-pulse"></div>
               <div class="w-2 h-2 bg-current rounded-full animate-pulse" style="animation-delay: 0.2s"></div>
@@ -81,8 +111,86 @@
           </div>
 
           <!-- User 메시지 -->
-          <div v-else class="whitespace-pre-wrap leading-relaxed">
-            {{ message.content }}
+          <div v-else class="space-y-3">
+            <!-- 첨부된 파일들 표시 -->
+            <div v-if="message.attachedFiles && message.attachedFiles.length > 0" class="space-y-3">
+              <!-- 이미지 파일들 -->
+              <div v-if="attachedImageFiles.length > 0" class="space-y-2">
+                <div class="text-xs text-primary-foreground/70 font-medium">📷 첨부된 이미지</div>
+                <div class="grid gap-2" 
+                     :class="{
+                       'grid-cols-1': attachedImageFiles.length === 1,
+                       'grid-cols-2': attachedImageFiles.length === 2,
+                       'grid-cols-2 sm:grid-cols-3': attachedImageFiles.length >= 3
+                     }">
+                  <div
+                    v-for="(file, index) in attachedImageFiles"
+                    :key="index"
+                    class="relative group aspect-square rounded-lg overflow-hidden bg-white/10 border border-white/20"
+                  >
+                    <div class="w-full h-full flex items-center justify-center text-white/60">
+                      <Image class="h-8 w-8" />
+                    </div>
+                    <div class="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      <div class="text-white text-xs font-medium bg-black/50 px-2 py-1 rounded">
+                        {{ file.name.length > 15 ? file.name.substring(0, 15) + '...' : file.name }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 문서 파일들 -->
+              <div v-if="attachedDocumentFiles.length > 0" class="space-y-2">
+                <div class="text-xs text-primary-foreground/70 font-medium">📄 첨부된 문서</div>
+                <div class="space-y-2">
+                  <div
+                    v-for="(file, index) in attachedDocumentFiles"
+                    :key="index"
+                    class="flex items-center gap-3 p-2 bg-white/10 border border-white/20 rounded-lg"
+                  >
+                    <div class="flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                      <FileText class="h-4 w-4 text-white/80" />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm font-medium text-white truncate">{{ file.name }}</div>
+                      <div class="text-xs text-white/60">{{ formatFileSize(file.size) }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 기존 이미지 표시 (하위 호환용) -->
+            <div v-else-if="attachedImages.length > 0" class="space-y-2">
+              <div class="grid gap-2" 
+                   :class="{
+                     'grid-cols-1': attachedImages.length === 1,
+                     'grid-cols-2': attachedImages.length === 2,
+                     'grid-cols-2 sm:grid-cols-3': attachedImages.length >= 3
+                   }">
+                <div
+                  v-for="(imagePath, index) in attachedImages"
+                  :key="index"
+                  class="relative group aspect-square rounded-lg overflow-hidden bg-white/10 cursor-pointer"
+                  @click="openImageModal(imagePath)"
+                >
+                  <div class="w-full h-full flex items-center justify-center text-white/60">
+                    <Image class="h-8 w-8" />
+                  </div>
+                  <div class="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                    <div class="text-white text-xs font-medium bg-black/40 px-2 py-1 rounded">
+                      🖼️ 이미지 {{ index + 1 }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 텍스트 내용 -->
+            <div v-if="cleanMessageContent.trim()" class="whitespace-pre-wrap leading-relaxed">
+              {{ cleanMessageContent }}
+            </div>
           </div>
         </div>
 
@@ -147,6 +255,28 @@
       복사됨!
     </div>
   </div>
+
+  <!-- 이미지 확대 모달 -->
+  <div v-if="selectedImageModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" @click="closeImageModal">
+    <div class="relative max-w-4xl max-h-full">
+      <div class="w-full h-96 bg-muted/20 rounded-lg flex items-center justify-center text-white">
+        <div class="text-center space-y-2">
+          <Image class="h-16 w-16 mx-auto opacity-60" />
+          <p class="text-lg font-medium">이미지 미리보기</p>
+          <p class="text-sm opacity-70">{{ selectedImageModal }}</p>
+          <p class="text-xs opacity-50">실제 이미지는 백엔드 구현이 필요합니다</p>
+        </div>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        @click="closeImageModal"
+        class="absolute top-4 right-4 h-8 w-8 p-0 bg-black/20 hover:bg-black/40 text-white"
+      >
+        <X class="h-4 w-4" />
+      </Button>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -154,7 +284,7 @@ import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { marked } from 'marked'
 import { codeToHtml } from 'shiki'
 import he from 'he'
-import { Copy, RefreshCw, Trash2, Play, CheckCircle, XCircle, Loader2 } from 'lucide-vue-next'
+import { Copy, RefreshCw, Trash2, Play, CheckCircle, XCircle, Loader2, Image, X, FileText } from 'lucide-vue-next'
 import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
 import { Button } from '@/core/components/ui/button'
 import { useToast } from '@/core/composables'
@@ -181,9 +311,38 @@ const emit = defineEmits<Emits>()
 const toast = useToast()
 
 const showCopySuccess = ref(false)
+const selectedImageModal = ref<string | null>(null)
 
 // Shiki 캐시를 위한 변수
 const highlightCache = new Map<string, string>()
+
+// 첨부된 파일들 분류
+const attachedImageFiles = computed(() => {
+  return props.message.attachedFiles?.filter(file => file.type.startsWith('image/')) || []
+})
+
+const attachedDocumentFiles = computed(() => {
+  return props.message.attachedFiles?.filter(file => !file.type.startsWith('image/')) || []
+})
+
+// 첨부된 이미지 추출 (기존 방식, 하위 호환용)
+const attachedImages = computed(() => {
+  const content = props.message.content
+  const imagePattern = /\[첨부된 이미지: ([^\]]+)\]/g
+  const images: string[] = []
+  let match
+  
+  while ((match = imagePattern.exec(content)) !== null) {
+    images.push(match[1])
+  }
+  
+  return images
+})
+
+// 이미지 정보를 제거한 깨끗한 메시지 내용
+const cleanMessageContent = computed(() => {
+  return props.message.content.replace(/\[첨부된 이미지: [^\]]+\]/g, '').trim()
+})
 
 // Configure marked (Shiki는 비동기이므로 후처리로 사용)
 marked.setOptions({
@@ -266,6 +425,17 @@ const btoaToUnicode = (str: string) => {
   return decodeURIComponent(Array.prototype.map.call(atob(str), (c: string) => {
     return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
   }).join(''))
+}
+
+// 파일 크기 포맷 함수
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B'
+  
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 
 const formattedContent = ref('')
@@ -410,6 +580,15 @@ const regenerateMessage = () => {
 // 메시지 삭제 함수
 const deleteMessage = () => {
   emit('delete', props.message.id)
+}
+
+// 이미지 모달 함수들
+const openImageModal = (imagePath: string) => {
+  selectedImageModal.value = imagePath
+}
+
+const closeImageModal = () => {
+  selectedImageModal.value = null
 }
 
 // Tool 상태에 따른 CSS 클래스 반환

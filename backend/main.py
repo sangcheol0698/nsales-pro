@@ -19,6 +19,7 @@ import pytesseract
 import io
 import tempfile
 import logging
+import base64
 
 # Google 서비스 import
 try:
@@ -1699,7 +1700,7 @@ async def process_file_locally(file_content: bytes, filename: str, content_type:
             '.docx'):
             return await extract_text_from_docx_local(file_content)
         elif content_type.startswith('image/'):
-            return await extract_text_from_image_local(file_content)
+            return await process_image_with_hybrid_approach(file_content, filename)
         elif content_type == "text/plain" or filename.lower().endswith('.txt'):
             return file_content.decode('utf-8', errors='ignore')
         else:
@@ -1735,6 +1736,58 @@ async def extract_text_from_docx_local(file_content: bytes) -> str:
         return f"DOCX 읽기 오류: {str(e)}"
 
 
+def encode_image_to_base64(file_content: bytes) -> str:
+    """이미지를 base64로 인코딩"""
+    return base64.b64encode(file_content).decode('utf-8')
+
+
+async def analyze_image_with_gpt4o_vision(file_content: bytes, filename: str, prompt: str = None) -> str:
+    """GPT-4o Vision API를 사용하여 이미지 분석"""
+    try:
+        # 이미지를 base64로 인코딩
+        base64_image = encode_image_to_base64(file_content)
+        
+        # 기본 프롬프트 설정
+        if not prompt:
+            prompt = """이 이미지를 자세히 분석해주세요. 다음 내용을 포함해주세요:
+1. 이미지에 보이는 주요 내용과 객체들
+2. 텍스트가 있다면 모든 텍스트 내용
+3. 문서나 표가 있다면 구조와 데이터
+4. 전체적인 맥락과 의미
+5. 비즈니스나 업무와 관련된 정보가 있다면 상세히 설명
+
+한국어로 상세하고 구체적으로 답변해주세요."""
+
+        # GPT-4o Vision API 호출
+        response = await client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}",
+                                "detail": "high"  # 고해상도 분석
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=2000,
+            temperature=0.1  # 더 정확한 분석을 위해 낮은 temperature
+        )
+        
+        vision_result = response.choices[0].message.content
+        return f"🔍 GPT-4o Vision 분석 결과:\n\n{vision_result}"
+        
+    except Exception as e:
+        print(f"GPT-4o Vision API 오류: {e}")
+        return f"GPT-4o Vision 분석 오류: {str(e)}"
+
+
 async def extract_text_from_image_local(file_content: bytes) -> str:
     """이미지에서 OCR로 텍스트 추출 (로컬)"""
     try:
@@ -1744,6 +1797,147 @@ async def extract_text_from_image_local(file_content: bytes) -> str:
         return f"🖼️ 이미지 OCR 결과:\n\n{extracted_text}"
     except Exception as e:
         return f"이미지 OCR 오류: {str(e)}"
+
+
+async def process_image_with_hybrid_approach(file_content: bytes, filename: str) -> str:
+    """이미지를 OCR과 GPT-4o Vision을 모두 사용하여 처리 (하이브리드 접근)"""
+    try:
+        print(f"🖼️ Processing image with hybrid approach: {filename}")
+        
+        # 1. GPT-4o Vision 분석 시도
+        vision_result = await analyze_image_with_gpt4o_vision(file_content, filename)
+        
+        # 2. OCR 분석도 수행 (텍스트 추출 보완)
+        ocr_result = await extract_text_from_image_local(file_content)
+        
+        # 3. 결과 결합
+        combined_result = f"""📋 **이미지 종합 분석 결과** (파일: {filename})
+
+{vision_result}
+
+---
+
+{ocr_result}
+
+---
+
+💡 **분석 방법**: GPT-4o Vision API와 OCR을 모두 사용하여 이미지의 시각적 정보와 텍스트 정보를 종합적으로 분석했습니다."""
+
+        return combined_result
+        
+    except Exception as e:
+        print(f"Hybrid image processing error: {e}")
+        # 폴백: OCR만 사용
+        return await extract_text_from_image_local(file_content)
+
+
+def is_image_file(file: any) -> bool:
+    """파일이 이미지인지 확인"""
+    if hasattr(file, 'content_type') and file.content_type:
+        return file.content_type.startswith('image/')
+    if hasattr(file, 'filename') and file.filename:
+        image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+        return any(file.filename.lower().endswith(ext) for ext in image_extensions)
+    return False
+
+
+async def create_multimodal_message_content(text: str, image_files: list = None) -> list:
+    """멀티모달 메시지 콘텐츠 생성 (텍스트 + 이미지)"""
+    content = []
+    
+    # 텍스트 추가
+    if text:
+        content.append({"type": "text", "text": text})
+    
+    # 이미지 파일들 추가
+    if image_files:
+        for file in image_files:
+            try:
+                file_content = await file.read()
+                base64_image = encode_image_to_base64(file_content)
+                
+                # 이미지 타입 감지
+                content_type = file.content_type or 'image/jpeg'
+                image_format = content_type.split('/')[-1] if '/' in content_type else 'jpeg'
+                
+                content.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:{content_type};base64,{base64_image}",
+                        "detail": "high"
+                    }
+                })
+                
+                print(f"🖼️ Added image to multimodal message: {file.filename} ({image_format})")
+                
+            except Exception as e:
+                print(f"Failed to process image {file.filename}: {e}")
+                # 이미지 처리 실패 시 텍스트로 알림 추가
+                content.append({
+                    "type": "text", 
+                    "text": f"\n[이미지 처리 실패: {file.filename} - {str(e)}]"
+                })
+    
+    return content
+
+
+async def send_multimodal_message_to_gpt4o(
+    conversation_messages: list,
+    user_text: str,
+    image_files: list = None,
+    model: str = "gpt-4o",
+    tools: list = None
+) -> str:
+    """멀티모달 메시지를 GPT-4o에 전송"""
+    try:
+        # 멀티모달 콘텐츠 생성
+        multimodal_content = await create_multimodal_message_content(user_text, image_files)
+        
+        # 기존 대화에 멀티모달 메시지 추가
+        messages = conversation_messages.copy()
+        messages.append({
+            "role": "user",
+            "content": multimodal_content
+        })
+        
+        # GPT-4o API 호출 매개변수 구성
+        chat_params = {
+            "model": model,
+            "messages": messages,
+            "max_tokens": 2000,
+            "temperature": 0.7
+        }
+        
+        # 도구가 있으면 추가
+        if tools:
+            chat_params["tools"] = tools
+            chat_params["tool_choice"] = "auto"
+        
+        # GPT-4o Vision API 호출
+        response = await client.chat.completions.create(**chat_params)
+        
+        # Function calls 처리 (기존 로직과 동일)
+        if response.choices[0].message.tool_calls:
+            content = response.choices[0].message.content or ""
+            
+            for tool_call in response.choices[0].message.tool_calls:
+                function_name = tool_call.function.name
+                function_args = json.loads(tool_call.function.arguments)
+                
+                result = await execute_google_function(function_name, function_args)
+                
+                if isinstance(result, dict) and "error" in result:
+                    content += f"\n\n❌ **{function_name} 오류**: {result['error']}"
+                else:
+                    content += f"\n\n✅ **{function_name} 결과**:\n{result}"
+            
+            return content
+        
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        print(f"Multimodal message error: {e}")
+        raise e
 
 
 async def process_uploaded_file(file: UploadFile, session_id: str = None, add_to_vector_store: bool = False) -> str:
@@ -2081,25 +2275,44 @@ async def send_message_with_files(
 
         session_messages = messages_db.get(sessionId, [])
 
-        # 파일 처리 (벡터 스토어에 자동 추가)
+        # 파일 분류: 이미지 파일과 문서 파일 분리
+        image_files = []
+        document_files = []
         file_contents = []
+        
         if files:
             for file in files:
                 if file.filename:  # 파일이 실제로 업로드된 경우
                     print(f"Processing file: {file.filename}, type: {file.content_type}")
-                    # 파일을 벡터 스토어에 추가하여 향후 검색 가능하도록 함
-                    file_text = await process_uploaded_file(file, sessionId, add_to_vector_store=True)
-                    file_contents.append(f"[파일: {file.filename}]\n{file_text}")
+                    
+                    if is_image_file(file):
+                        # 이미지 파일은 멀티모달 처리를 위해 별도 보관
+                        image_files.append(file)
+                        print(f"🖼️ Image file detected: {file.filename}")
+                    else:
+                        # 문서 파일은 기존 방식으로 처리
+                        document_files.append(file)
+                        file_text = await process_uploaded_file(file, sessionId, add_to_vector_store=True)
+                        file_contents.append(f"[파일: {file.filename}]\n{file_text}")
 
-        # 메시지 내용 구성 (텍스트 + 파일 내용)
+        # 메시지 내용 구성 (텍스트 + 문서 파일 내용)
         message_content = content
         if file_contents:
             message_content += "\n\n" + "\n\n".join(file_contents)
+        
+        # 이미지 파일이 있으면 멀티모달 메시지 사용 여부 결정
+        use_multimodal = len(image_files) > 0 and model == "gpt-4o"
 
         # 사용자 메시지 저장
+        # 멀티모달의 경우 이미지 정보 추가 표시
+        display_content = message_content
+        if use_multimodal and image_files:
+            image_info = ", ".join([f"🖼️ {file.filename}" for file in image_files])
+            display_content += f"\n\n[첨부된 이미지: {image_info}]"
+            
         user_message = ChatMessage(
             id=generate_id(),
-            content=message_content,
+            content=display_content,
             role="user",
             timestamp=datetime.now(),
             sessionId=sessionId
@@ -2107,10 +2320,9 @@ async def send_message_with_files(
         session_messages.append(user_message.model_dump())
 
         # OpenAI API에 전달할 메시지 구성
-        conversation_messages = [
-            {"role": "system",
-             "content": "당신은 NSales Pro의 영업 AI 도우미입니다. 영업 데이터 분석, 프로젝트 정보 조회, 업무 관련 질문에 도움을 주세요. 한국어로 친근하고 전문적으로 답변해주세요. 첨부된 파일의 내용을 분석하여 관련된 답변을 제공해주세요. 최신 정보가 필요하거나 실시간 데이터, 뉴스, 시장 동향 등을 질문받으면 웹 검색을 적극 활용하여 정확하고 최신의 정보를 제공하세요."}
-        ]
+        system_prompt = "당신은 NSales Pro의 영업 AI 도우미입니다. 영업 데이터 분석, 프로젝트 정보 조회, 업무 관련 질문에 도움을 주세요. 한국어로 친근하고 전문적으로 답변해주세요. 첨부된 파일의 내용을 분석하여 관련된 답변을 제공해주세요. 최신 정보가 필요하거나 실시간 데이터, 뉴스, 시장 동향 등을 질문받으면 웹 검색을 적극 활용하여 정확하고 최신의 정보를 제공하세요."
+        
+        conversation_messages = [{"role": "system", "content": system_prompt}]
 
         # 기존 대화 내용 추가 (최근 20개 메시지만 유지)
         recent_messages = session_messages[-21:] if len(session_messages) > 21 else session_messages[:-1]  # 현재 메시지 제외
@@ -2120,9 +2332,6 @@ async def send_message_with_files(
                 "content": msg["content"]
             })
 
-        # 현재 사용자 메시지 추가
-        conversation_messages.append({"role": "user", "content": message_content})
-
         # 선택된 모델 정보 가져오기
         selected_model = model if model in AVAILABLE_MODELS else "gpt-4o"
         model_config = AVAILABLE_MODELS[selected_model]
@@ -2131,30 +2340,45 @@ async def send_message_with_files(
         try:
             print(f"Using model: {selected_model} ({model_config['name']})")
             print(f"Conversation length: {len(conversation_messages)} messages")
-            print(f"Files processed: {len(file_contents)}")
-
-            # 웹 검색 여부는 form 데이터에서 확인 (일단 False로 설정)
-            needs_web_search = False  # 파일 업로드 시에는 웹 검색 비활성화
-
-            # 파일이 포함된 시스템 프롬프트
-            system_prompt = "당신은 NSales Pro의 영업 AI 도우미입니다. 영업 데이터 분석, 프로젝트 정보 조회, 업무 관련 질문에 도움을 주세요. 한국어로 친근하고 전문적으로 답변해주세요. 첨부된 파일의 내용을 분석하여 관련된 답변을 제공해주세요."
+            print(f"Files processed: {len(file_contents)} documents, {len(image_files)} images")
+            print(f"Multimodal mode: {use_multimodal}")
 
             # 사용 가능한 도구 목록 구성
             available_tools = []
             if GOOGLE_SERVICES_AVAILABLE and auth_service.is_authenticated():
                 available_tools.extend(get_google_tools())
 
-            # 최적의 OpenAI API 선택하여 사용
-            ai_content = await create_response_with_best_api(
-                sessionId,
-                selected_model,
-                system_prompt,
-                message_content,  # 파일 내용이 포함된 메시지
-                conversation_messages,
-                available_tools,
-                needs_web_search,
-                model_config
-            )
+            if use_multimodal:
+                # 멀티모달 메시지로 처리 (이미지 + 텍스트)
+                print("🔄 Using multimodal message processing...")
+                ai_content = await send_multimodal_message_to_gpt4o(
+                    conversation_messages,
+                    message_content,
+                    image_files,
+                    selected_model,
+                    available_tools
+                )
+            else:
+                # 기존 방식으로 처리
+                print("🔄 Using traditional text-only processing...")
+                
+                # 현재 사용자 메시지 추가 (텍스트만)
+                conversation_messages.append({"role": "user", "content": message_content})
+                
+                # 웹 검색 여부는 form 데이터에서 확인 (일단 False로 설정)
+                needs_web_search = False  # 파일 업로드 시에는 웹 검색 비활성화
+
+                # 최적의 OpenAI API 선택하여 사용
+                ai_content = await create_response_with_best_api(
+                    sessionId,
+                    selected_model,
+                    system_prompt,
+                    message_content,  # 파일 내용이 포함된 메시지
+                    conversation_messages,
+                    available_tools,
+                    needs_web_search,
+                    model_config
+                )
 
             print(f"OpenAI Response: {ai_content}")
 

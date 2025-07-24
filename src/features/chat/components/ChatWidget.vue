@@ -145,8 +145,15 @@ const scrollAreaRef = ref()
 const chatInputRef = ref()
 
 const sendMessage = async (content: string, files?: File[], model?: string, webSearch?: boolean, useEnhancedAPI?: boolean) => {
-  if ((!content.trim() && (!files || files.length === 0)) || isLoading.value) return
+  // 중복 호출 방지 - 이미 로딩 중이막 반환
+  if (isLoading.value) {
+    console.warn('🚫 Message send prevented - already loading');
+    return;
+  }
+  
+  if ((!content.trim() && (!files || files.length === 0))) return
 
+  console.log('💬 Starting message send with files:', files?.length || 0);
   isLoading.value = true
   
   try {
@@ -181,74 +188,89 @@ const sendMessage = async (content: string, files?: File[], model?: string, webS
       
       await scrollToBottom()
 
-      // 파일 업로드 처리 (기존 API 사용 + 분석 상태 시뮬레이션)
+      // 파일 업로드 스트리밍 처리
+      let fullContent = ''
+      let lastScrollTime = 0
+      
       try {
-        // 분석 시간 시뮬레이션 (이미지는 더 오래)
-        const analysisTime = files.some(f => f.type.startsWith('image/')) ? 2000 : 1000
-        
-        // 분석 시뮬레이션
-        setTimeout(() => {
-          if (assistantMessage.isAnalyzing) {
-            assistantMessage.isAnalyzing = false
-            delete assistantMessage.analyzingType
-          }
-        }, analysisTime)
-        
-        // 기존 파일 업로드 API 호출
-        const response = await chatRepository.sendMessageWithFiles(
+        await chatRepository.sendMessageWithFilesStreaming(
           content,
           currentSession.value.id,
           files,
           model,
-          webSearch
+          webSearch,
+          (chunk) => {
+            if (!chunk.isComplete) {
+              // 분석 상태 처리
+              if (chunk.status === 'analyzing') {
+                // 분석 시작 - 이미 표시 중이므로 특별한 처리 불필요
+                return
+              } else if (chunk.status === 'analysis_complete') {
+                // 분석 완료 상태로 변경
+                if (assistantMessage.isAnalyzing) {
+                  assistantMessage.isAnalyzing = false
+                  delete assistantMessage.analyzingType
+                }
+                return
+              }
+              
+              // Tool 실행 상태 처리
+              if (chunk.toolCall) {
+                const lastMessage = messages.value[messages.value.length - 1]
+                if (lastMessage.role === 'assistant') {
+                  lastMessage.toolCall = chunk.toolCall
+                  lastMessage.toolStatus = chunk.toolStatus
+                  lastMessage.toolResult = chunk.toolResult
+                }
+                
+                if (chunk.toolStatus === 'running') {
+                  console.log(`🔧 Tool ${chunk.toolCall} 실행 중...`)
+                } else if (chunk.toolStatus === 'completed') {
+                  console.log(`✅ Tool ${chunk.toolCall} 완료:`, chunk.toolResult)
+                } else if (chunk.toolStatus === 'error') {
+                  console.log(`❌ Tool ${chunk.toolCall} 오류`)
+                }
+              }
+              
+              // 콘텐츠 스트리밍
+              if (chunk.content) {
+                fullContent += chunk.content
+                assistantMessage.content = fullContent
+                
+                // 스크롤 최적화
+                const hasCodeOrMarkdown = fullContent.includes('```') || 
+                                        fullContent.includes('##') || 
+                                        fullContent.includes('**') ||
+                                        fullContent.includes('[') ||
+                                        fullContent.includes('|')
+                
+                const scrollInterval = hasCodeOrMarkdown ? 50 : 100
+                const now = Date.now()
+                if (now - lastScrollTime > scrollInterval) {
+                  scrollToBottom(hasCodeOrMarkdown)
+                  lastScrollTime = now
+                }
+              }
+            }
+          },
+          (error) => {
+            console.error('File upload streaming error:', error)
+            // 분석 실패 상태로 변경
+            if (assistantMessage.isAnalyzing) {
+              assistantMessage.isAnalyzing = false
+              assistantMessage.content = '파일 분석 중 오류가 발생했습니다.'
+            }
+            toast.error('파일 분석 실패', {
+              description: '파일 분석 중 오류가 발생했습니다.',
+            })
+          }
         )
-        
-        // 분석 완료 후 응답 처리
-        if (response?.userMessage && response?.aiMessage) {
-          // 기존 사용자 메시지와 분석 중 메시지 제거
-          if (messages.value.length >= 2) {
-            messages.value.splice(-2, 2)
-          }
-          
-          // 새로운 사용자 메시지 추가 (파일 정보 포함)
-          const newUserMessage = {
-            id: response.userMessage.id,
-            content: response.userMessage.content,
-            role: response.userMessage.role,
-            timestamp: new Date(response.userMessage.timestamp),
-            sessionId: response.userMessage.sessionId,
-            attachedFiles: files.map(file => ({
-              name: file.name,
-              size: file.size,
-              type: file.type
-            }))
-          }
-          messages.value.push(newUserMessage)
-          
-          // AI 응답 메시지 추가
-          messages.value.push({
-            id: response.aiMessage.id,
-            content: response.aiMessage.content,
-            role: response.aiMessage.role,
-            timestamp: new Date(response.aiMessage.timestamp),
-            sessionId: response.aiMessage.sessionId
-          })
-          
-          await scrollToBottom()
-          
-          toast.success('파일 분석 완료', {
-            description: `${files.length}개의 파일이 성공적으로 분석되었습니다.`
-          })
-        }
       } catch (error) {
         console.error('File upload error:', error)
-        
-        // 분석 실패 상태로 변경
-        if (assistantMessage.isAnalyzing) {
-          assistantMessage.isAnalyzing = false
-          assistantMessage.content = '파일 분석 중 오류가 발생했습니다.'
+        // 오류 발생 시 분석 중 메시지 제거
+        if (messages.value[messages.value.length - 1]?.content === '' && messages.value[messages.value.length - 1]?.isAnalyzing) {
+          messages.value.pop()
         }
-        
         toast.error('파일 업로드 실패', {
           description: '파일 업로드 중 오류가 발생했습니다.',
         })

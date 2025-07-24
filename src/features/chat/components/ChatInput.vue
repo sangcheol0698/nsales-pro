@@ -435,6 +435,10 @@ const isRecording = ref(false);
 // 드래그 앤 드롭 상태
 const isDragOver = ref(false);
 const draggedFileCount = ref(0);
+
+// 중복 요청 방지
+const isSubmitting = ref(false);
+const submitTimeoutId = ref<number | null>(null);
 const chatInputContainer = ref<HTMLDivElement>();
 
 // 멘션 시스템 상태
@@ -597,31 +601,53 @@ const selectModel = (modelKey: string) => {
 };
 
 const handleSubmit = () => {
+  // 중복 요청 방지
+  if (isSubmitting.value) {
+    console.warn('🚫 Duplicate submit prevented - already submitting');
+    return;
+  }
+
   const message = inputMessage.value.trim();
   if ((!message && attachedFiles.value.length === 0) || props.disabled || isComposing.value) return;
 
-  const finalModel = selectedModel.value;
-  const webSearch = webSearchEnabled.value;
-  const useEnhancedAPI = toolsEnabled.value;
+  // 기존 타이머가 있으면 클리어
+  if (submitTimeoutId.value) {
+    clearTimeout(submitTimeoutId.value);
+  }
 
-  emit(
-    'submit',
-    message,
-    attachedFiles.value.length > 0 ? attachedFiles.value : undefined,
-    finalModel,
-    webSearch,
-    useEnhancedAPI
-  );
+  isSubmitting.value = true;
+  console.log('🚀 Submitting message with files:', attachedFiles.value.length);
 
-  inputMessage.value = '';
-  attachedFiles.value = [];
-  webSearchEnabled.value = false; // 전송 후 웹 검색 비활성화
-  // toolsEnabled는 지속적으로 유지 (사용자가 명시적으로 끌 때까지)
+  try {
+    const finalModel = selectedModel.value;
+    const webSearch = webSearchEnabled.value;
+    const useEnhancedAPI = toolsEnabled.value;
 
-  nextTick(() => {
-    adjustHeight();
-    focus();
-  });
+    emit(
+      'submit',
+      message,
+      attachedFiles.value.length > 0 ? attachedFiles.value : undefined,
+      finalModel,
+      webSearch,
+      useEnhancedAPI
+    );
+
+    inputMessage.value = '';
+    attachedFiles.value = [];
+    webSearchEnabled.value = false; // 전송 후 웹 검색 비활성화
+    // toolsEnabled는 지속적으로 유지 (사용자가 명시적으로 끌 때까지)
+
+    nextTick(() => {
+      adjustHeight();
+      focus();
+    });
+  } finally {
+    // 500ms 후 다시 전송 가능하도록 설정 (중복 방지)
+    submitTimeoutId.value = setTimeout(() => {
+      isSubmitting.value = false;
+      console.log('✅ Submit guard reset - ready for next message');
+    }, 500);
+  }
 };
 
 // 사용 가능한 모델 목록 로드
@@ -853,28 +879,36 @@ const handleDragLeave = (event: DragEvent) => {
 };
 
 const handleDrop = (event: DragEvent) => {
-  if (props.disabled) return;
+  if (props.disabled || isProcessingFiles.value) return;
   isDragOver.value = false;
   
   const files = event.dataTransfer?.files;
   if (files) {
-    const newFiles = Array.from(files);
-    const validFiles = newFiles.filter((file) => {
-      // 파일 크기 제한 (10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('파일 크기 제한', {
-          description: `${file.name}은 10MB를 초과합니다.`,
-        });
-        return false;
-      }
-      return true;
-    });
+    isProcessingFiles.value = true;
+    console.log('📋 Drop processing', files.length, 'files');
 
-    if (validFiles.length > 0) {
-      attachedFiles.value = [...attachedFiles.value, ...validFiles];
-      toast.success('파일 추가됨', {
-        description: `${validFiles.length}개 파일이 추가되었습니다.`,
+    try {
+      const newFiles = Array.from(files);
+      const validFiles = newFiles.filter((file) => {
+        // 파일 크기 제한 (10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error('파일 크기 제한', {
+            description: `${file.name}은 10MB를 초과합니다.`,
+          });
+          return false;
+        }
+        return true;
       });
+
+      if (validFiles.length > 0) {
+        attachedFiles.value = [...attachedFiles.value, ...validFiles];
+        toast.success('파일 추가됨', {
+          description: `${validFiles.length}개 파일이 추가되었습니다.`,
+        });
+      }
+      console.log('✅ Drop processed successfully:', validFiles.length);
+    } finally {
+      isProcessingFiles.value = false;
     }
   }
 };

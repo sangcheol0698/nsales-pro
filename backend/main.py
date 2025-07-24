@@ -2260,6 +2260,145 @@ async def get_token_usage(session_id: str):
     return usage_info
 
 
+@app.post("/api/v1/chat/messages/with-files/stream")
+async def send_message_with_files_stream(
+        content: str = Form(...),
+        sessionId: str = Form(...),
+        files: List[UploadFile] = File(default=[]),
+        model: str = Form(default="gpt-4o"),
+        webSearch: str = Form(default="false")
+):
+    """파일 첨부를 지원하는 채팅 메시지 전송 (스트리밍)"""
+    
+    async def generate_stream():
+        try:
+            # 세션 존재 확인
+            if sessionId not in sessions_db:
+                yield f"data: {json.dumps({'error': 'Session not found', 'isComplete': True})}\n\n"
+                return
+                
+            session_messages = messages_db.get(sessionId, [])
+            
+            # 분석 시작 알림
+            yield f"data: {json.dumps({'content': '', 'isComplete': False, 'status': 'analyzing'})}\n\n"
+            
+            # 파일 분류: 이미지 파일과 문서 파일 분리
+            image_files = []
+            document_files = []
+            file_contents = []
+            
+            if files:
+                for file in files:
+                    if file.filename:  # 파일이 실제로 업로드된 경우
+                        print(f"Processing file: {file.filename}, type: {file.content_type}")
+                        
+                        if is_image_file(file):
+                            # 이미지 파일은 멀티모달 처리를 위해 별도 보관
+                            image_files.append(file)
+                            print(f"🖼️ Image file detected: {file.filename}")
+                        else:
+                            # 문서 파일은 기존 방식으로 처리
+                            document_files.append(file)
+                            file_text = await process_uploaded_file(file, sessionId, add_to_vector_store=True)
+                            file_contents.append(f"[파일: {file.filename}]\n{file_text}")
+            
+            # 분석 완료 알림
+            yield f"data: {json.dumps({'content': '', 'isComplete': False, 'status': 'analysis_complete'})}\n\n"
+            
+            # 메시지 내용 구성 (텍스트 + 문서 파일 내용)
+            message_content = content
+            if file_contents:
+                message_content += "\n\n" + "\n\n".join(file_contents)
+            
+            # 이미지 파일이 있으면 멀티모달 메시지 사용 여부 결정
+            use_multimodal = len(image_files) > 0 and model == "gpt-4o"
+            
+            # 사용자 메시지 저장
+            display_content = message_content
+            if use_multimodal and image_files:
+                image_info = ", ".join([f"🖼️ {file.filename}" for file in image_files])
+                display_content += f"\n\n[첨부된 이미지: {image_info}]"
+                
+            user_message = ChatMessage(
+                id=generate_id(),
+                content=display_content,
+                role="user",
+                timestamp=datetime.now(),
+                sessionId=sessionId
+            )
+            session_messages.append(user_message.model_dump())
+            
+            # OpenAI API에 전달할 메시지 구성
+            system_prompt = "당신은 NSales Pro의 영업 AI 도우미입니다. 영업 데이터 분석, 프로젝트 정보 조회, 업무 관련 질문에 도움을 주세요. 한국어로 친근하고 전문적으로 답변해주세요. 첨부된 파일의 내용을 분석하여 관련된 답변을 제공해주세요."
+            
+            conversation_messages = [{"role": "system", "content": system_prompt}]
+            
+            # 기존 대화 내용 추가 (최근 20개 메시지만 유지)
+            recent_messages = session_messages[-21:] if len(session_messages) > 21 else session_messages[:-1]
+            for msg in recent_messages:
+                conversation_messages.append({
+                    "role": msg["role"],
+                    "content": msg["content"]
+                })
+            
+            # 선택된 모델 정보 가져오기
+            selected_model = model if model in AVAILABLE_MODELS else "gpt-4o"
+            model_config = AVAILABLE_MODELS[selected_model]
+            
+            # 사용 가능한 도구 목록 구성
+            available_tools = []
+            if GOOGLE_SERVICES_AVAILABLE and auth_service.is_authenticated():
+                available_tools.extend(get_google_tools())
+            
+            # OpenAI API 호출 (스트리밍)
+            print(f"🔄 Starting streaming response with model: {selected_model}")
+            
+            if use_multimodal:
+                # 멀티모달 스트리밍 처리
+                async for chunk in stream_multimodal_message_to_gpt4o(
+                    conversation_messages,
+                    message_content,
+                    image_files,
+                    selected_model,
+                    available_tools
+                ):
+                    yield f"data: {json.dumps(chunk)}\n\n"
+            else:
+                # 기존 텍스트 스트리밍 처리
+                final_message = {
+                    "role": "user",
+                    "content": message_content
+                }
+                conversation_messages.append(final_message)
+                
+                # 웹 검색 활성화 확인
+                web_search_enabled = webSearch.lower() == "true" or model_config.get("supports_web_search", False)
+                
+                async for chunk in stream_chat_completion(
+                    conversation_messages,
+                    selected_model,
+                    available_tools,
+                    web_search_enabled
+                ):
+                    yield f"data: {json.dumps(chunk)}\n\n"
+            
+            # 완료 신호
+            yield f"data: {json.dumps({'content': '', 'isComplete': True})}\n\n"
+                    
+        except Exception as e:
+            print(f"❌ Streaming file upload error: {e}")
+            yield f"data: {json.dumps({'error': str(e), 'isComplete': True})}\n\n"
+    
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+        }
+    )
+
 @app.post("/api/v1/chat/messages/with-files")
 async def send_message_with_files(
         content: str = Form(...),
@@ -2267,7 +2406,7 @@ async def send_message_with_files(
         files: List[UploadFile] = File(default=[]),
         model: str = Form(default="gpt-4o")
 ):
-    """파일 첨부를 지원하는 채팅 메시지 전송"""
+    """파일 첨부를 지원하는 채팅 메시지 전송 (기존 방식)"""
     try:
         # 세션 존재 확인
         if sessionId not in sessions_db:
@@ -4327,6 +4466,135 @@ async def enhanced_chat_stream(request: EnhancedChatRequest):
         }
     )
 
+async def stream_multimodal_message_to_gpt4o(
+    conversation_messages: list,
+    user_text: str,
+    image_files: list = None,
+    model: str = "gpt-4o",
+    tools: list = None
+):
+    """멀티모달 메시지를 GPT-4o에 전송 (스트리밍)"""
+    try:
+        # 멀티모달 콘텐츠 생성
+        multimodal_content = await create_multimodal_message_content(user_text, image_files)
+        
+        # 기존 대화에 멀티모달 메시지 추가
+        messages = conversation_messages.copy()
+        messages.append({
+            "role": "user",
+            "content": multimodal_content
+        })
+        
+        # GPT-4o API 호출 매개변수 구성
+        chat_params = {
+            "model": model,
+            "messages": messages,
+            "max_tokens": 2000,
+            "temperature": 0.7,
+            "stream": True
+        }
+        
+        # 도구가 있으면 추가
+        if tools:
+            chat_params["tools"] = tools
+            chat_params["tool_choice"] = "auto"
+        
+        # GPT-4o Vision API 스트리밍 호출
+        stream = await client.chat.completions.create(**chat_params)
+        
+        content_buffer = ""
+        tool_calls_buffer = []
+        current_tool_call = None
+        
+        async for chunk in stream:
+            if chunk.choices and len(chunk.choices) > 0:
+                delta = chunk.choices[0].delta
+                
+                # 일반 콘텐츠 스트리밍
+                if hasattr(delta, 'content') and delta.content:
+                    content_buffer += delta.content
+                    yield {
+                        'content': delta.content,
+                        'isComplete': False
+                    }
+                
+                # Tool calls 처리
+                if hasattr(delta, 'tool_calls') and delta.tool_calls:
+                    for tool_call_delta in delta.tool_calls:
+                        # 새로운 tool call 시작
+                        if tool_call_delta.index is not None:
+                            if current_tool_call is not None:
+                                tool_calls_buffer.append(current_tool_call)
+                            
+                            current_tool_call = {
+                                'id': tool_call_delta.id,
+                                'function': {
+                                    'name': tool_call_delta.function.name if tool_call_delta.function.name else '',
+                                    'arguments': tool_call_delta.function.arguments if tool_call_delta.function.arguments else ''
+                                }
+                            }
+                            
+                            # Tool 실행 시작 알림
+                            yield {
+                                'content': '',
+                                'isComplete': False,
+                                'toolCall': current_tool_call['function']['name'],
+                                'toolStatus': 'running'
+                            }
+                        
+                        # Tool call 내용 누적
+                        if current_tool_call and tool_call_delta.function:
+                            if tool_call_delta.function.arguments:
+                                current_tool_call['function']['arguments'] += tool_call_delta.function.arguments
+        
+        # 마지막 tool call 추가
+        if current_tool_call:
+            tool_calls_buffer.append(current_tool_call)
+        
+        # Tool calls 실행
+        if tool_calls_buffer:
+            for tool_call in tool_calls_buffer:
+                function_name = tool_call['function']['name']
+                try:
+                    function_args = json.loads(tool_call['function']['arguments'])
+                    
+                    # Tool 실행
+                    result = await execute_google_function(function_name, function_args)
+                    
+                    if isinstance(result, dict) and "error" in result:
+                        error_message = f"\n\n❌ **{function_name} 오류**: {result['error']}"
+                        yield {
+                            'content': error_message,
+                            'isComplete': False,
+                            'toolCall': function_name,
+                            'toolStatus': 'error',
+                            'toolResult': result
+                        }
+                    else:
+                        success_message = f"\n\n✅ **{function_name} 결과**:\n{result}"
+                        yield {
+                            'content': success_message,
+                            'isComplete': False,
+                            'toolCall': function_name,
+                            'toolStatus': 'completed',
+                            'toolResult': result
+                        }
+                except Exception as e:
+                    error_message = f"\n\n❌ **{function_name} 실행 오류**: {str(e)}"
+                    yield {
+                        'content': error_message,
+                        'isComplete': False,
+                        'toolCall': function_name,
+                        'toolStatus': 'error'
+                    }
+        
+    except Exception as e:
+        print(f"❌ Streaming multimodal error: {e}")
+        yield {
+            'content': f"멀티모달 스트리밍 처리 중 오류가 발생했습니다: {str(e)}",
+            'isComplete': False,
+            'error': str(e)
+        }
 
 if __name__ == "__main__":
     import uvicorn

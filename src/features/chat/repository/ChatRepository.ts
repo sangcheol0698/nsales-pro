@@ -12,6 +12,8 @@ import type { ChatHistory, ChatSearch, ChatSessionList } from '../entity/ChatSea
 
 export class ChatRepository {
   private baseURL = 'http://localhost:8000/api/v1';
+  private activeRequests = new Set<string>();
+  private abortController: AbortController | null = null;
 
   async sendMessage(request: ChatRequest): Promise<ChatResponse> {
     const response = await axios.post(`${this.baseURL}/chat/messages`, request);
@@ -48,51 +50,81 @@ export class ChatRepository {
     return response.data;
   }
 
-  // TODO: 백엔드에 스트리밍 파일 업로드 엔드포인트 구현 후 활성화
-  // async sendMessageWithFilesStreaming(
-  //   content: string,
-  //   sessionId: string,
-  //   files: File[],
-  //   model?: string,
-  //   webSearch?: boolean,
-  //   onChunk: (chunk: ChatStreamChunk) => void,
-  //   onError?: (error: Error) => void
-  // ): Promise<void> {
-  //   try {
-  //     const formData = new FormData();
-  //     formData.append('content', content);
-  //     formData.append('sessionId', sessionId);
-  //     if (model) {
-  //       formData.append('model', model);
-  //     }
-  //     if (webSearch) {
-  //       formData.append('webSearch', 'true');
-  //     }
-  //     // 파일들을 FormData에 추가
-  //     files.forEach((file) => {
-  //       formData.append('files', file);
-  //     });
+  async sendMessageWithFilesStreaming(
+    content: string,
+    sessionId: string,
+    files: File[],
+    model?: string,
+    webSearch?: boolean,
+    onChunk: (chunk: ChatStreamChunk) => void,
+    onError?: (error: Error) => void
+  ): Promise<void> {
+    // 중복 요청 방지
+    const requestId = `${sessionId}_${Date.now()}_${Math.random()}`;
+    
+    if (this.activeRequests.has(requestId)) {
+      console.warn('🚫 Duplicate file upload request prevented:', requestId);
+      return;
+    }
+    
+    // 기존 요청 중단
+    if (this.abortController) {
+      console.log('📋 Aborting previous file upload request');
+      this.abortController.abort();
+    }
+    
+    this.abortController = new AbortController();
+    this.activeRequests.add(requestId);
+    console.log('🚀 Starting file upload stream:', requestId);
+    
+    try {
+      const formData = new FormData();
+      formData.append('content', content);
+      formData.append('sessionId', sessionId);
+      if (model) {
+        formData.append('model', model);
+      }
+      if (webSearch) {
+        formData.append('webSearch', 'true');
+      }
+      // 파일들을 FormData에 추가
+      files.forEach((file) => {
+        formData.append('files', file);
+      });
 
-  //     await fetchEventSource(`${this.baseURL}/chat/messages/with-files/stream`, {
-  //       method: 'POST',
-  //       body: formData,
-  //       onmessage: (event) => {
-  //         try {
-  //           const chunk: ChatStreamChunk = JSON.parse(event.data);
-  //           onChunk(chunk);
-  //         } catch (error) {
-  //           console.error('Failed to parse file upload SSE chunk:', error);
-  //         }
-  //       },
-  //       onerror: (error) => {
-  //         console.error('File upload SSE connection error:', error);
-  //         onError?.(error instanceof Error ? error : new Error('File upload SSE connection failed'));
-  //       },
-  //     });
-  //   } catch (error) {
-  //     onError?.(error instanceof Error ? error : new Error('File upload stream failed'));
-  //   }
-  // }
+      await fetchEventSource(`${this.baseURL}/chat/messages/with-files/stream`, {
+        method: 'POST',
+        body: formData,
+        signal: this.abortController.signal,
+        onmessage: (event) => {
+          try {
+            const chunk: ChatStreamChunk = JSON.parse(event.data);
+            onChunk(chunk);
+          } catch (error) {
+            console.error('Failed to parse file upload SSE chunk:', error);
+          }
+        },
+        onerror: (error) => {
+          console.error('File upload SSE connection error:', error);
+          onError?.(error instanceof Error ? error : new Error('File upload SSE connection failed'));
+        },
+      });
+      
+      console.log('✅ File upload stream completed successfully:', requestId);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('📋 File upload stream aborted:', requestId);
+      } else {
+        console.error('❌ File upload stream failed:', requestId, error);
+        onError?.(error instanceof Error ? error : new Error('File upload stream failed'));
+      }
+    } finally {
+      this.activeRequests.delete(requestId);
+      if (this.abortController?.signal.aborted === false) {
+        this.abortController = null;
+      }
+    }
+  }
 
   async streamMessage(
     request: ChatRequest,

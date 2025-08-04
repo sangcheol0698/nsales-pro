@@ -123,9 +123,12 @@ export function useGoogleAuth() {
             authWindow?.close()
             window.removeEventListener('message', handleMessage)
             
-            toast.success('Google 인증 성공', {
-              description: '이제 캘린더와 이메일을 사용할 수 있습니다.'
+            toast.success('🎉 Google 연동 성공!', {
+              description: 'Google 서비스 연동이 완료되었습니다! 이제 @캘린더, @메일 기능을 사용할 수 있습니다.',
+              duration: 5000
             })
+            
+            console.log('✅ Google OAuth 팝업에서 성공 신호를 받았습니다.')
             
             // 상태 다시 확인
             setTimeout(() => {
@@ -135,9 +138,12 @@ export function useGoogleAuth() {
             authWindow?.close()
             window.removeEventListener('message', handleMessage)
             
-            toast.error('Google 인증 실패', {
-              description: '인증 과정에서 오류가 발생했습니다.'
+            toast.error('❌ Google 연동 실패', {
+              description: 'Google 서비스 연동에 실패했습니다. 다시 시도해주세요.',
+              duration: 5000
             })
+            
+            console.log('❌ Google OAuth 팝업에서 실패 신호를 받았습니다.')
           }
         }
         
@@ -192,6 +198,7 @@ export function useGoogleAuth() {
   const checkUrlParams = (): void => {
     const urlParams = new URLSearchParams(window.location.search)
     const googleAuth = urlParams.get('google_auth')
+    const message = urlParams.get('message') // 백엔드에서 전달된 메시지
     
     if (googleAuth === 'success') {
       // 부모 창에 성공 메시지 전송
@@ -199,9 +206,11 @@ export function useGoogleAuth() {
         window.opener.postMessage('google_auth_success', window.location.origin)
         window.close()
       } else {
-        toast.success('Google 인증 성공', {
-          description: '이제 캘린더와 이메일을 사용할 수 있습니다.'
+        toast.success('🎉 Google 연동 성공!', {
+          description: message || 'Google 서비스 연동이 성공적으로 완료되었습니다! 이제 캘린더와 이메일을 사용할 수 있습니다.',
+          duration: 5000 // 5초간 표시
         })
+        console.log('✅ Google OAuth 성공: 인증 상태를 다시 확인합니다.')
         checkAuthStatus()
       }
       
@@ -213,9 +222,11 @@ export function useGoogleAuth() {
         window.opener.postMessage('google_auth_error', window.location.origin)
         window.close()
       } else {
-        toast.error('Google 인증 실패', {
-          description: '인증 과정에서 오류가 발생했습니다.'
+        toast.error('❌ Google 연동 실패', {
+          description: message || 'Google 서비스 연동에 실패했습니다. 다시 시도해주세요.',
+          duration: 5000 // 5초간 표시
         })
+        console.log('❌ Google OAuth 실패: 연동에 실패했습니다.')
       }
       
       // URL에서 매개변수 제거

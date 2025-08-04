@@ -188,7 +188,14 @@
                       class="w-1.5 h-1.5 rounded-full flex-shrink-0"
                       :class="session.messageCount > 0 ? 'bg-primary' : 'bg-muted-foreground/50'"
                     ></div>
-                    <h4 class="font-medium truncate text-foreground text-sm">{{ session.title }}</h4>
+                    <div class="flex items-center gap-1 min-w-0">
+                      <h4 class="font-medium truncate text-foreground text-sm">{{ session.title }}</h4>
+                      <Sparkles 
+                        v-if="session.titleGenerated" 
+                        class="h-3 w-3 text-primary/70 flex-shrink-0" 
+                        :title="'AI가 생성한 제목 (' + formatDate(session.titleGeneratedAt || session.updatedAt) + ')'"
+                      />
+                    </div>
                     <Badge
                       v-if="session.messageCount > 0"
                       variant="secondary"
@@ -221,6 +228,13 @@
                       <Edit2 class="h-3 w-3 mr-2" />
                       이름 변경
                     </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      @click="generateTitle(session.id)"
+                      :disabled="session.messageCount < 2"
+                    >
+                      <Sparkles class="h-3 w-3 mr-2" />
+                      AI 제목 생성
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       @click="deleteSession(session.id)"
                       class="text-destructive focus:text-destructive"
@@ -245,7 +259,12 @@
       <!-- 메인 채팅 영역 -->
       <main class="flex-1 flex flex-col min-w-0 overflow-hidden" role="main">
         <!-- 채팅 위젯 -->
-        <ChatWidget v-if="currentSessionId" :key="currentSessionId" :session-id="currentSessionId" />
+        <ChatWidget 
+          v-if="currentSessionId" 
+          :key="currentSessionId" 
+          :session-id="currentSessionId" 
+          @message-completed="refreshSessionInfo"
+        />
 
         <!-- 빈 상태 -->
         <div
@@ -316,6 +335,7 @@ import {
   MoreVertical,
   Plus,
   Search,
+  Sparkles,
   Trash2,
   X,
 } from 'lucide-vue-next';
@@ -642,6 +662,73 @@ const deleteSession = async (sessionId: string) => {
   }
 };
 
+/**
+ * AI 기반 제목 생성 (수동 트리거)
+ */
+const generateTitle = async (sessionId: string) => {
+  try {
+    const result = await chatRepository.generateTitle(sessionId);
+    
+    if (result.success) {
+      // 세션 목록에서 해당 세션의 제목 업데이트
+      const sessionIndex = sessions.value.findIndex(s => s.id === sessionId);
+      if (sessionIndex !== -1) {
+        sessions.value[sessionIndex].title = result.title;
+        sessions.value[sessionIndex].titleGenerated = true;
+        sessions.value[sessionIndex].titleGeneratedAt = new Date();
+      }
+      
+      toast.success('AI 제목 생성 완료', {
+        description: `새 제목: ${result.title}`,
+      });
+    } else {
+      toast.warning('AI 제목 생성 실패', {
+        description: result.message || '제목 생성 중 오류가 발생했습니다.',
+      });
+    }
+  } catch (error) {
+    console.error('Generate title error:', error);
+    toast.error('AI 제목 생성 실패', {
+      description: '제목 생성 중 오류가 발생했습니다.',
+    });
+  }
+};
+
+/**
+ * 세션 정보 실시간 업데이트 (제목 변경 감지)
+ */
+const refreshSessionInfo = async (sessionId: string) => {
+  try {
+    const updatedSession = await chatRepository.getSession(sessionId);
+    const sessionIndex = sessions.value.findIndex(s => s.id === sessionId);
+    
+    if (sessionIndex !== -1) {
+      const currentSession = sessions.value[sessionIndex];
+      
+      // 제목이 변경되었는지 확인
+      if (currentSession.title !== updatedSession.title) {
+        sessions.value[sessionIndex] = {
+          ...currentSession,
+          title: updatedSession.title,
+          titleGenerated: updatedSession.titleGenerated,
+          titleGeneratedAt: updatedSession.titleGeneratedAt,
+          updatedAt: updatedSession.updatedAt,
+        };
+        
+        // AI가 자동으로 제목을 생성한 경우 알림 표시
+        if (updatedSession.titleGenerated && !currentSession.titleGenerated) {
+          toast.success('AI가 제목을 자동 생성했습니다', {
+            description: `새 제목: ${updatedSession.title}`,
+            duration: 3000,
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Refresh session info error:', error);
+  }
+};
+
 const formatDate = (date: Date | string) => {
   const now = new Date();
   const targetDate = typeof date === 'string' ? new Date(date) : date;
@@ -677,6 +764,24 @@ watch([sessions, () => route.path], ([newSessions, newPath]) => {
   if (newPath === '/chat' && newSessions.length > 0 && !currentSessionId.value) {
     router.replace({ name: 'chatSession', params: { sessionId: newSessions[0].id } });
   }
+});
+
+// 현재 세션의 메시지 수 변화 감지하여 제목 업데이트 확인
+watch(
+  () => currentSessionId.value,
+  async (newSessionId, oldSessionId) => {
+    if (newSessionId && newSessionId !== oldSessionId) {
+      // 세션이 변경될 때 약간의 지연 후 제목 업데이트 확인
+      setTimeout(async () => {
+        await refreshSessionInfo(newSessionId);
+      }, 1000);
+    }
+  }
+);
+
+// 자식 컴포넌트에서 호출할 수 있도록 메서드 노출
+defineExpose({
+  refreshSessionInfo,
 });
 
 onMounted(() => {

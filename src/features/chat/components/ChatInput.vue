@@ -360,7 +360,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import {
   Send,
   Paperclip,
@@ -421,11 +421,11 @@ const selectedModel = ref('gpt-4o');
 const availableModels = ref<Record<string, any>>({});
 const showModelSelector = ref(false);
 
-// 웹 검색 상태
-const webSearchEnabled = ref(false);
+// 웹 검색 상태 (localStorage에서 불러오기)
+const webSearchEnabled = ref(localStorage.getItem('webSearchEnabled') === 'true');
 
-// AI Tools 상태
-const toolsEnabled = ref(false);
+// AI Tools 상태 (localStorage에서 불러오기)
+const toolsEnabled = ref(localStorage.getItem('toolsEnabled') === 'true');
 
 // 새로운 기능 상태
 const attachedFiles = ref<File[]>([]);
@@ -615,8 +615,7 @@ const handleSubmit = () => {
 
   inputMessage.value = '';
   attachedFiles.value = [];
-  webSearchEnabled.value = false; // 전송 후 웹 검색 비활성화
-  // toolsEnabled는 지속적으로 유지 (사용자가 명시적으로 끌 때까지)
+  // webSearchEnabled와 toolsEnabled는 지속적으로 유지 (사용자가 명시적으로 끌 때까지)
 
   nextTick(() => {
     adjustHeight();
@@ -969,6 +968,15 @@ const toggleVoiceInput = () => {
     showEmojiPicker.value = false;
   }
 };
+
+// 상태 변경 시 localStorage에 저장
+watch(webSearchEnabled, (newValue) => {
+  localStorage.setItem('webSearchEnabled', newValue.toString());
+});
+
+watch(toolsEnabled, (newValue) => {
+  localStorage.setItem('toolsEnabled', newValue.toString());
+});
 
 // 라이프사이클 훅
 onMounted(() => {

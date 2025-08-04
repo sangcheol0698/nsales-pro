@@ -1,10 +1,12 @@
 <template>
-  <div>
-    <DataTableToolbar
-      :table="table"
+  <div class="space-y-6">
+    <DataTableModernToolbar
+      :table="table" 
       :searchPlaceholder="searchPlaceholder"
-      :searchColumnId="searchColumnId"  
+      :searchColumnId="searchColumnId"
       :getColumnLabel="getColumnLabel"
+      :title="title"
+      :description="description"
     >
       <template #filters>
         <slot name="filters" :table="table"></slot>
@@ -15,9 +17,9 @@
       </template>
       
       <slot name="toolbar"></slot>
-    </DataTableToolbar>
+    </DataTableModernToolbar>
 
-    <DataTable
+    <DataTableModern
       :columns="columns"
       :data="data"
       :loading="pagination.loading"
@@ -29,7 +31,7 @@
       <template v-if="$slots['expanded-row']" #expanded-row="slotProps">
         <slot name="expanded-row" v-bind="slotProps"></slot>
       </template>
-    </DataTable>
+    </DataTableModern>
 
     <DataTablePagination
       :page="params.page"
@@ -66,9 +68,13 @@ import { useRoute, useRouter } from 'vue-router';
 import { valueUpdater } from '@/core/components/ui/table/utils';
 import { debounce } from 'lodash-es';
 import PageResponse from '@/core/common/PageResponse';
-import { DataTable, DataTablePagination, DataTableToolbar } from '@/core/components/ui/data-table';
+import { 
+  DataTableModern, 
+  DataTableModernToolbar, 
+  DataTablePagination 
+} from '@/core/components/ui/data-table';
 
-interface DataTableWithUrlProps<TData> {
+interface DataTableModernContainerProps<TData> {
   columns: ColumnDef<TData, any>[];
   fetchData: (params: Record<string, any>) => Promise<PageResponse<TData>>;
   searchColumnId?: string;
@@ -78,9 +84,11 @@ interface DataTableWithUrlProps<TData> {
   getColumnLabel?: (columnId: string) => string;
   initialParams?: Record<string, any>;
   debounceTime?: number;
+  title?: string;
+  description?: string;
 }
 
-const props = withDefaults(defineProps<DataTableWithUrlProps<any>>(), {
+const props = withDefaults(defineProps<DataTableModernContainerProps<any>>(), {
   searchColumnId: 'name',
   searchPlaceholder: '검색...',
   emptyMessage: '데이터가 없습니다',
@@ -130,15 +138,12 @@ const table = useVueTable({
   getFacetedRowModel: getFacetedRowModel(),
   getFacetedUniqueValues: getFacetedUniqueValues(),
   getExpandedRowModel: getExpandedRowModel(),
-  // Use row.id as the selection key instead of row index
   getRowId: (row) => row.id?.toString() || '',
   onSortingChange: (updaterOrValue) => {
     valueUpdater(updaterOrValue, sorting);
 
-    // Update params with sorting information
     if (sorting.value.length > 0) {
       const sort = sorting.value[0];
-      // Format sort parameter as expected by Spring Boot: 'property,direction'
       const sortParam = `${sort.id},${sort.desc ? 'desc' : 'asc'}`;
 
       params.value = {
@@ -146,22 +151,18 @@ const table = useVueTable({
         sort: sortParam,
       };
 
-      // Keep separate direction parameter for URL display and backward compatibility
       params.value.direction = sort.desc ? 'desc' : 'asc';
     } else if (params.value.sort) {
-      // Remove sorting if not present
       const { sort, direction, ...rest } = params.value;
       params.value = rest;
     }
 
-    // Update URL and fetch data
     updateUrl();
     loadData();
   },
   onColumnFiltersChange: (updaterOrValue) => {
     valueUpdater(updaterOrValue, columnFilters);
 
-    // Process all column filters and update params
     const newParams = { ...params.value };
     
     // Clear existing filter params (except page, size, sort)
@@ -174,18 +175,15 @@ const table = useVueTable({
     // Add all active column filters to params
     columnFilters.value.forEach(filter => {
       if (filter.value !== undefined && filter.value !== null && filter.value !== '') {
-        // Handle array values (for multi-select filters)
         if (Array.isArray(filter.value) && filter.value.length > 0) {
           newParams[filter.id] = filter.value.join(',');
         }
-        // Handle date range values
-        else if (typeof filter.value === 'object' && filter.value.start) {
-          newParams[`${filter.id}From`] = filter.value.start.toISOString().split('T')[0];
-          if (filter.value.end) {
-            newParams[`${filter.id}To`] = filter.value.end.toISOString().split('T')[0]; 
+        else if (typeof filter.value === 'object' && (filter.value as any).start) {
+          newParams[`${filter.id}From`] = (filter.value as any).start.toISOString().split('T')[0];
+          if ((filter.value as any).end) {
+            newParams[`${filter.id}To`] = (filter.value as any).end.toISOString().split('T')[0]; 
           }
         }
-        // Handle simple string/number values
         else {
           newParams[filter.id] = filter.value;
         }
@@ -193,11 +191,8 @@ const table = useVueTable({
     });
 
     params.value = newParams;
-
-    // Reset to first page when filters change
     params.value.page = 1;
 
-    // Update URL and fetch data with debouncing for text searches
     const hasTextFilter = columnFilters.value.some(filter => 
       filter.id === props.searchColumnId && typeof filter.value === 'string'
     );
@@ -246,7 +241,6 @@ function updateUrl() {
 function loadData() {
   pagination.value.loading = true;
 
-  // Ensure sort parameter is in the correct format for Spring Boot
   if (params.value.sort && !params.value.sort.includes(',')) {
     params.value.sort = `${params.value.sort},asc`;
     params.value.direction = 'asc';
@@ -276,16 +270,14 @@ function onPageChange(page: number) {
 
 // Page size change handler
 function onPageSizeChange(size: number) {
-  // Clear row selection when changing page size
   rowSelection.value = {};
-
   params.value.size = size;
-  params.value.page = 1; // Reset to first page when changing page size
+  params.value.page = 1;
   updateUrl();
   loadData();
 }
 
-// Function to get column label (uses prop function if provided)
+// Function to get column label
 function getColumnLabel(columnId: string): string {
   if (props.getColumnLabel) {
     return props.getColumnLabel(columnId);
@@ -295,27 +287,21 @@ function getColumnLabel(columnId: string): string {
 
 // Load initial state from URL on mount
 onMounted(() => {
-  // Get params from URL
   const query = route.query;
 
-  // Update params from URL
   if (query.page) params.value.page = Number(query.page);
   if (query.size) params.value.size = Number(query.size);
-  // Handle legacy limit parameter for backward compatibility
   else if (query.limit) params.value.size = Number(query.limit);
 
-  // Handle sort params
   if (query.sort) {
     const sortValue = query.sort as string;
 
-    // Check if sort parameter contains direction (property,direction format)
     if (sortValue.includes(',')) {
       const [property, direction] = sortValue.split(',');
 
       params.value.sort = sortValue;
       params.value.direction = direction;
 
-      // Update sorting state
       sorting.value = [
         {
           id: property,
@@ -323,14 +309,12 @@ onMounted(() => {
         },
       ];
     }
-    // Backward compatibility for separate sort and direction parameters
     else if (query.direction) {
       const direction = query.direction as string;
 
       params.value.sort = `${sortValue},${direction}`;
       params.value.direction = direction;
 
-      // Update sorting state
       sorting.value = [
         {
           id: sortValue,
@@ -338,11 +322,9 @@ onMounted(() => {
         },
       ];
     } else {
-      // Add default direction (asc) if not present
       params.value.sort = `${sortValue},asc`;
       params.value.direction = 'asc';
 
-      // Update sorting state
       sorting.value = [
         {
           id: sortValue,
@@ -359,7 +341,6 @@ onMounted(() => {
     if (!['page', 'size', 'sort', 'direction', 'limit'].includes(key) && value) {
       params.value[key] = value;
       
-      // Handle date range filters (ending with From/To)
       if (key.endsWith('From') || key.endsWith('To')) {
         const baseKey = key.replace(/From$|To$/, '');
         const existingFilter = newColumnFilters.find(f => f.id === baseKey);
@@ -384,14 +365,12 @@ onMounted(() => {
           });
         }
       }
-      // Handle array values (comma-separated)
       else if (typeof value === 'string' && value.includes(',')) {
         newColumnFilters.push({
           id: key,
           value: value.split(','),
         });
       }
-      // Handle simple values
       else {
         newColumnFilters.push({
           id: key,
@@ -403,7 +382,6 @@ onMounted(() => {
   
   columnFilters.value = newColumnFilters;
 
-  // Load data with initial params
   loadData();
 });
 
@@ -411,8 +389,6 @@ onMounted(() => {
 watch(
   () => route.query,
   (newQuery) => {
-    // Only update if the change wasn't triggered by this component
-    // Simplify the sort change detection logic
     const sortChanged = String(newQuery.sort) !== String(params.value.sort);
 
     if (
@@ -421,24 +397,19 @@ watch(
       sortChanged ||
       newQuery[props.searchColumnId] !== params.value[props.searchColumnId]
     ) {
-      // Update params from URL
       if (newQuery.page) params.value.page = Number(newQuery.page);
       if (newQuery.size) params.value.size = Number(newQuery.size);
-      // Handle legacy limit parameter for backward compatibility
       else if (newQuery.limit) params.value.size = Number(newQuery.limit);
 
-      // Handle sort params
       if (newQuery.sort) {
         const sortValue = newQuery.sort as string;
 
-        // Check if sort parameter contains direction (property,direction format)
         if (sortValue.includes(',')) {
           const [property, direction] = sortValue.split(',');
 
           params.value.sort = sortValue;
           params.value.direction = direction;
 
-          // Update sorting state
           sorting.value = [
             {
               id: property,
@@ -446,14 +417,12 @@ watch(
             },
           ];
         }
-        // Backward compatibility for separate sort and direction parameters
         else if (newQuery.direction) {
           const direction = newQuery.direction as string;
 
           params.value.sort = `${sortValue},${direction}`;
           params.value.direction = direction;
 
-          // Update sorting state
           sorting.value = [
             {
               id: sortValue,
@@ -461,11 +430,9 @@ watch(
             },
           ];
         } else {
-          // Add default direction (asc) if not present
           params.value.sort = `${sortValue},asc`;
           params.value.direction = 'asc';
 
-          // Update sorting state
           sorting.value = [
             {
               id: sortValue,
@@ -484,7 +451,6 @@ watch(
         if (!['page', 'size', 'sort', 'direction', 'limit'].includes(key) && value) {
           params.value[key] = value;
           
-          // Handle date range filters (ending with From/To)
           if (key.endsWith('From') || key.endsWith('To')) {
             const baseKey = key.replace(/From$|To$/, '');
             const existingFilter = newColumnFilters.find(f => f.id === baseKey);
@@ -509,14 +475,12 @@ watch(
               });
             }
           }
-          // Handle array values (comma-separated)
           else if (typeof value === 'string' && value.includes(',')) {
             newColumnFilters.push({
               id: key,
               value: value.split(','),
             });
           }
-          // Handle simple values
           else {
             newColumnFilters.push({
               id: key,
@@ -528,7 +492,6 @@ watch(
       
       columnFilters.value = newColumnFilters;
 
-      // Load data with updated params
       loadData();
     }
   },

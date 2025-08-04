@@ -132,6 +132,10 @@ interface Props {
 
 const props = defineProps<Props>()
 
+const emit = defineEmits<{
+  messageCompleted: [sessionId: string]
+}>()
+
 const toast = useToast()
 const chatRepository = new ChatRepository()
 
@@ -239,6 +243,13 @@ const sendMessage = async (content: string, files?: File[], model?: string, webS
           toast.success('파일 분석 완료', {
             description: `${files.length}개의 파일이 성공적으로 분석되었습니다.`
           })
+          
+          // 메시지 완료 후 제목 업데이트 확인
+          if (currentSession.value?.id) {
+            setTimeout(() => {
+              emit('messageCompleted', currentSession.value!.id)
+            }, 1500)
+          }
         }
       } catch (error) {
         console.error('File upload error:', error)
@@ -417,6 +428,13 @@ const sendMessage = async (content: string, files?: File[], model?: string, webS
     if (!files || files.length === 0) {
       setTimeout(() => {
         scrollToBottom(true)
+        
+        // 메시지 완료 후 제목 업데이트 확인
+        if (currentSession.value?.id) {
+          setTimeout(() => {
+            emit('messageCompleted', currentSession.value!.id)
+          }, 1500)
+        }
       }, 300)
       return // 스트리밍의 경우 여기서 종료
     }

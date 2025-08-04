@@ -25,14 +25,16 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Check server logs
+tail -f server.log
 ```
 
 ### Environment Setup
 ```bash
-# Copy environment template
-cp .env.example .env
-
-# Edit environment variables (add OPENAI_API_KEY)
+# Create environment file (OPENAI_API_KEY required)
+# Note: .env.example does not exist - create .env directly
+echo "OPENAI_API_KEY=your-api-key-here" > .env
 ```
 
 ### Google Services Setup
@@ -56,10 +58,18 @@ Follow `google_setup.md` for complete Google Calendar/Gmail integration setup. K
 - `GoogleCalendarService` - Calendar operations (events, creation, scheduling)
 - `GoogleGmailService` - Email operations (send, receive, search)
 
+**AI Tools System (`tools/`)**
+- `ToolManager` - Centralized tool registry and initialization
+- `ToolRegistry` - Tool registration and categorization system
+- `GoogleCalendarViewTool`, `GoogleCalendarCreateTool`, `GoogleCalendarFindFreeTool` - Calendar tools
+- `GmailSendTool`, `GmailViewTool` - Email tools
+- Status monitoring and error handling for all tools
+
 **Function Calling Integration**
 - Google services exposed as OpenAI function tools
 - Natural language to API translation
 - Smart mention detection (@캘린더, @메일, etc.)
+- Legacy integration via `google_functions.py` (GOOGLE_TOOLS, FUNCTION_MAP)
 
 ### Key Data Models
 - `ChatMessage` - Individual chat messages
@@ -81,9 +91,17 @@ Follow `google_setup.md` for complete Google Calendar/Gmail integration setup. K
 
 ### AI Model Configuration
 The system supports multiple OpenAI models with different capabilities:
-- **GPT-4o**: Latest multimodal model with web search support
-- **GPT-4**: Advanced model with web search support  
-- **GPT-3.5-turbo**: Fast, efficient model without web search
+- **GPT-4o**: Latest multimodal model with web search and Assistant API support
+- **GPT-4**: Advanced model with web search and Assistant API support  
+- **GPT-3.5-turbo**: Fast, efficient model (no web search or Assistant API)
+
+### Assistant API Integration
+Advanced AI capabilities using OpenAI's Assistant API:
+- **Dynamic Assistant Creation**: Session-specific assistants with custom instructions
+- **Thread Management**: Persistent conversation threads with message history
+- **Tool Integration**: Seamless integration with Google services and file search
+- **Vector Store Integration**: Automatic file search capabilities within conversations
+- **Streaming Support**: Real-time responses via Assistant API streaming
 
 ### Function Calling System
 Google services are integrated via OpenAI's Function Calling:
@@ -128,6 +146,14 @@ Advanced document indexing and semantic search capabilities:
 4. **File Processing**: Test with various file types via `/api/v1/chat/messages/with-files`
 5. **Function Calling**: Test Google integrations with natural language queries
 6. **Vector Stores**: Test document indexing and search via vector store endpoints
+7. **AI Tools System**: Monitor tool status via server logs or `/api/v1/tools/status` (if implemented)
+
+### Testing Strategy
+- **API Testing**: Interactive testing via Swagger UI at `localhost:8000/docs`
+- **Google Services**: Test authentication flow via `/api/v1/google/auth`
+- **File Upload**: Test multipart uploads with various file formats
+- **Streaming**: Test real-time chat via Server-Sent Events endpoints
+- **Tool Integration**: Verify tool registry initialization in server logs
 
 ## Frontend Integration Points
 
@@ -137,6 +163,20 @@ Advanced document indexing and semantic search capabilities:
 - **Google Auth**: OAuth flow via `/api/v1/google/auth` and `/callback`
 - **Vector Stores**: Management endpoints at `/api/v1/vector-stores` and `/api/v1/sessions/{id}/vector-store`
 
+## Key Architecture Patterns
+
+### Service Layer Integration
+- **Conditional Loading**: Google services, title generator, and AI tools load conditionally with graceful degradation
+- **Registry Pattern**: AI tools use centralized registry for organization and status monitoring
+- **Factory Pattern**: Dynamic assistant and thread creation based on session requirements
+- **Strategy Pattern**: Different AI models with varying capabilities (web search, Assistant API)
+
+### Error Handling Strategy
+- **Graceful Degradation**: System continues functioning when optional services fail to load
+- **Service Availability Checks**: Runtime validation of Google services and tool availability
+- **Comprehensive Logging**: Detailed startup logs showing service initialization status
+- **Fallback Mechanisms**: Alternative approaches when preferred methods are unavailable
+
 ## Migration Notes
 
 The current implementation uses in-memory storage suitable for development. For production deployment:
@@ -145,3 +185,5 @@ The current implementation uses in-memory storage suitable for development. For 
 - Configure proper logging and monitoring
 - Implement rate limiting
 - Set up proper secret management
+- Consider containerization with Docker
+- Implement health checks and monitoring for all integrated services

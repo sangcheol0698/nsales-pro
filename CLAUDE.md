@@ -120,16 +120,18 @@ cp .env.example .env      # Then edit .env with OPENAI_API_KEY
 
 **Frontend:**
 - Vue 3 + TypeScript + Vite
-- TailwindCSS + Pretendard font
-- Reka UI components, Vue Router, Pinia
-- Vitest + Cypress for testing
-- TSyringe for dependency injection
+- TailwindCSS 4.x + Pretendard font
+- Reka UI components (shadcn/ui style), Vue Router, Pinia
+- Vitest + Cypress for testing, V8 coverage provider
+- TSyringe for dependency injection, VueUse for composables
+- Additional: Axios, Zod validation, Vue Sonner for notifications
 
 **Backend:**
 - FastAPI + Python 3.9+
-- OpenAI API integration with streaming support
-- Google APIs (Calendar, Gmail)
-- File processing (PyPDF2, python-docx, pytesseract)
+- OpenAI API integration with streaming support (GPT-4o, GPT-4, GPT-3.5-turbo)
+- Google APIs (Calendar, Gmail) with OAuth2 authentication
+- File processing (PyPDF2, python-docx, pytesseract OCR)
+- Vector Store support for knowledge base functionality
 
 ## Development Workflow
 
@@ -151,9 +153,10 @@ Follow `backend/google_setup.md` for OAuth2 configuration. Required files:
 
 ### Code Quality Tools
 - **Prettier**: Consistent formatting across all code with project-specific config
-- **ESLint**: Vue and React specific linting with TypeScript support
+- **ESLint**: Vue and React specific linting with TypeScript support  
 - **TypeScript**: Strict type checking with `vue-tsc` for templates
-- **Babel**: Decorator support for tsyringe dependency injection
+- **Babel**: Decorator support for tsyringe dependency injection via `@babel/plugin-proposal-decorators`
+- **Vite Configuration**: Merged Vite + Vitest config with Babel plugin for decorator support
 
 ## Important Implementation Details
 
@@ -163,12 +166,15 @@ Follow `backend/google_setup.md` for OAuth2 configuration. Required files:
 - **Type Safety**: Zod schemas for runtime validation, TypeScript interfaces for compile-time safety
 - **Component Architecture**: Reusable UI components in `src/core/components/ui/` with consistent API patterns
 - **HTTP Client**: Centralized `HttpRepository` using Axios with error handling
+- **Dependency Injection**: Uses tsyringe with `reflect-metadata` for decorator support via Babel plugin
 
 ### Chat System Integration
 - **Streaming Support**: Server-Sent Events with `@microsoft/fetch-event-source`
-- **Enhanced Chat API**: Tools support with Google services integration
+- **Enhanced Chat API**: Tools support with Google services integration  
 - **File Upload**: Multipart form handling with various file types
 - **Vector Stores**: Knowledge base functionality with document indexing
+- **Google Tools Parser**: Custom parser for cleaning JSON markdown blocks from Google Tools responses
+- **Message Management**: Session-based conversation history with regeneration and deletion capabilities
 
 ### Backend Integration
 - **CORS Configuration**: Supports `localhost:5173`, `localhost:5174`, `localhost:3000`

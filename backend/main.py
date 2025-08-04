@@ -34,6 +34,15 @@ except ImportError as e:
     GOOGLE_TOOLS = []
     FUNCTION_MAP = {}
 
+# Title Generator import
+try:
+    from title_generator import TitleGenerator
+    TITLE_GENERATOR_AVAILABLE = True
+    print("✅ Title Generator가 성공적으로 로드되었습니다.")
+except ImportError as e:
+    print(f"⚠️ Title Generator 로드 실패: {e}")
+    TITLE_GENERATOR_AVAILABLE = False
+
 # 새로운 AI Tools 시스템 import
 try:
     from tools.manager import tool_manager
@@ -57,6 +66,11 @@ logging.basicConfig(level=logging.INFO)
 client = AsyncOpenAI(
     api_key=os.getenv("OPENAI_API_KEY", "your-openai-api-key-here")
 )
+
+# Title Generator 초기화
+title_generator = None
+if TITLE_GENERATOR_AVAILABLE:
+    title_generator = TitleGenerator(client)
 
 # 사용 가능한 AI 모델 설정
 AVAILABLE_MODELS = {
@@ -804,6 +818,27 @@ async def create_response_with_best_api(
     )
 
 
+def build_context_input(user_input: str, conversation_messages: list) -> str:
+    """대화 컨텍스트를 포함한 입력 구성"""
+    context_input = user_input
+    if conversation_messages:
+        # 최근 대화 히스토리를 컨텍스트로 포함 (최대 5개)
+        recent_messages = conversation_messages[-5:]
+        context_parts = []
+        for msg in recent_messages:
+            role = msg.get('role', 'user')
+            content = msg.get('content', '')
+            if role == 'user':
+                context_parts.append(f"사용자: {content}")
+            else:
+                context_parts.append(f"AI: {content}")
+        
+        # 컨텍스트와 현재 질문을 결합
+        context_input = f"**이전 대화 컨텍스트:**\n" + "\n".join(context_parts) + f"\n\n**현재 질문:** {user_input}"
+    
+    return context_input
+
+
 # 기존 Responses API 함수 (이름 변경)
 async def create_response_with_responses_api_fallback(
         model: str,
@@ -834,10 +869,13 @@ async def create_response_with_responses_api_fallback(
         print("🔍 Using Responses API with web search")
 
         async def web_search_call():
+            # 대화 컨텍스트를 포함한 입력 구성
+            context_input = build_context_input(user_input, conversation_messages)
+            
             return await client.responses.create(
                 model=model,
                 instructions=instructions,
-                input=user_input,
+                input=context_input,
                 tools=[{"type": "web_search"}]
             )
 
@@ -856,10 +894,13 @@ async def create_response_with_responses_api_fallback(
         responses_tools = convert_tools_for_responses_api(available_tools)
 
         async def tools_call():
+            # 대화 컨텍스트를 포함한 입력 구성
+            context_input = build_context_input(user_input, conversation_messages)
+            
             return await client.responses.create(
                 model=model,
                 instructions=instructions,
-                input=user_input,
+                input=context_input,
                 tools=responses_tools
             )
 
@@ -875,10 +916,13 @@ async def create_response_with_responses_api_fallback(
         print("💬 Using Responses API for general conversation")
 
         async def general_call():
+            # 대화 컨텍스트를 포함한 입력 구성
+            context_input = build_context_input(user_input, conversation_messages)
+            
             return await client.responses.create(
                 model=model,
                 instructions=instructions,
-                input=user_input
+                input=context_input
             )
 
         response = await safe_openai_call_with_retry(general_call, user_content=user_input)
@@ -902,7 +946,26 @@ def extract_response_content(response, include_sources: bool = False) -> str:
         if output_item.type == 'message' and hasattr(output_item, 'content'):
             for content_item in output_item.content:
                 if content_item.type == 'output_text':
-                    content += content_item.text
+                    # 텍스트 내용 정규화 - 줄바꿈 처리 개선
+                    raw_text = content_item.text
+                    
+                    # 연속된 공백을 하나로 정규화하되, 줄바꿈은 보존
+                    import re
+                    # 먼저 \r\n을 \n으로 통일
+                    normalized_text = raw_text.replace('\r\n', '\n').replace('\r', '\n')
+                    
+                    # 줄바꿈 문자는 보존하면서 연속된 공백만 정리
+                    # 단, 줄 끝의 공백은 제거하고 줄바꿈은 유지
+                    lines = normalized_text.split('\n')
+                    processed_lines = []
+                    
+                    for line in lines:
+                        # 각 줄의 앞뒤 공백 제거하고 연속 공백을 하나로
+                        cleaned_line = re.sub(r'\s+', ' ', line.strip())
+                        processed_lines.append(cleaned_line)
+                    
+                    # 빈 줄도 보존하면서 텍스트 재구성
+                    content += '\n'.join(processed_lines)
 
                     # 웹 검색 소스 추출
                     if include_sources and hasattr(content_item, 'annotations'):
@@ -913,14 +976,16 @@ def extract_response_content(response, include_sources: bool = False) -> str:
                                     'url': getattr(annotation, 'url', ''),
                                 })
 
-    # 소스 정보 추가
+    # 소스 정보 추가 - 마크다운 포맷팅 개선
     if include_sources and sources:
-        content += "\n\n**참고 출처:**\n"
+        content += "\n\n## 참고 출처\n\n"
         for i, source in enumerate(sources, 1):
-            content += f"{i}. [{source['title']}]({source['url']})\n"
+            title = source['title'] if source['title'] else f"출처 {i}"
+            # 각 리스트 항목 뒤에 적절한 줄바꿈 추가 (마크다운 리스트 포맷)
+            content += f"{i}. **[{title}]({source['url']})**\n\n"
         print(f"📚 Found {len(sources)} web search sources")
 
-    return content
+    return content.strip()  # 마지막에 불필요한 공백/줄바꿈 제거
 
 
 def convert_tools_for_responses_api(chat_tools: List[Dict]) -> List[Dict]:
@@ -959,7 +1024,11 @@ async def process_tool_calls_in_response(response) -> str:
                     if function_name == "get_calendar_events" and isinstance(result, list):
                         content += "\n\n" + format_calendar_events_as_table(result)
                     else:
-                        content += f"\n\n**{function_name} 결과:**\n{json.dumps(result, ensure_ascii=False, indent=2)}"
+                        content += f"\n\n## 🔧 {function_name} 실행 결과\n\n"
+                        if isinstance(result, (dict, list)):
+                            content += f"```json\n{json.dumps(result, ensure_ascii=False, indent=2)}\n```"
+                        else:
+                            content += str(result)
 
     return content
 
@@ -999,7 +1068,11 @@ async def fallback_to_chat_completions(
             if function_name == "get_calendar_events" and isinstance(result, list):
                 content += "\n\n" + format_calendar_events_as_table(result)
             else:
-                content += f"\n\n**{function_name} 결과:**\n{json.dumps(result, ensure_ascii=False, indent=2)}"
+                content += f"\n\n## 🔧 {function_name} 실행 결과\n\n"
+                if isinstance(result, (dict, list)):
+                    content += f"```json\n{json.dumps(result, ensure_ascii=False, indent=2)}\n```"
+                else:
+                    content += str(result)
 
         return content
 
@@ -1052,7 +1125,11 @@ async def safe_fallback_to_chat_completions(
             if function_name == "get_calendar_events" and isinstance(result, list):
                 content += "\n\n" + format_calendar_events_as_table(result)
             else:
-                content += f"\n\n**{function_name} 결과:**\n{json.dumps(result, ensure_ascii=False, indent=2)}"
+                content += f"\n\n## 🔧 {function_name} 실행 결과\n\n"
+                if isinstance(result, (dict, list)):
+                    content += f"```json\n{json.dumps(result, ensure_ascii=False, indent=2)}\n```"
+                else:
+                    content += str(result)
 
         return content
 
@@ -1332,7 +1409,30 @@ async def handle_assistant_tool_calls(run, thread_id: str) -> str:
                     print(f"✅ Assistant tool calls completed")
                     return content
 
-        return f"도구 호출 완료되었지만 응답을 가져올 수 없습니다. 상태: {completed_run.status}"
+        # 최종 응답 반환
+        final_content = ""
+        if completed_run.status == 'completed':
+            messages = await client.beta.threads.messages.list(
+                thread_id=thread_id,
+                order="desc",
+                limit=1
+            )
+            if messages.data and messages.data[0].content:
+                for content_block in messages.data[0].content:
+                    if content_block.type == "text":
+                        final_content += content_block.text.value
+
+        # 도구 실행 결과 요약
+        tool_results_summary = "\n".join([f"- {tool['tool_call_id']}: {tool['output'][:100]}..." for tool in tool_outputs])
+
+        # 최종적으로 생성된 AI의 답변을 반환합니다.
+        if final_content:
+            # AI 응답과 도구 실행 결과를 함께 제공할 수 있습니다.
+            # return f"{final_content}\n\n--- 도구 실행 요약 ---\n{tool_results_summary}"
+            return final_content
+        else:
+            # 만약 AI의 최종 답변이 없다면, 도구 실행 결과라도 반환합니다.
+            return f"도구 실행이 완료되었습니다. 요약:\n{tool_results_summary}"
 
     except Exception as e:
         print(f"🚨 Assistant tool call error: {e}")
@@ -1513,6 +1613,8 @@ class ChatSession(BaseModel):
     createdAt: datetime
     updatedAt: datetime
     messageCount: int
+    titleGenerated: Optional[bool] = False
+    titleGeneratedAt: Optional[datetime] = None
 
 
 class SessionCreateRequest(BaseModel):
@@ -1927,9 +2029,13 @@ async def send_multimodal_message_to_gpt4o(
                 result = await execute_google_function(function_name, function_args)
                 
                 if isinstance(result, dict) and "error" in result:
-                    content += f"\n\n❌ **{function_name} 오류**: {result['error']}"
+                    content += f"\n\n## ❌ {function_name} 실행 오류\n\n{result['error']}"
                 else:
-                    content += f"\n\n✅ **{function_name} 결과**:\n{result}"
+                    content += f"\n\n## ✅ {function_name} 실행 완료\n\n"
+                    if isinstance(result, (dict, list)):
+                        content += f"```json\n{json.dumps(result, ensure_ascii=False, indent=2)}\n```"
+                    else:
+                        content += str(result)
             
             return content
         
@@ -1997,7 +2103,9 @@ def create_session(title: str = None) -> ChatSession:
         title=title or f"새 채팅 {len(sessions_db) + 1}",
         createdAt=datetime.now(),
         updatedAt=datetime.now(),
-        messageCount=0
+        messageCount=0,
+        titleGenerated=False,
+        titleGeneratedAt=None
     )
 
     sessions_db[session_id] = session.dict()
@@ -2008,13 +2116,111 @@ def create_session(title: str = None) -> ChatSession:
 def get_session(session_id: str) -> ChatSession:
     if session_id not in sessions_db:
         raise HTTPException(status_code=404, detail="Session not found")
-    return ChatSession(**sessions_db[session_id])
+    
+    session_data = sessions_db[session_id].copy()
+    
+    # Handle legacy sessions missing required fields
+    if "title" not in session_data:
+        session_data["title"] = f"채팅 {session_id[:8]}"
+    if "updatedAt" not in session_data:
+        session_data["updatedAt"] = session_data.get("createdAt", datetime.now())
+    if "createdAt" not in session_data:
+        session_data["createdAt"] = datetime.now()
+    if "messageCount" not in session_data:
+        session_data["messageCount"] = len(messages_db.get(session_id, []))
+    if "titleGenerated" not in session_data:
+        session_data["titleGenerated"] = False
+    if "titleGeneratedAt" not in session_data:
+        session_data["titleGeneratedAt"] = None
+    
+    # Update the stored session with missing fields for future use
+    sessions_db[session_id].update(session_data)
+    
+    return ChatSession(**session_data)
+
+
+def migrate_legacy_sessions():
+    """Legacy sessions을 새로운 스키마로 마이그레이션"""
+    migrated_count = 0
+    for session_id, session_data in sessions_db.items():
+        updated = False
+        if "title" not in session_data:
+            session_data["title"] = f"채팅 {session_id[:8]}"
+            updated = True
+        if "updatedAt" not in session_data:
+            session_data["updatedAt"] = session_data.get("createdAt", datetime.now())
+            updated = True
+        if "createdAt" not in session_data:
+            session_data["createdAt"] = datetime.now()
+            updated = True
+        if "messageCount" not in session_data:
+            session_data["messageCount"] = len(messages_db.get(session_id, []))
+            updated = True
+        if "titleGenerated" not in session_data:
+            session_data["titleGenerated"] = False
+            updated = True
+        if "titleGeneratedAt" not in session_data:
+            session_data["titleGeneratedAt"] = None
+            updated = True
+        
+        if updated:
+            migrated_count += 1
+    
+    if migrated_count > 0:
+        logger.info(f"✅ Migrated {migrated_count} legacy sessions to new schema")
 
 
 def update_session_message_count(session_id: str):
     if session_id in sessions_db:
         sessions_db[session_id]["messageCount"] = len(messages_db.get(session_id, []))
         sessions_db[session_id]["updatedAt"] = datetime.now()
+
+
+def update_session_title(session_id: str, new_title: str, auto_generated: bool = False):
+    """세션 제목 업데이트"""
+    if session_id in sessions_db:
+        sessions_db[session_id]["title"] = new_title
+        sessions_db[session_id]["updatedAt"] = datetime.now()
+        if auto_generated:
+            sessions_db[session_id]["titleGenerated"] = True
+            sessions_db[session_id]["titleGeneratedAt"] = datetime.now()
+
+
+async def auto_generate_title_if_needed(session_id: str) -> Optional[str]:
+    """자동 제목 생성이 필요한 경우 생성하여 업데이트"""
+    if not title_generator or not TITLE_GENERATOR_AVAILABLE:
+        return None
+    
+    try:
+        # 세션과 메시지 데이터 가져오기
+        if session_id not in sessions_db or session_id not in messages_db:
+            return None
+            
+        session_data = sessions_db[session_id]
+        messages = messages_db[session_id]
+        
+        # 제목 생성 조건 확인
+        if not title_generator.should_generate_title(messages, session_data["title"]):
+            return None
+        
+        # 제목 생성
+        new_title = await title_generator.generate_title(messages)
+        
+        if new_title:
+            # 제목 업데이트
+            update_session_title(session_id, new_title, auto_generated=True)
+            logger.info(f"Auto-generated title for session {session_id}: {new_title}")
+            return new_title
+        else:
+            # 폴백 제목 사용
+            fallback_title = title_generator.get_fallback_title(messages)
+            update_session_title(session_id, fallback_title, auto_generated=True)
+            logger.info(f"Using fallback title for session {session_id}: {fallback_title}")
+            return fallback_title
+            
+    except Exception as e:
+        logger.error(f"Failed to generate title for session {session_id}: {str(e)}")
+        return None
 
 
 # 초기 데모 데이터 생성
@@ -2072,6 +2278,7 @@ def initialize_demo_data():
 async def lifespan(app: FastAPI):
     # Startup
     # initialize_demo_data()  # 데모 데이터 생성 비활성화
+    migrate_legacy_sessions()  # Legacy sessions 마이그레이션
     yield
     # Shutdown
     pass
@@ -2134,9 +2341,11 @@ async def google_callback(code: str):
 
     success = auth_service.handle_callback(code)
     if success:
-        return RedirectResponse(url="http://localhost:5174?google_auth=success")
+        print("✅ Google OAuth 인증 성공! 사용자가 5173 포트로 리다이렉트됩니다.")
+        return RedirectResponse(url="http://localhost:5173?google_auth=success&message=Google 서비스 연동이 성공적으로 완료되었습니다!")
     else:
-        return RedirectResponse(url="http://localhost:5174?google_auth=error")
+        print("❌ Google OAuth 인증 실패! 사용자가 5173 포트로 리다이렉트됩니다.")
+        return RedirectResponse(url="http://localhost:5173?google_auth=error&message=Google 서비스 연동에 실패했습니다. 다시 시도해주세요.")
 
 
 @app.get("/api/v1/google/status")
@@ -2160,7 +2369,26 @@ async def create_chat_session(request: SessionCreateRequest):
 
 @app.get("/api/v1/chat/sessions", response_model=ChatSessionList)
 async def get_chat_sessions(search: ChatSearch = Depends()):
-    sessions = list(sessions_db.values())
+    sessions = []
+    for session_id, session_data in sessions_db.items():
+        # Handle legacy sessions missing required fields
+        cleaned_session = session_data.copy()
+        if "title" not in cleaned_session:
+            cleaned_session["title"] = f"채팅 {session_id[:8]}"
+        if "updatedAt" not in cleaned_session:
+            cleaned_session["updatedAt"] = cleaned_session.get("createdAt", datetime.now())
+        if "createdAt" not in cleaned_session:
+            cleaned_session["createdAt"] = datetime.now()
+        if "messageCount" not in cleaned_session:
+            cleaned_session["messageCount"] = len(messages_db.get(session_id, []))
+        if "titleGenerated" not in cleaned_session:
+            cleaned_session["titleGenerated"] = False
+        if "titleGeneratedAt" not in cleaned_session:
+            cleaned_session["titleGeneratedAt"] = None
+        
+        sessions.append(cleaned_session)
+        # Update the stored session with missing fields for future use
+        sessions_db[session_id].update(cleaned_session)
 
     # 검색 필터 적용
     if search.query:
@@ -2212,6 +2440,46 @@ async def delete_chat_session(session_id: str):
         del messages_db[session_id]
 
     return {"message": "Session deleted successfully"}
+
+
+@app.post("/api/v1/chat/sessions/{session_id}/generate-title")
+async def generate_session_title(session_id: str):
+    """세션의 AI 기반 제목 생성 (수동 트리거)"""
+    if session_id not in sessions_db:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    try:
+        # 세션 메시지 가져오기
+        messages = messages_db.get(session_id, [])
+        
+        if len(messages) < 2:
+            return {"success": False, "message": "메시지가 충분하지 않습니다"}
+        
+        # 제목 생성
+        generated_title = await title_generator.generate_title(messages)
+        
+        if not generated_title:
+            # 생성 실패시 폴백 제목 사용
+            fallback_title = title_generator.get_fallback_title(messages)
+            return {"success": False, "title": fallback_title, "message": "AI 제목 생성 실패, 폴백 제목 사용"}
+        
+        # 세션 제목 업데이트
+        sessions_db[session_id]["title"] = generated_title
+        sessions_db[session_id]["titleGenerated"] = True
+        sessions_db[session_id]["titleGeneratedAt"] = datetime.now()
+        sessions_db[session_id]["updatedAt"] = datetime.now()
+        
+        logger.info(f"✨ Manual title generated for session {session_id}: {generated_title}")
+        
+        return {
+            "success": True, 
+            "title": generated_title,
+            "message": "AI 제목이 성공적으로 생성되었습니다"
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Manual title generation failed for session {session_id}: {str(e)}")
+        return {"success": False, "message": f"제목 생성 중 오류 발생: {str(e)}"}
 
 
 # 메시지 관리
@@ -2518,6 +2786,9 @@ async def send_message(request: ChatRequest):
     messages_db[request.sessionId].append(ai_message.dict())
     update_session_message_count(request.sessionId)
 
+    # 자동 제목 생성 시도 (백그라운드에서 실행)
+    await auto_generate_title_if_needed(request.sessionId)
+
     return ChatResponse(**ai_message.dict())
 
 
@@ -2770,26 +3041,44 @@ async def stream_with_responses_api(
 
         print(f"✅ Responses API success, content length: {len(ai_content) if ai_content else 0}")
 
-        # 텍스트를 청크로 나누어 스트리밍 시뮬레이션
-        words = ai_content.split()
+        # 텍스트를 청크로 나누어 스트리밍 시뮬레이션 - 줄바꿈 보존
+        import re
+        
+        # 단어와 공백/줄바꿈을 모두 보존하면서 토큰화
+        # \S+는 공백이 아닌 문자들(단어), \s+는 공백 문자들(스페이스, 탭, 줄바꿈 등)
+        tokens = re.findall(r'\S+|\s+', ai_content)
         current_content = ""
 
-        for i, word in enumerate(words):
-            current_content += word + " "
+        for i, token in enumerate(tokens):
+            current_content += token
 
-            chunk_data = {
-                "id": ai_message_id,
-                "content": word + " ",
-                "role": "assistant",
-                "timestamp": datetime.now().isoformat(),
-                "sessionId": session_id,
-                "isComplete": False
-            }
+            # 공백/줄바꿈 토큰은 스트리밍하지 않고, 단어 토큰만 스트리밍
+            if token.strip():  # 공백이 아닌 토큰(단어)만 전송
+                chunk_data = {
+                    "id": ai_message_id,
+                    "content": token,
+                    "role": "assistant",
+                    "timestamp": datetime.now().isoformat(),
+                    "sessionId": session_id,
+                    "isComplete": False
+                }
 
-            yield f"data: {json.dumps(chunk_data)}\n\n"
+                yield f"data: {json.dumps(chunk_data)}\n\n"
 
-            # 단어 간 약간의 딜레이 (자연스러운 스트리밍 효과)
-            await asyncio.sleep(0.05)
+                # 단어 간 약간의 딜레이 (자연스러운 스트리밍 효과)
+                await asyncio.sleep(0.05)
+            else:
+                # 공백/줄바꿈 토큰도 전송 (포맷팅 보존을 위해)
+                chunk_data = {
+                    "id": ai_message_id,
+                    "content": token,
+                    "role": "assistant",
+                    "timestamp": datetime.now().isoformat(),
+                    "sessionId": session_id,
+                    "isComplete": False
+                }
+
+                yield f"data: {json.dumps(chunk_data)}\n\n"
 
         # 완료 청크
         final_chunk = {
@@ -3177,11 +3466,26 @@ async def stream_chat_original(request: ChatRequest):
 
             if needs_web_search and model_config["supports_web_search"]:
                 print("🔍 Web search detected in stream - using Responses API")
+                
+                # 웹 검색 시작 상태 표시
+                search_start_chunk = ChatStreamChunk(
+                    id=ai_message_id,
+                    content="🔍 웹 검색 중...",
+                    role="assistant",
+                    timestamp=datetime.now(),
+                    sessionId=request.sessionId,
+                    isComplete=False
+                )
+                yield f"data: {search_start_chunk.json()}\n\n"
+                await asyncio.sleep(0.1)
+                
                 try:
-                    # 웹 검색이 필요한 경우 스트리밍 대신 일반 응답 사용
+                    # 웹 검색이 필요한 경우 스트리밍 대신 일반 응답 사용 (대화 컨텍스트 포함)
+                    context_input = build_context_input(search_content, conversation_messages)
                     response = await client.responses.create(
                         model=selected_model,
-                        input=search_content,
+                        instructions=system_prompt,
+                        input=context_input,
                         tools=[
                             {
                                 "type": "web_search"
@@ -3211,42 +3515,27 @@ async def stream_chat_original(request: ChatRequest):
 
                     # Add sources to the content if found
                     if sources:
-                        sources_text = "\n\n**참고 출처:**\n"
+                        sources_text = "\n\n## 참고 출처\n\n"
                         for i, source in enumerate(sources, 1):
-                            sources_text += f"{i}. [{source['title']}]({source['url']})\n"
+                            title = source['title'] if source['title'] else f"출처 {i}"
+                            sources_text += f"{i}. **[{title}]({source['url']})**\n"
                         ai_content += sources_text
                         print(f"📚 Found {len(sources)} web search sources in stream")
 
                     full_content = ai_content
 
-                    # 웹 검색 결과를 자연스럽게 스트리밍
-                    import re
 
-                    # 문자별로 스트리밍 (더 자연스럽게)
-                    for i, char in enumerate(ai_content):
-                        stream_chunk = ChatStreamChunk(
-                            id=ai_message_id,
-                            content=char,
-                            role="assistant",
-                            timestamp=datetime.now(),
-                            sessionId=request.sessionId,
-                            isComplete=False
-                        )
-                        yield f"data: {stream_chunk.json()}\n\n"
-
-                        # 문자 유형에 따른 적응적 지연
-                        if char in ".!?":
-                            await asyncio.sleep(0.15)  # 문장 끝
-                        elif char in ",;:":
-                            await asyncio.sleep(0.08)  # 문장 중간
-                        elif char == '\n':
-                            await asyncio.sleep(0.12)  # 줄바꿈
-                        elif char == ' ':
-                            await asyncio.sleep(0.03)  # 공백
-                        elif char in "()[]{}":
-                            await asyncio.sleep(0.05)  # 괄호
-                        else:
-                            await asyncio.sleep(0.02)  # 일반 문자
+                    # 웹 검색 결과를 한 번에 스트리밍 (마크다운 구조 보존)
+                    web_search_chunk = ChatStreamChunk(
+                        id=ai_message_id,
+                        content=ai_content,
+                        role="assistant",
+                        timestamp=datetime.now(),
+                        sessionId=request.sessionId,
+                        isComplete=False
+                    )
+                    yield f"data: {web_search_chunk.json()}\n\n"
+                    await asyncio.sleep(0.5)  # 웹 검색 결과 표시 시간
 
                     # 웹 검색 스트리밍 완료 신호
                     final_chunk = ChatStreamChunk(
@@ -3334,73 +3623,88 @@ async def stream_chat_original(request: ChatRequest):
 
                         if function_name in FUNCTION_MAP:
                             try:
-                                # 함수 실행 상태 표시
+                                # 함수 실행 상태 표시 (한 번에 출력)
                                 status_content = f"\n\n🔄 {function_name} 실행 중...\n"
-                                for char in status_content:
-                                    status_chunk = ChatStreamChunk(
-                                        id=ai_message_id,
-                                        content=char,
-                                        role="assistant",
-                                        timestamp=datetime.now(),
-                                        sessionId=request.sessionId,
-                                        isComplete=False,
-                                        functionCall=function_name,
-                                        functionStatus="running"
-                                    )
-                                    yield f"data: {status_chunk.json()}\n\n"
-                                    await asyncio.sleep(0.02)
+                                status_chunk = ChatStreamChunk(
+                                    id=ai_message_id,
+                                    content=status_content,
+                                    role="assistant",
+                                    timestamp=datetime.now(),
+                                    sessionId=request.sessionId,
+                                    isComplete=False,
+                                    functionCall=function_name,
+                                    functionStatus="running"
+                                )
+                                yield f"data: {status_chunk.json()}\n\n"
+                                await asyncio.sleep(0.1)
 
                                 # 함수 실행
                                 function_result = FUNCTION_MAP[function_name](**function_args)
 
                                 # 결과를 스트리밍으로 출력
-                                result_content = f"✅ 결과:\n{function_result}\n\n"
+                                if isinstance(function_result, (dict, list)):
+                                    result_content = f"## ✅ {function_name} 실행 완료\n\n```json\n{json.dumps(function_result, ensure_ascii=False, indent=2)}\n```\n\n"
+                                else:
+                                    result_content = f"## ✅ {function_name} 실행 완료\n\n{function_result}\n\n"
                                 ai_content += result_content
 
-                                for char in result_content:
-                                    result_chunk = ChatStreamChunk(
-                                        id=ai_message_id,
-                                        content=char,
-                                        role="assistant",
-                                        timestamp=datetime.now(),
-                                        sessionId=request.sessionId,
-                                        isComplete=False,
-                                        functionCall=function_name,
-                                        functionStatus="completed"
-                                    )
-                                    yield f"data: {result_chunk.json()}\n\n"
-                                    await asyncio.sleep(0.02)
+                                # 함수 결과는 한 번에 스트리밍 (마크다운 파싱 개선)
+                                result_chunk = ChatStreamChunk(
+                                    id=ai_message_id,
+                                    content=result_content,
+                                    role="assistant",
+                                    timestamp=datetime.now(),
+                                    sessionId=request.sessionId,
+                                    isComplete=False,
+                                    functionCall=function_name,
+                                    functionStatus="completed"
+                                )
+                                yield f"data: {result_chunk.json()}\n\n"
+                                await asyncio.sleep(0.2)
 
                             except Exception as e:
-                                error_content = f"❌ {function_name} 실행 오류: {str(e)}\n\n"
+                                error_content = f"## ❌ {function_name} 실행 오류\n\n{str(e)}\n\n"
                                 ai_content += error_content
 
-                                for char in error_content:
-                                    error_chunk = ChatStreamChunk(
-                                        id=ai_message_id,
-                                        content=char,
-                                        role="assistant",
-                                        timestamp=datetime.now(),
-                                        sessionId=request.sessionId,
-                                        isComplete=False,
-                                        functionCall=function_name,
-                                        functionStatus="error"
-                                    )
-                                    yield f"data: {error_chunk.json()}\n\n"
-                                    await asyncio.sleep(0.02)
+                                # 에러 내용은 한 번에 스트리밍 (마크다운 파싱 개선)
+                                error_chunk = ChatStreamChunk(
+                                    id=ai_message_id,
+                                    content=error_content,
+                                    role="assistant",
+                                    timestamp=datetime.now(),
+                                    sessionId=request.sessionId,
+                                    isComplete=False,
+                                    functionCall=function_name,
+                                    functionStatus="error"
+                                )
+                                yield f"data: {error_chunk.json()}\n\n"
+                                await asyncio.sleep(0.2)
                 else:
-                    # 일반 응답을 문자별로 스트리밍
-                    for char in ai_content:
-                        stream_chunk = ChatStreamChunk(
-                            id=ai_message_id,
-                            content=char,
-                            role="assistant",
-                            timestamp=datetime.now(),
-                            sessionId=request.sessionId,
-                            isComplete=False
-                        )
-                        yield f"data: {stream_chunk.json()}\n\n"
-                        await asyncio.sleep(0.02)
+                    # 일반 응답을 문장 단위로 스트리밍 (마크다운 파싱 개선)
+                    import re
+                    sentences = re.split(r'(\. |\? |\! |\n\n|\n)', ai_content)
+                    
+                    for sentence in sentences:
+                        if sentence.strip():
+                            stream_chunk = ChatStreamChunk(
+                                id=ai_message_id,
+                                content=sentence,
+                                role="assistant",
+                                timestamp=datetime.now(),
+                                sessionId=request.sessionId,
+                                isComplete=False
+                            )
+                            yield f"data: {stream_chunk.json()}\n\n"
+                            
+                            # 문장 유형에 따른 적응적 지연
+                            if sentence.endswith(('.', '!', '?')):
+                                await asyncio.sleep(0.3)
+                            elif sentence == '\n\n':
+                                await asyncio.sleep(0.2)
+                            elif sentence == '\n':
+                                await asyncio.sleep(0.15)
+                            else:
+                                await asyncio.sleep(0.1)
 
                 full_content = ai_content
 
@@ -3499,40 +3803,43 @@ async def stream_chat_original(request: ChatRequest):
                             function_result = FUNCTION_MAP[function_name](**function_args)
 
                             # 결과를 스트리밍으로 출력
-                            result_content = f"✅ 결과:\n{function_result}\n\n"
+                            if isinstance(function_result, (dict, list)):
+                                result_content = f"## ✅ {function_name} 실행 완료\n\n```json\n{json.dumps(function_result, ensure_ascii=False, indent=2)}\n```\n\n"
+                            else:
+                                result_content = f"## ✅ {function_name} 실행 완료\n\n{function_result}\n\n"
                             full_content += result_content
 
-                            for char in result_content:
-                                result_chunk = ChatStreamChunk(
-                                    id=ai_message_id,
-                                    content=char,
-                                    role="assistant",
-                                    timestamp=datetime.now(),
-                                    sessionId=request.sessionId,
-                                    isComplete=False,
-                                    functionCall=function_name,
-                                    functionStatus="completed"
-                                )
-                                yield f"data: {result_chunk.json()}\n\n"
-                                await asyncio.sleep(0.02)
+                            # 함수 결과는 한 번에 스트리밍 (마크다운 파싱 개선)
+                            result_chunk = ChatStreamChunk(
+                                id=ai_message_id,
+                                content=result_content,
+                                role="assistant",
+                                timestamp=datetime.now(),
+                                sessionId=request.sessionId,
+                                isComplete=False,
+                                functionCall=function_name,
+                                functionStatus="completed"
+                            )
+                            yield f"data: {result_chunk.json()}\n\n"
+                            await asyncio.sleep(0.2)
 
                         except Exception as e:
-                            error_content = f"❌ {function_name} 실행 오류: {str(e)}\n\n"
+                            error_content = f"## ❌ {function_name} 실행 오류\n\n{str(e)}\n\n"
                             full_content += error_content
 
-                            for char in error_content:
-                                error_chunk = ChatStreamChunk(
-                                    id=ai_message_id,
-                                    content=char,
-                                    role="assistant",
-                                    timestamp=datetime.now(),
-                                    sessionId=request.sessionId,
-                                    isComplete=False,
-                                    functionCall=function_name,
-                                    functionStatus="error"
-                                )
-                                yield f"data: {error_chunk.json()}\n\n"
-                                await asyncio.sleep(0.02)
+                            # 에러 내용은 한 번에 스트리밍 (마크다운 파싱 개선)
+                            error_chunk = ChatStreamChunk(
+                                id=ai_message_id,
+                                content=error_content,
+                                role="assistant",
+                                timestamp=datetime.now(),
+                                sessionId=request.sessionId,
+                                isComplete=False,
+                                functionCall=function_name,
+                                functionStatus="error"
+                            )
+                            yield f"data: {error_chunk.json()}\n\n"
+                            await asyncio.sleep(0.2)
 
             # 완료 신호
             final_chunk = ChatStreamChunk(
@@ -3878,7 +4185,11 @@ async def stream_with_direct_function_calling(
                             }
 
                             # UI에서 사용할 수 있는 구조화된 결과 스트리밍
-                            result_content = f"```json\n{json.dumps(structured_result, indent=2, ensure_ascii=False)}\n```\n\n"
+                            result_content = f"\n## 🔧 {function_name} 실행 결과\n\n"
+                            if isinstance(function_result, dict) or isinstance(function_result, list):
+                                result_content += f"```json\n{json.dumps(function_result, indent=2, ensure_ascii=False)}\n```\n\n"
+                            else:
+                                result_content += f"{function_result}\n\n"
                             full_content += result_content
 
                             # 결과를 한 번에 스트리밍
@@ -3895,22 +4206,22 @@ async def stream_with_direct_function_calling(
                             yield f"data: {result_chunk.json()}\n\n"
 
                         except Exception as e:
-                            error_content = f"❌ {function_name} 실행 오류: {str(e)}\n\n"
+                            error_content = f"## ❌ {function_name} 실행 오류\n\n{str(e)}\n\n"
                             full_content += error_content
 
-                            for char in error_content:
-                                error_chunk = ChatStreamChunk(
-                                    id=ai_message_id,
-                                    content=char,
-                                    role="assistant",
-                                    timestamp=datetime.now(),
-                                    sessionId=session_id,
-                                    isComplete=False,
-                                    functionCall=function_name,
-                                    functionStatus="error"
-                                )
-                                yield f"data: {error_chunk.json()}\n\n"
-                                await asyncio.sleep(0.01)
+                            # 에러 내용은 한 번에 스트리밍 (마크다운 파싱 개선)
+                            error_chunk = ChatStreamChunk(
+                                id=ai_message_id,
+                                content=error_content,
+                                role="assistant",
+                                timestamp=datetime.now(),
+                                sessionId=session_id,
+                                isComplete=False,
+                                functionCall=function_name,
+                                functionStatus="error"
+                            )
+                            yield f"data: {error_chunk.json()}\n\n"
+                            await asyncio.sleep(0.2)
 
             # 완료 신호
             final_chunk = ChatStreamChunk(
@@ -3935,7 +4246,7 @@ async def stream_with_direct_function_calling(
             update_session_message_count(session_id)
 
         except Exception as e:
-            error_msg = f"❌ Direct Function Calling 오류: {str(e)}"
+            error_msg = f"## ❌ Direct Function Calling 오류\n\n{str(e)}"
             print(error_msg)
 
             error_chunk = ChatStreamChunk(
@@ -4177,7 +4488,7 @@ async def enhanced_chat_stream(request: EnhancedChatRequest):
 
                             # 구조화된 데이터가 있으면 표시
                             if result_data.get("data"):
-                                result_content += f"```json\n{json.dumps(result_data['data'], indent=2, ensure_ascii=False)}\n```\n\n"
+                                result_content += f"**결과 데이터:**\n```json\n{json.dumps(result_data['data'], indent=2, ensure_ascii=False)}\n```\n\n"
                         else:
                             result_content = f"❌ **{function_name} 실패**: {result_data.get('error', '알 수 없는 오류')}\n\n"
 
@@ -4198,7 +4509,7 @@ async def enhanced_chat_stream(request: EnhancedChatRequest):
                         yield f"data: {result_chunk.json()}\n\n"
 
                     except Exception as e:
-                        error_content = f"❌ **{function_name} 오류**: {str(e)}\n\n"
+                        error_content = f"## ❌ {function_name} 실행 오류\n\n{str(e)}\n\n"
                         full_content += error_content
 
                         error_chunk = EnhancedChatStreamChunk(
@@ -4304,7 +4615,7 @@ async def enhanced_chat_stream(request: EnhancedChatRequest):
             update_session_message_count(session_id)
 
         except Exception as e:
-            error_msg = f"❌ Enhanced Chat 오류: {str(e)}"
+            error_msg = f"## ❌ Enhanced Chat 오류\n\n{str(e)}"
             print(error_msg)
 
             error_chunk = EnhancedChatStreamChunk(

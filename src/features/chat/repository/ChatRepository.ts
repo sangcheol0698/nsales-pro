@@ -205,6 +205,14 @@ export class ChatRepository {
     return response.data;
   }
 
+  /**
+   * AI 기반 제목 생성 (수동 트리거)
+   */
+  async generateTitle(sessionId: string): Promise<{ title: string; success: boolean }> {
+    const response = await axios.post(`${this.baseURL}/chat/sessions/${sessionId}/generate-title`);
+    return response.data;
+  }
+
   // 프로덕션에서는 필요 없음 (서버에서 초기 데이터 제공)
   async initializeDemoData(): Promise<void> {
     // 서버에서 자동으로 데모 데이터를 제공하므로 아무것도 하지 않음

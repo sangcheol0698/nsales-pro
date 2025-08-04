@@ -25,6 +25,9 @@ export interface ChatSession {
   messageCount: number
   createdAt: Date | string
   updatedAt: Date | string
+  // AI 제목 생성 관련 필드들
+  titleGenerated?: boolean
+  titleGeneratedAt?: Date | string
 }
 
 export interface ChatRequest {
@@ -98,4 +101,6 @@ export const createChatSession = (title: string = 'New Chat'): ChatSession => ({
   messageCount: 0,
   createdAt: new Date(),
   updatedAt: new Date(),
+  titleGenerated: false,
+  titleGeneratedAt: undefined,
 })

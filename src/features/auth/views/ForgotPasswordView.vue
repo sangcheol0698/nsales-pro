@@ -46,23 +46,10 @@
 </template>
 
 <script setup lang="ts">
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/core/components/ui/card';
-import { Button } from '@/core/components/ui/button';
-import { Input } from '@/core/components/ui/input';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/core/components/ui/form';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
 import type FindPassword from '@/features/auth/entity/FindPassword.ts';
@@ -81,7 +68,7 @@ const forgotPasswordSchema = toTypedSchema(
         required_error: '이메일을 입력해주세요.',
       })
       .email('유효한 이메일 주소를 입력해주세요.'),
-  })
+  }),
 );
 
 const toast = useToast();

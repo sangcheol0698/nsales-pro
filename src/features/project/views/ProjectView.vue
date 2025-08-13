@@ -19,20 +19,17 @@
 
 <script setup lang="ts">
 import type { ColumnDef } from '@tanstack/vue-table';
-import { ChevronDown } from 'lucide-vue-next';
 import { h } from 'vue';
 import { useRouter } from 'vue-router';
 import { container } from 'tsyringe';
 import ProjectRepository from '@/features/project/repository/ProjectRepository.ts';
 import ProjectSearch from '@/features/project/entity/ProjectSearch.ts';
 import PageResponse from '@/core/common/PageResponse.ts';
-import { SidebarLayout } from '@/shared/components/sidebar';
-import { DataTableWithUrl } from '@/shared/components/table';
+import { SidebarLayout } from '@/components/layout';
+import { DataTableWithUrl, DataTableColumnHeader } from '@/components/business';
 import { useToast } from '@/core/composables';
 
-import { Button } from '@/core/components/ui/button';
-import { Checkbox } from '@/core/components/ui/checkbox';
-import { DataTableColumnHeader } from '@/core/components/ui/data-table';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const router = useRouter();
 const toast = useToast();

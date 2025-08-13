@@ -18,19 +18,16 @@
 
 <script setup lang="ts">
 import type { ColumnDef } from '@tanstack/vue-table';
-import { ChevronDown } from 'lucide-vue-next';
 import { h } from 'vue';
 import { container } from 'tsyringe';
 import PartnerRepository from '@/features/partner/repository/PartnerRepository.ts';
 import PartnerSearch from '@/features/partner/entity/PartnerSearch.ts';
 import PageResponse from '@/core/common/PageResponse.ts';
-import { SidebarLayout } from '@/shared/components/sidebar';
-import { DataTableWithUrl } from '@/shared/components/table';
+import { SidebarLayout } from '@/components/layout';
+import { DataTableWithUrl, DataTableColumnHeader } from '@/components/business';
 import { useToast } from '@/core/composables';
 
-import { Button } from '@/core/components/ui/button';
-import { Checkbox } from '@/core/components/ui/checkbox';
-import { DataTableColumnHeader } from '@/core/components/ui/data-table';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const toast = useToast();
 const PARTNER_REPOSITORY = container.resolve(PartnerRepository);

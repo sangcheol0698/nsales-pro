@@ -354,15 +354,15 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { SidebarLayout } from '@/shared/components/sidebar';
-import Card from '@/core/components/ui/card/Card.vue';
-import CardContent from '@/core/components/ui/card/CardContent.vue';
-import CardDescription from '@/core/components/ui/card/CardDescription.vue';
-import CardHeader from '@/core/components/ui/card/CardHeader.vue';
-import CardTitle from '@/core/components/ui/card/CardTitle.vue';
-import Button from '@/core/components/ui/button/Button.vue';
-import Input from '@/core/components/ui/input/Input.vue';
-import Label from '@/core/components/ui/label/Label.vue';
-import Separator from '@/core/components/ui/separator/Separator.vue';
+import Card from '@/components/ui/card/Card.vue';
+import CardContent from '@/components/ui/card/CardContent.vue';
+import CardDescription from '@/components/ui/card/CardDescription.vue';
+import CardHeader from '@/components/ui/card/CardHeader.vue';
+import CardTitle from '@/components/ui/card/CardTitle.vue';
+import Button from '@/components/ui/button/Button.vue';
+import Input from '@/components/ui/input/Input.vue';
+import Label from '@/components/ui/label/Label.vue';
+import Separator from '@/components/ui/separator/Separator.vue';
 import {
   Table,
   TableBody,
@@ -370,7 +370,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/core/components/ui/table';
+} from '@/components/ui/table';
 import { useToast } from '@/core/composables';
 import { container } from 'tsyringe';
 import MemberRepository from '@/features/member/repository/MemberRepository.ts';

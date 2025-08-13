@@ -339,15 +339,15 @@ import {
   Trash2,
   X,
 } from 'lucide-vue-next';
-import { Button } from '@/core/components/ui/button';
-import { Input } from '@/core/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/core/components/ui/dialog';
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -355,8 +355,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/core/components/ui/dropdown-menu';
-import { Badge } from '@/core/components/ui/badge';
+} from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/core/composables';
 import { SidebarLayout } from '@/shared/components/sidebar';
 import ChatWidget from '../components/ChatWidget.vue';

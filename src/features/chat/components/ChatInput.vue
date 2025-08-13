@@ -375,8 +375,8 @@ import {
   Wrench,
   Upload,
 } from 'lucide-vue-next';
-import { Button } from '@/core/components/ui/button';
-import { Textarea } from '@/core/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/core/composables';
 
 interface Props {

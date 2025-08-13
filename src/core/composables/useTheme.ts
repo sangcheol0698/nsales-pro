@@ -1,15 +1,19 @@
 import { ref, onMounted, computed } from 'vue';
 
 // Define the available themes
-export type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark' | 'system';
 
 export function useTheme() {
   // Create a ref to store the current theme
   const storedTheme = ref<Theme>('light');
 
-  // Computed property for the effective theme (same as storedTheme in this case)
+  // Computed property for the effective theme
   const effectiveTheme = computed<'light' | 'dark'>(() => {
-    return storedTheme.value;
+    if (storedTheme.value === 'system') {
+      // Detect system preference
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return storedTheme.value as 'light' | 'dark';
   });
 
   // Function to apply the theme to the document
@@ -45,7 +49,7 @@ export function useTheme() {
     const savedTheme = localStorage.getItem('theme') as Theme | null;
 
     // Set initial theme
-    if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
+    if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'system')) {
       storedTheme.value = savedTheme;
     }
 

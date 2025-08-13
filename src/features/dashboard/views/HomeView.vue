@@ -12,7 +12,7 @@
 </template>
 
 <script setup lang="ts">
-import { SidebarLayout } from '@/shared/components/sidebar';
+import { SidebarLayout } from '@/components/layout';
 </script>
 
 <style scoped></style>

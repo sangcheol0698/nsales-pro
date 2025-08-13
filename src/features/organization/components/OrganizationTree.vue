@@ -248,8 +248,8 @@ import {
   Search, X, Users, Building2, User, RotateCcw, 
   Maximize2, Minimize2, Expand, Shrink 
 } from 'lucide-vue-next';
-import { Button } from '@/core/components/ui/button';
-import { Input } from '@/core/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/shared/utils/utils';
 import { container } from 'tsyringe';
 import OrganizationRepository from '../repository/OrganizationRepository';

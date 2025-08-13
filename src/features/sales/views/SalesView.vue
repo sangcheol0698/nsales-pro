@@ -140,22 +140,22 @@ import {
 } from '@tanstack/vue-table'
 import { ArrowUpDown, ChevronDown } from 'lucide-vue-next'
 import { h, onMounted, ref } from 'vue'
-import { valueUpdater } from '@/core/components/ui/table/utils'
+import { valueUpdater } from '@/components/ui/table/utils'
 import { container } from 'tsyringe'
 import SalesRepository from '@/features/sales/repository/SalesRepository.ts'
 import type { SalesSearch } from '@/features/sales/entity/SalesSearch.ts'
 import { SidebarLayout } from '@/shared/components/sidebar'
 import { useToast } from '@/core/composables'
 
-import { Button } from '@/core/components/ui/button'
-import { Checkbox } from '@/core/components/ui/checkbox'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from '@/core/components/ui/dropdown-menu'
-import { Input } from '@/core/components/ui/input'
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -164,14 +164,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/core/components/ui/table'
+} from '@/components/ui/table'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/core/components/ui/select'
+} from '@/components/ui/select'
 
 const toast = useToast()
 const SALES_REPOSITORY = container.resolve(SalesRepository)

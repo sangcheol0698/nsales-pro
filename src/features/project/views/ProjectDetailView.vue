@@ -99,8 +99,8 @@
 
 <script setup lang="ts">
 import { SidebarLayout } from '@/shared/components/sidebar';
-import { Button } from '@/core/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';

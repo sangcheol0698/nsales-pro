@@ -56,9 +56,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/core/components/ui/card';
-import { Button } from '@/core/components/ui/button';
-import { Input } from '@/core/components/ui/input';
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Form,
   FormControl,
@@ -66,7 +66,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/core/components/ui/form';
+} from '@/components/ui/form';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
 import type Register from '@/features/auth/entity/Register.ts';

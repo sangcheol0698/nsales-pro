@@ -283,11 +283,11 @@ import {
   Eye,
   X
 } from 'lucide-vue-next'
-import { Button } from '@/core/components/ui/button'
-import { Label } from '@/core/components/ui/label'
-import { Badge } from '@/core/components/ui/badge'
-import { Switch } from '@/core/components/ui/switch'
-import BlurFade from '@/core/components/ui/BlurFade.vue'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
+import BlurFade from '@/components/ui/BlurFade.vue'
 import { useToast } from '@/core/composables'
 
 interface Props {

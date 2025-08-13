@@ -89,8 +89,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Calendar, Mail, ChevronDown } from 'lucide-vue-next'
-import { Badge } from '@/core/components/ui/badge'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/core/components/ui/collapsible'
+import { Badge } from '@/components/ui/badge'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import EnhancedGmailCard from './enhanced/EnhancedGmailCard.vue'
 import EnhancedGoogleCalendarCard from './enhanced/EnhancedGoogleCalendarCard.vue'
 import type { CalendarEvent, EmailMessage } from '../utils/googleToolsParser'

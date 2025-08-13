@@ -114,8 +114,8 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, watch } from 'vue'
 import { Bot, RotateCcw, Minimize2, ChevronDown } from 'lucide-vue-next'
-import { Button } from '@/core/components/ui/button'
-import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useToast } from '@/core/composables'
 import ChatMessage from './ChatMessage.vue'
 import ChatInput from './ChatInput.vue'

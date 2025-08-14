@@ -1,240 +1,548 @@
 <template>
   <div class="space-y-4">
-    <!-- Search and filters -->
-    <div class="flex items-center justify-between">
-      <div class="flex items-center space-x-2">
-        <Input
-          v-model="searchValue"
-          :placeholder="searchPlaceholder"
-          class="w-64 search-input"
-          @input="onSearchChange"
-        />
-      </div>
+    <DataTableToolbar
+      :table="table"
+      :searchPlaceholder="searchPlaceholder"
+      :searchColumnId="searchColumnId"  
+      :getColumnLabel="getColumnLabel"
+    >
+      <template #filters>
+        <slot name="filters" :table="table"></slot>
+      </template>
       
-      <div class="flex items-center space-x-2">
-        <!-- Column visibility -->
-        <DropdownMenu>
-          <DropdownMenuTrigger as-child>
-            <Button variant="outline" size="sm" class="btn-outline">
-              <Settings class="h-4 w-4 mr-2" />
-              열 설정
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              v-for="column in table.getAllColumns().filter(c => c.getCanHide())"
-              :key="column.id"
-              @click="column.toggleVisibility()"
-            >
-              <Checkbox
-                :checked="column.getIsVisible()"
-                class="mr-2"
-              />
-              {{ getColumnLabel(column.id) }}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
-
-    <!-- Data table -->
-    <div class="table-container">
-      <Table>
-        <TableHeader class="table-header">
-          <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
-            <TableHead v-for="header in headerGroup.headers" :key="header.id" class="table-cell font-medium">
-              <FlexRender
-                v-if="!header.isPlaceholder"
-                :render="header.column.columnDef.header"
-                :props="header.getContext()"
-              />
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <template v-if="table.getRowModel().rows?.length">
-            <TableRow
-              v-for="row in table.getRowModel().rows"
-              :key="row.id"
-              :data-state="row.getIsSelected() && 'selected'"
-              class="table-row cursor-pointer"
-              @click="() => onRowClick?.(row.original)"
-            >
-              <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id" class="table-cell">
-                <FlexRender
-                  :render="cell.column.columnDef.cell"
-                  :props="cell.getContext()"
-                />
-              </TableCell>
-            </TableRow>
-          </template>
-          <template v-else>
-            <TableRow>
-              <TableCell :colspan="columns.length" class="h-24 text-center table-cell">
-                <div class="flex flex-col items-center justify-center space-y-2">
-                  <p class="text-muted-foreground">{{ emptyMessage }}</p>
-                  <p class="text-sm text-muted-foreground">{{ emptyDescription }}</p>
-                </div>
-              </TableCell>
-            </TableRow>
-          </template>
-        </TableBody>
-      </Table>
-    </div>
-
-    <!-- Pagination -->
-    <div class="flex items-center justify-between">
-      <div class="flex items-center space-x-2">
-        <p class="text-sm text-muted-foreground">
-          총 {{ pagination.totalElements }}개 중 {{ pagination.size * pagination.number + 1 }}-{{ Math.min(pagination.size * (pagination.number + 1), pagination.totalElements) }}개 표시
-        </p>
-      </div>
+      <template #actions>
+        <slot name="actions" :table="table"></slot>
+      </template>
       
-      <div class="flex items-center space-x-2">
-        <Button
-          variant="outline"
-          size="sm"
-          class="btn-outline"
-          :disabled="!table.getCanPreviousPage()"
-          @click="table.previousPage()"
-        >
-          이전
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          class="btn-outline"
-          :disabled="!table.getCanNextPage()"
-          @click="table.nextPage()"
-        >
-          다음
-        </Button>
-      </div>
-    </div>
+      <slot name="toolbar"></slot>
+    </DataTableToolbar>
+
+    <DataTable
+      :columns="columns"
+      :data="data"
+      :loading="pagination.loading"
+      :emptyMessage="emptyMessage"
+      :emptyDescription="emptyDescription"
+      :tableInstance="table"
+      @rowClick="$emit('rowClick', $event)"
+    >
+      <template v-if="$slots['expanded-row']" #expanded-row="slotProps">
+        <slot name="expanded-row" v-bind="slotProps"></slot>
+      </template>
+    </DataTable>
+
+    <DataTablePagination
+      :page="params.page"
+      :pageSize="params.size"
+      :totalPages="pagination.totalPages"
+      :totalElements="pagination.totalElements"
+      :loading="pagination.loading"
+      :selectedRowCount="Object.keys(rowSelection).length"
+      @pageChange="onPageChange"
+      @pageSizeChange="onPageSizeChange"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
-import {
-  useVueTable,
-  FlexRender,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  type ColumnDef,
-  type SortingState,
-  type ColumnFiltersState,
-  type VisibilityState,
+import type {
+  ColumnDef,
+  ColumnFiltersState,
+  ExpandedState,
+  SortingState,
+  VisibilityState,
 } from '@tanstack/vue-table';
-import { Settings } from 'lucide-vue-next';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  getCoreRowModel,
+  getExpandedRowModel,
+  getFilteredRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getSortedRowModel,
+  useVueTable,
+} from '@tanstack/vue-table';
+import { onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { valueUpdater } from '@/components/ui/table/utils';
+import { debounce } from 'lodash-es';
+import PageResponse from '@/core/common/PageResponse';
+import DataTable from './DataTable.vue';
+import DataTablePagination from './DataTablePagination.vue';
+import DataTableToolbar from './DataTableToolbar.vue';
 
-interface Props {
-  columns: ColumnDef<any>[];
-  fetchData: (params: Record<string, any>) => Promise<{ content: any[]; totalElements: number; number: number; size: number }>;
-  searchPlaceholder?: string;
+interface DataTableWithUrlProps<TData> {
+  columns: ColumnDef<TData, any>[];
+  fetchData: (params: Record<string, any>) => Promise<PageResponse<TData>>;
   searchColumnId?: string;
-  getColumnLabel: (columnId: string) => string;
+  searchPlaceholder?: string;
   emptyMessage?: string;
   emptyDescription?: string;
-  onRowClick?: (row: any) => void;
+  getColumnLabel?: (columnId: string) => string;
+  initialParams?: Record<string, any>;
+  debounceTime?: number;
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  searchPlaceholder: '검색...',
+const props = withDefaults(defineProps<DataTableWithUrlProps<any>>(), {
   searchColumnId: 'name',
+  searchPlaceholder: '검색...',
   emptyMessage: '데이터가 없습니다',
-  emptyDescription: '새 항목을 추가하거나 검색 조건을 변경해보세요',
+  emptyDescription: '데이터가 생성되면 여기에 표시됩니다',
+  debounceTime: 300,
 });
 
-// State
+const router = useRouter();
+const route = useRoute();
+
 const data = ref<any[]>([]);
-const searchValue = ref('');
 const sorting = ref<SortingState>([]);
 const columnFilters = ref<ColumnFiltersState>([]);
 const columnVisibility = ref<VisibilityState>({});
-const pagination = ref({
+const rowSelection = ref({});
+const expanded = ref<ExpandedState>({});
+
+interface PaginationState {
+  totalPages: number;
+  totalElements: number;
+  loading: boolean;
+}
+
+const pagination = ref<PaginationState>({
+  totalPages: 0,
   totalElements: 0,
-  number: 0,
-  size: 10,
+  loading: false,
 });
 
-// Table instance
+// Initialize params from URL or defaults
+const params = ref<Record<string, any>>({
+  page: 1,
+  size: 10,
+  ...props.initialParams,
+});
+
+// Create table instance
 const table = useVueTable({
-  get data() { return data.value; },
-  get columns() { return props.columns; },
+  get data() {
+    return data.value;
+  },
+  columns: props.columns,
+  manualPagination: true,
   getCoreRowModel: getCoreRowModel(),
   getSortedRowModel: getSortedRowModel(),
   getFilteredRowModel: getFilteredRowModel(),
-  getPaginationRowModel: getPaginationRowModel(),
+  getFacetedRowModel: getFacetedRowModel(),
+  getFacetedUniqueValues: getFacetedUniqueValues(),
+  getExpandedRowModel: getExpandedRowModel(),
+  // Use row.id as the selection key instead of row index
+  getRowId: (row) => row.id?.toString() || '',
+  onSortingChange: (updaterOrValue) => {
+    valueUpdater(updaterOrValue, sorting);
+
+    // Update params with sorting information
+    if (sorting.value.length > 0) {
+      const sort = sorting.value[0];
+      // Format sort parameter as expected by Spring Boot: 'property,direction'
+      const sortParam = `${sort.id},${sort.desc ? 'desc' : 'asc'}`;
+
+      params.value = {
+        ...params.value,
+        sort: sortParam,
+      };
+
+      // Keep separate direction parameter for URL display and backward compatibility
+      params.value.direction = sort.desc ? 'desc' : 'asc';
+    } else if (params.value.sort) {
+      // Remove sorting if not present
+      const { sort, direction, ...rest } = params.value;
+      params.value = rest;
+    }
+
+    // Update URL and fetch data
+    updateUrl();
+    loadData();
+  },
+  onColumnFiltersChange: (updaterOrValue) => {
+    valueUpdater(updaterOrValue, columnFilters);
+
+    // Process all column filters and update params
+    const newParams = { ...params.value };
+    
+    // Clear existing filter params (except page, size, sort)
+    Object.keys(newParams).forEach(key => {
+      if (!['page', 'size', 'sort', 'direction'].includes(key)) {
+        delete newParams[key];
+      }
+    });
+
+    // Add all active column filters to params
+    columnFilters.value.forEach(filter => {
+      if (filter.value !== undefined && filter.value !== null && filter.value !== '') {
+        // Handle array values (for multi-select filters)
+        if (Array.isArray(filter.value) && filter.value.length > 0) {
+          newParams[filter.id] = filter.value.join(',');
+        }
+        // Handle date range values
+        else if (typeof filter.value === 'object' && filter.value.start) {
+          newParams[`${filter.id}From`] = filter.value.start.toISOString().split('T')[0];
+          if (filter.value.end) {
+            newParams[`${filter.id}To`] = filter.value.end.toISOString().split('T')[0]; 
+          }
+        }
+        // Handle simple string/number values
+        else {
+          newParams[filter.id] = filter.value;
+        }
+      }
+    });
+
+    params.value = newParams;
+
+    // Reset to first page when filters change
+    params.value.page = 1;
+
+    // Update URL and fetch data with debouncing for text searches
+    const hasTextFilter = columnFilters.value.some(filter => 
+      filter.id === props.searchColumnId && typeof filter.value === 'string'
+    );
+    
+    if (hasTextFilter) {
+      updateUrlDebounced();
+    } else {
+      updateUrl();
+    }
+    
+    loadData();
+  },
+  onColumnVisibilityChange: (updaterOrValue) => valueUpdater(updaterOrValue, columnVisibility),
+  onRowSelectionChange: (updaterOrValue) => valueUpdater(updaterOrValue, rowSelection),
+  onExpandedChange: (updaterOrValue) => valueUpdater(updaterOrValue, expanded),
   state: {
-    get sorting() { return sorting.value; },
-    get columnFilters() { return columnFilters.value; },
-    get columnVisibility() { return columnVisibility.value; },
+    get sorting() {
+      return sorting.value;
+    },
+    get columnFilters() {
+      return columnFilters.value;
+    },
+    get columnVisibility() {
+      return columnVisibility.value;
+    },
+    get rowSelection() {
+      return rowSelection.value;
+    },
+    get expanded() {
+      return expanded.value;
+    },
   },
-  onSortingChange: (updater) => {
-    sorting.value = typeof updater === 'function' ? updater(sorting.value) : updater;
-  },
-  onColumnFiltersChange: (updater) => {
-    columnFilters.value = typeof updater === 'function' ? updater(columnFilters.value) : updater;
-  },
-  onColumnVisibilityChange: (updater) => {
-    columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater;
-  },
-  manualPagination: true,
-  pageCount: computed(() => Math.ceil(pagination.value.totalElements / pagination.value.size)).value,
 });
 
-// Methods
-async function loadData() {
-  try {
-    const params = {
-      page: table.getState().pagination.pageIndex,
-      size: table.getState().pagination.pageSize,
-      [props.searchColumnId]: searchValue.value || undefined,
-    };
+// Debounced URL update function
+const updateUrlDebounced = debounce(updateUrl, props.debounceTime);
 
-    const response = await props.fetchData(params);
-    data.value = response.content;
-    pagination.value = {
-      totalElements: response.totalElements,
-      number: response.number,
-      size: response.size,
-    };
-  } catch (error) {
-    console.error('Error loading data:', error);
+// Update URL with current params
+function updateUrl() {
+  router.replace({
+    query: { ...params.value },
+  });
+}
+
+// Load data from API
+function loadData() {
+  pagination.value.loading = true;
+
+  // Ensure sort parameter is in the correct format for Spring Boot
+  if (params.value.sort && !params.value.sort.includes(',')) {
+    params.value.sort = `${params.value.sort},asc`;
+    params.value.direction = 'asc';
   }
+
+  props
+    .fetchData(params.value)
+    .then((response: PageResponse<any>) => {
+      data.value = response.content;
+      pagination.value.totalPages = response.totalPages;
+      pagination.value.totalElements = response.totalElements;
+    })
+    .catch((error) => {
+      console.error('Error loading data:', error);
+    })
+    .finally(() => {
+      pagination.value.loading = false;
+    });
 }
 
-function onSearchChange() {
-  table.setPageIndex(0);
+// Page change handler
+function onPageChange(page: number) {
+  params.value.page = page;
+  updateUrl();
   loadData();
 }
 
-// Watchers
-watch(() => table.getState().pagination.pageIndex, loadData);
-watch(() => table.getState().pagination.pageSize, loadData);
+// Page size change handler
+function onPageSizeChange(size: number) {
+  // Clear row selection when changing page size
+  rowSelection.value = {};
 
-// Lifecycle
+  params.value.size = size;
+  params.value.page = 1; // Reset to first page when changing page size
+  updateUrl();
+  loadData();
+}
+
+// Function to get column label (uses prop function if provided)
+function getColumnLabel(columnId: string): string {
+  if (props.getColumnLabel) {
+    return props.getColumnLabel(columnId);
+  }
+  return columnId;
+}
+
+// Load initial state from URL on mount
 onMounted(() => {
+  // Get params from URL
+  const query = route.query;
+
+  // Update params from URL
+  if (query.page) params.value.page = Number(query.page);
+  if (query.size) params.value.size = Number(query.size);
+  // Handle legacy limit parameter for backward compatibility
+  else if (query.limit) params.value.size = Number(query.limit);
+
+  // Handle sort params
+  if (query.sort) {
+    const sortValue = query.sort as string;
+
+    // Check if sort parameter contains direction (property,direction format)
+    if (sortValue.includes(',')) {
+      const [property, direction] = sortValue.split(',');
+
+      params.value.sort = sortValue;
+      params.value.direction = direction;
+
+      // Update sorting state
+      sorting.value = [
+        {
+          id: property,
+          desc: direction === 'desc',
+        },
+      ];
+    }
+    // Backward compatibility for separate sort and direction parameters
+    else if (query.direction) {
+      const direction = query.direction as string;
+
+      params.value.sort = `${sortValue},${direction}`;
+      params.value.direction = direction;
+
+      // Update sorting state
+      sorting.value = [
+        {
+          id: sortValue,
+          desc: direction === 'desc',
+        },
+      ];
+    } else {
+      // Add default direction (asc) if not present
+      params.value.sort = `${sortValue},asc`;
+      params.value.direction = 'asc';
+
+      // Update sorting state
+      sorting.value = [
+        {
+          id: sortValue,
+          desc: false,
+        },
+      ];
+    }
+  }
+
+  // Handle all query parameters as potential column filters
+  const newColumnFilters: any[] = [];
+  
+  Object.entries(query).forEach(([key, value]) => {
+    if (!['page', 'size', 'sort', 'direction', 'limit'].includes(key) && value) {
+      params.value[key] = value;
+      
+      // Handle date range filters (ending with From/To)
+      if (key.endsWith('From') || key.endsWith('To')) {
+        const baseKey = key.replace(/From$|To$/, '');
+        const existingFilter = newColumnFilters.find(f => f.id === baseKey);
+        
+        if (existingFilter) {
+          if (key.endsWith('From')) {
+            existingFilter.value.start = new Date(value as string);
+          } else {
+            existingFilter.value.end = new Date(value as string);
+          }
+        } else {
+          const dateRangeValue: any = {};
+          if (key.endsWith('From')) {
+            dateRangeValue.start = new Date(value as string);
+          } else {
+            dateRangeValue.end = new Date(value as string);
+          }
+          
+          newColumnFilters.push({
+            id: baseKey,
+            value: dateRangeValue,
+          });
+        }
+      }
+      // Handle array values (comma-separated)
+      else if (typeof value === 'string' && value.includes(',')) {
+        newColumnFilters.push({
+          id: key,
+          value: value.split(','),
+        });
+      }
+      // Handle simple values
+      else {
+        newColumnFilters.push({
+          id: key,
+          value: value,
+        });
+      }
+    }
+  });
+  
+  columnFilters.value = newColumnFilters;
+
+  // Load data with initial params
   loadData();
+});
+
+// Watch for route changes to update state
+watch(
+  () => route.query,
+  (newQuery) => {
+    // Only update if the change wasn't triggered by this component
+    // Simplify the sort change detection logic
+    const sortChanged = String(newQuery.sort) !== String(params.value.sort);
+
+    if (
+      newQuery.page !== params.value.page.toString() ||
+      newQuery.size !== params.value.size.toString() ||
+      sortChanged ||
+      newQuery[props.searchColumnId] !== params.value[props.searchColumnId]
+    ) {
+      // Update params from URL
+      if (newQuery.page) params.value.page = Number(newQuery.page);
+      if (newQuery.size) params.value.size = Number(newQuery.size);
+      // Handle legacy limit parameter for backward compatibility
+      else if (newQuery.limit) params.value.size = Number(newQuery.limit);
+
+      // Handle sort params
+      if (newQuery.sort) {
+        const sortValue = newQuery.sort as string;
+
+        // Check if sort parameter contains direction (property,direction format)
+        if (sortValue.includes(',')) {
+          const [property, direction] = sortValue.split(',');
+
+          params.value.sort = sortValue;
+          params.value.direction = direction;
+
+          // Update sorting state
+          sorting.value = [
+            {
+              id: property,
+              desc: direction === 'desc',
+            },
+          ];
+        }
+        // Backward compatibility for separate sort and direction parameters
+        else if (newQuery.direction) {
+          const direction = newQuery.direction as string;
+
+          params.value.sort = `${sortValue},${direction}`;
+          params.value.direction = direction;
+
+          // Update sorting state
+          sorting.value = [
+            {
+              id: sortValue,
+              desc: direction === 'desc',
+            },
+          ];
+        } else {
+          // Add default direction (asc) if not present
+          params.value.sort = `${sortValue},asc`;
+          params.value.direction = 'asc';
+
+          // Update sorting state
+          sorting.value = [
+            {
+              id: sortValue,
+              desc: false,
+            },
+          ];
+        }
+      } else if (!newQuery.sort && sorting.value.length > 0) {
+        sorting.value = [];
+      }
+
+      // Handle all query parameters as potential column filters
+      const newColumnFilters: any[] = [];
+      
+      Object.entries(newQuery).forEach(([key, value]) => {
+        if (!['page', 'size', 'sort', 'direction', 'limit'].includes(key) && value) {
+          params.value[key] = value;
+          
+          // Handle date range filters (ending with From/To)
+          if (key.endsWith('From') || key.endsWith('To')) {
+            const baseKey = key.replace(/From$|To$/, '');
+            const existingFilter = newColumnFilters.find(f => f.id === baseKey);
+            
+            if (existingFilter) {
+              if (key.endsWith('From')) {
+                existingFilter.value.start = new Date(value as string);
+              } else {
+                existingFilter.value.end = new Date(value as string);
+              }
+            } else {
+              const dateRangeValue: any = {};
+              if (key.endsWith('From')) {
+                dateRangeValue.start = new Date(value as string);
+              } else {
+                dateRangeValue.end = new Date(value as string);
+              }
+              
+              newColumnFilters.push({
+                id: baseKey,
+                value: dateRangeValue,
+              });
+            }
+          }
+          // Handle array values (comma-separated)
+          else if (typeof value === 'string' && value.includes(',')) {
+            newColumnFilters.push({
+              id: key,
+              value: value.split(','),
+            });
+          }
+          // Handle simple values
+          else {
+            newColumnFilters.push({
+              id: key,
+              value: value,
+            });
+          }
+        }
+      });
+      
+      columnFilters.value = newColumnFilters;
+
+      // Load data with updated params
+      loadData();
+    }
+  },
+  { deep: true }
+);
+
+// Expose table instance and data
+defineExpose({
+  table,
+  data,
+  params,
+  pagination,
+  loadData,
 });
 </script>

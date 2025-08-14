@@ -116,9 +116,11 @@ function onPageSizeChange(pageSize: string) {
             <span v-if="p === '...'" class="hidden sm:inline-flex px-1">...</span>
             <Button
               v-else
-              variant="outline"
+              :variant="p === page ? 'default' : 'outline'"
               size="sm"
-              :class="{ 'is-active': p === page }"
+              :class="{ 
+                'pagination-button-active': p === page
+              }"
               @click="onPageChange(p as number)"
             >
               {{ p }}

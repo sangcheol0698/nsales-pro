@@ -55,6 +55,16 @@ export function useTheme() {
 
     // Apply the effective theme
     applyTheme(effectiveTheme.value === 'dark');
+
+    // Listen for system theme changes when in system mode
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemThemeChange = () => {
+      if (storedTheme.value === 'system') {
+        applyTheme(effectiveTheme.value === 'dark');
+      }
+    };
+
+    mediaQuery.addListener(handleSystemThemeChange);
   });
 
   return {

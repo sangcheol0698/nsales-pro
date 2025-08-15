@@ -33,7 +33,12 @@
           </Button>
         </div>
 
-        <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-2">
+          <!-- Theme toggle with better visibility -->
+          <div class="flex items-center">
+            <ThemeToggle />
+          </div>
+          
           <!-- User menu -->
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
@@ -42,8 +47,8 @@
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>프로필</DropdownMenuItem>
-              <DropdownMenuItem>설정</DropdownMenuItem>
+              <DropdownMenuItem @click="openProfileDialog">프로필</DropdownMenuItem>
+              <DropdownMenuItem @click="openProfileDialog">설정</DropdownMenuItem>
               <DropdownMenuSeparator/>
               <DropdownMenuItem>로그아웃</DropdownMenuItem>
             </DropdownMenuContent>
@@ -56,25 +61,40 @@
         <slot/>
       </main>
     </div>
+
+    <!-- Profile Dialog -->
+    <ProfileDialog 
+      :open="isProfileDialogOpen" 
+      @update:open="isProfileDialogOpen = $event" 
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-  import { Building, FolderOpen, Menu, MessageSquare, PieChart, User, Users } from 'lucide-vue-next';
-  import { Button } from '@/components/ui/button';
-  import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-  } from '@/components/ui/dropdown-menu';
+import { ref } from 'vue';
+import { Building, FolderOpen, Menu, MessageSquare, PieChart, User, Users } from 'lucide-vue-next';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import ThemeToggle from '@/core/theme/ThemeToggle.vue';
+import { ProfileDialog } from '@/components/business';
 
-  const navigation = [
-    { name: '직원', path: '/employees', icon: Users },
-    { name: '프로젝트', path: '/projects', icon: FolderOpen },
-    { name: '협력사', path: '/partners', icon: Building },
-    { name: '채팅', path: '/chat', icon: MessageSquare },
-    { name: '대시보드', path: '/dashboard', icon: PieChart },
-  ];
+const navigation = [
+  { name: '직원', path: '/employees', icon: Users },
+  { name: '프로젝트', path: '/projects', icon: FolderOpen },
+  { name: '협력사', path: '/partners', icon: Building },
+  { name: '채팅', path: '/chat', icon: MessageSquare },
+  { name: '대시보드', path: '/dashboard', icon: PieChart },
+];
+
+const isProfileDialogOpen = ref(false);
+
+function openProfileDialog() {
+  isProfileDialogOpen.value = true;
+}
 </script>

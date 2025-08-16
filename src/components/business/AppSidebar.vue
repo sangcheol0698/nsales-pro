@@ -1,5 +1,5 @@
 <template>
-  <Sidebar v-bind="props" variant="floating" class="border-none">
+  <Sidebar v-bind="props" variant="floating">
     <SidebarHeader>
       <SidebarMenu>
         <SidebarMenuItem>

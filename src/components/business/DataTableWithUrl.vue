@@ -61,7 +61,7 @@ import {
   getSortedRowModel,
   useVueTable,
 } from '@tanstack/vue-table';
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { valueUpdater } from '@/components/ui/table/utils';
 import { debounce } from 'lodash-es';
@@ -80,6 +80,7 @@ interface DataTableWithUrlProps<TData> {
   getColumnLabel?: (columnId: string) => string;
   initialParams?: Record<string, any>;
   debounceTime?: number;
+  storageKey?: string; // Key for localStorage to persist column visibility
 }
 
 const props = withDefaults(defineProps<DataTableWithUrlProps<any>>(), {
@@ -99,6 +100,33 @@ const columnFilters = ref<ColumnFiltersState>([]);
 const columnVisibility = ref<VisibilityState>({});
 const rowSelection = ref({});
 const expanded = ref<ExpandedState>({});
+
+// Function to get storage key for column visibility
+function getStorageKey(): string {
+  return props.storageKey || `table-column-visibility-${route.name || 'default'}`;
+}
+
+// Function to load column visibility from localStorage
+function loadColumnVisibility(): VisibilityState {
+  try {
+    const stored = localStorage.getItem(getStorageKey());
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.warn('Failed to load column visibility from localStorage:', error);
+  }
+  return {};
+}
+
+// Function to save column visibility to localStorage
+function saveColumnVisibility(visibility: VisibilityState) {
+  try {
+    localStorage.setItem(getStorageKey(), JSON.stringify(visibility));
+  } catch (error) {
+    console.warn('Failed to save column visibility to localStorage:', error);
+  }
+}
 
 interface PaginationState {
   totalPages: number;
@@ -212,7 +240,11 @@ const table = useVueTable({
     
     loadData();
   },
-  onColumnVisibilityChange: (updaterOrValue) => valueUpdater(updaterOrValue, columnVisibility),
+  onColumnVisibilityChange: (updaterOrValue) => {
+    valueUpdater(updaterOrValue, columnVisibility);
+    // Save to localStorage whenever column visibility changes
+    saveColumnVisibility(columnVisibility.value);
+  },
   onRowSelectionChange: (updaterOrValue) => valueUpdater(updaterOrValue, rowSelection),
   onExpandedChange: (updaterOrValue) => valueUpdater(updaterOrValue, expanded),
   state: {
@@ -297,8 +329,13 @@ function getColumnLabel(columnId: string): string {
 
 // Load initial state from URL on mount
 onMounted(() => {
+  // Load column visibility from localStorage
+  columnVisibility.value = loadColumnVisibility();
+  console.log('🔄 Loading column visibility from localStorage:', columnVisibility.value);
+
   // Get params from URL
   const query = route.query;
+  console.log('🔄 Mounting DataTableWithUrl - URL query:', query);
 
   // Update params from URL
   if (query.page) params.value.page = Number(query.page);
@@ -388,13 +425,16 @@ onMounted(() => {
       }
       // Handle array values (comma-separated)
       else if (typeof value === 'string' && value.includes(',')) {
+        const arrayValue = value.split(',');
+        console.log(`🎯 Restoring array filter - ${key}:`, arrayValue);
         newColumnFilters.push({
           id: key,
-          value: value.split(','),
+          value: arrayValue,
         });
       }
       // Handle simple values
       else {
+        console.log(`🎯 Restoring simple filter - ${key}:`, value);
         newColumnFilters.push({
           id: key,
           value: value,
@@ -403,7 +443,17 @@ onMounted(() => {
     }
   });
   
-  columnFilters.value = newColumnFilters;
+  // Apply filters after table is ready
+  if (newColumnFilters.length > 0) {
+    // Use nextTick to ensure table is fully initialized
+    nextTick(() => {
+      columnFilters.value = newColumnFilters;
+      console.log('🔄 Initial column filters restored (after nextTick):', newColumnFilters);
+      console.log('🔄 Table columns available:', table.getAllColumns().map(c => c.id));
+    });
+  }
+  
+  console.log('🔄 Final params:', params.value);
 
   // Load data with initial params
   loadData();
@@ -528,7 +578,15 @@ watch(
         }
       });
       
-      columnFilters.value = newColumnFilters;
+      // Apply filters after table is ready (same as onMounted)
+      if (newColumnFilters.length > 0) {
+        nextTick(() => {
+          columnFilters.value = newColumnFilters;
+          console.log('🔄 Route change - column filters restored (after nextTick):', newColumnFilters);
+        });
+      } else {
+        columnFilters.value = newColumnFilters;
+      }
 
       // Load data with updated params
       loadData();

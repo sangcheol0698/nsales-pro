@@ -38,13 +38,6 @@
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <DropdownMenuItem>
-              <Sparkles />
-              Upgrade to Pro
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuGroup>
             <DropdownMenuItem @click="openProfileDialog">
               <BadgeCheck />
               내 계정
@@ -91,7 +84,7 @@
           <DropdownMenuSeparator />
           <DropdownMenuItem @click="logout">
             <LogOut />
-            Log out
+            로그아웃
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -113,23 +106,8 @@ import {
   DropdownMenuSubContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from '@/components/ui/sidebar';
-import {
-  BadgeCheck,
-  Bell,
-  Check,
-  ChevronsUpDown,
-  CreditCard,
-  LogOut,
-  Monitor,
-  Moon,
-  Sparkles,
-  Sun,
-} from 'lucide-vue-next';
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import { BadgeCheck, Bell, Check, ChevronsUpDown, CreditCard, LogOut, Monitor, Moon, Sun } from 'lucide-vue-next';
 import { useTheme } from '@/core/composables';
 import { useRouter } from 'vue-router';
 
@@ -144,7 +122,8 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  onOpenProfileDialog: () => {},
+  onOpenProfileDialog: () => {
+  },
 });
 
 const { theme, setTheme } = useTheme();

@@ -6,7 +6,7 @@ export default class EmployeeSearch {
   teamName: string;
   rank: string;
   joinDate: string;
-  status: '재직중' | '휴직' | '퇴사';
+  status: '재직' | '휴직' | '퇴사';
   createdAt: string;
   updatedAt: string;
 
@@ -18,7 +18,7 @@ export default class EmployeeSearch {
     teamName: string;
     rank: string;
     joinDate: string;
-    status: '재직중' | '휴직' | '퇴사';
+    status: '재직' | '휴직' | '퇴사';
     createdAt: string;
     updatedAt: string;
   }) {
@@ -43,7 +43,7 @@ export default class EmployeeSearch {
       teamName: response.teamName || '',
       rank: response.rank || '',
       joinDate: response.joinDate || '',
-      status: response.status || '재직중',
+      status: response.status || '재직',
       createdAt: response.createdAt || '',
       updatedAt: response.updatedAt || '',
     });

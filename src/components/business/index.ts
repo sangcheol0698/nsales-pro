@@ -6,6 +6,8 @@ export { default as DataTableToolbar } from './DataTableToolbar.vue';
 export { default as DataTableRowActions } from './DataTableRowActions.vue';
 export { default as DataTableFacetedFilter } from './DataTableFacetedFilter.vue';
 export { default as StatusBadge } from './StatusBadge.vue';
+export { default as SummaryCard } from './SummaryCard.vue';
+export { default as SummaryCards } from './SummaryCards.vue';
 export { default as ProfileDialog } from './ProfileDialog.vue';
 export { default as AppSidebar } from './AppSidebar.vue';
 export { default as NavMain } from './NavMain.vue';

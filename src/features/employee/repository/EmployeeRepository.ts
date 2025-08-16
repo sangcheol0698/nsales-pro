@@ -2,6 +2,7 @@ import HttpRepository from '@/core/http/HttpRepository.ts';
 import { inject, singleton } from 'tsyringe';
 import EmployeeSearch from '@/features/employee/entity/EmployeeSearch.ts';
 import EmployeeMyInfo from '@/features/employee/entity/EmployeeMyInfo.ts';
+import EmployeeStats from '@/features/employee/entity/EmployeeStats.ts';
 import PageResponse from '@/core/common/PageResponse.ts';
 
 @singleton()
@@ -37,5 +38,14 @@ export default class EmployeeRepository {
     });
 
     return EmployeeMyInfo.fromResponse(response);
+  }
+
+  // 직원 통계 조회
+  public async getEmployeeStats(): Promise<EmployeeStats> {
+    const response = await this.httpRepository.get({
+      path: '/api/v1/employees/stats',
+    });
+
+    return EmployeeStats.fromResponse(response);
   }
 }

@@ -1,6 +1,7 @@
 import HttpRepository from '@/core/http/HttpRepository.ts';
 import { inject, singleton } from 'tsyringe';
 import ProjectSearch from '@/features/project/entity/ProjectSearch.ts';
+import ProjectStats from '@/features/project/entity/ProjectStats.ts';
 import PageResponse from '@/core/common/PageResponse.ts';
 
 @singleton()
@@ -32,5 +33,14 @@ export default class ProjectRepository {
     });
 
     return ProjectSearch.fromResponse(response);
+  }
+
+  // 프로젝트 통계 조회
+  public async getProjectStats(): Promise<ProjectStats> {
+    const response = await this.httpRepository.get({
+      path: '/api/v1/projects/stats',
+    });
+
+    return ProjectStats.fromResponse(response);
   }
 }

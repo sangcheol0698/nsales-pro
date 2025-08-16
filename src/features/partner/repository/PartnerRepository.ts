@@ -1,6 +1,7 @@
 import HttpRepository from '@/core/http/HttpRepository.ts';
 import { inject, singleton } from 'tsyringe';
 import PartnerSearch from '@/features/partner/entity/PartnerSearch.ts';
+import PartnerStats from '@/features/partner/entity/PartnerStats.ts';
 import PageResponse from '@/core/common/PageResponse.ts';
 
 @singleton()
@@ -24,5 +25,14 @@ export default class PartnerRepository {
       totalElements: response.totalElements,
       content: transformedContent
     });
+  }
+
+  // 협력사 통계 조회
+  public async getPartnerStats(): Promise<PartnerStats> {
+    const response = await this.httpRepository.get({
+      path: '/api/v1/partners/stats',
+    });
+
+    return PartnerStats.fromResponse(response);
   }
 }

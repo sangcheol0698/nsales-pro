@@ -9,7 +9,7 @@ const routes = [
       title: '대시보드',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: true,
         },
       ],
@@ -25,7 +25,7 @@ const routes = [
       title: '내 프로필',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -88,7 +88,7 @@ const routes = [
       title: '공지사항',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -109,7 +109,7 @@ const routes = [
       title: '공지사항 등록',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -135,7 +135,7 @@ const routes = [
       title: '공지사항 상세',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -161,7 +161,7 @@ const routes = [
       title: '공지사항 수정',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -213,7 +213,7 @@ const routes = [
       title: '프로젝트 관리',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -234,7 +234,7 @@ const routes = [
       title: '구성원 관리',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -255,7 +255,7 @@ const routes = [
       title: '협력사 관리',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -276,7 +276,7 @@ const routes = [
       title: '매출 관리',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -297,7 +297,7 @@ const routes = [
       title: '프로젝트 상세',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -323,7 +323,7 @@ const routes = [
       title: 'AI Assistant',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -344,7 +344,7 @@ const routes = [
       title: 'AI Assistant',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -370,7 +370,7 @@ const routes = [
       title: 'Google 연동',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },

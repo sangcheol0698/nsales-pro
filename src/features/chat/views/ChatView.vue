@@ -5,7 +5,7 @@
       <aside
         class="w-80 bg-background border-r border-border flex flex-col"
         role="complementary"
-        :aria-label="$t ? $t('chat.chatSessions') : '채팅 세션 목록'"
+        aria-label="채팅 세션 목록"
       >
         <!-- 헤더 -->
         <div class="p-4 border-b border-border flex-shrink-0">
@@ -19,14 +19,25 @@
               </div>
             </div>
 
-            <Button
-              size="sm"
-              @click="createNewChat"
-              class="h-8 px-3 rounded-lg"
-            >
-              <Plus class="h-3 w-3 mr-1" />
-              <span class="text-xs">새 채팅</span>
-            </Button>
+            <div class="flex items-center gap-1">
+              <Button
+                size="sm"
+                @click="createNewChat"
+                class="h-8 px-3 rounded-lg"
+              >
+                <Plus class="h-3 w-3 mr-1" />
+                <span class="text-xs">새 채팅</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                class="h-8 w-8 p-0 rounded-lg"
+                aria-label="Google 연동"
+                @click="isGoogleDialogOpen = true"
+              >
+                <Plug class="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           <!-- 검색 -->
@@ -39,7 +50,7 @@
               v-model="searchQuery"
               placeholder="채팅 검색..."
               class="pl-9 h-8 text-sm bg-background/50 border-border/50 rounded-lg focus:bg-background"
-              :aria-label="$t ? $t('chat.searchPlaceholder') : '채팅 검색'"
+              aria-label="채팅 검색"
               role="searchbox"
               @keydown.escape="searchQuery = ''"
             />
@@ -161,7 +172,7 @@
           <div
             class="p-2 space-y-1"
             role="list"
-            :aria-label="$t ? $t('chat.sessionsList') : '채팅 세션 목록'"
+            aria-label="채팅 세션 목록"
           >
             <div
               v-for="(session, index) in filteredSessions"
@@ -178,8 +189,8 @@
               @click="selectSession(session.id)"
               @keydown.enter="selectSession(session.id)"
               @keydown.space.prevent="selectSession(session.id)"
-              @keydown.arrow-up.prevent="focusSession(index - 1)"
-              @keydown.arrow-down.prevent="focusSession(index + 1)"
+              @keydown.up.prevent="focusSession(index - 1)"
+              @keydown.down.prevent="focusSession(index + 1)"
             >
               <div class="flex items-center justify-between">
                 <div class="flex-1 min-w-0">
@@ -319,6 +330,19 @@
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <!-- Google 연동 다이얼로그 -->
+    <Dialog v-model:open="isGoogleDialogOpen">
+      <DialogContent class="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Google 연동</DialogTitle>
+        </DialogHeader>
+        <GoogleIntegrationDialog />
+        <DialogFooter>
+          <Button variant="outline" @click="isGoogleDialogOpen = false">닫기</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </SidebarLayout>
 </template>
 
@@ -333,6 +357,7 @@ import {
   Filter,
   MessageCircle,
   MoreVertical,
+  Plug,
   Plus,
   Search,
   Sparkles,
@@ -356,6 +381,7 @@ import { SidebarLayout } from '@/components/layout';
 import ChatWidget from '../components/ChatWidget.vue';
 import { ChatRepository } from '../repository/ChatRepository';
 import type { ChatSession } from '../entity/ChatMessage';
+import GoogleIntegrationDialog from '@/components/business/GoogleIntegrationDialog.vue';
 
 const toast = useToast();
 const chatRepository = new ChatRepository();
@@ -366,6 +392,7 @@ const sessions = ref<ChatSession[]>([]);
 const currentSessionId = ref<string>();
 const searchQuery = ref('');
 const isRenameDialogOpen = ref(false);
+const isGoogleDialogOpen = ref(false);
 const sessionToRename = ref<ChatSession>();
 const newSessionTitle = ref('');
 
@@ -664,7 +691,6 @@ const generateTitle = async (sessionId: string) => {
     const result = await chatRepository.generateTitle(sessionId);
 
     if (result.success) {
-      // 세션 목록에서 해당 세션의 제목 업데이트
       const sessionIndex = sessions.value.findIndex(s => s.id === sessionId);
       if (sessionIndex !== -1) {
         sessions.value[sessionIndex].title = result.title;
@@ -677,7 +703,7 @@ const generateTitle = async (sessionId: string) => {
       });
     } else {
       toast.warning('AI 제목 생성 실패', {
-        description: result.message || '제목 생성 중 오류가 발생했습니다.',
+        description: '제목 생성 중 오류가 발생했습니다.',
       });
     }
   } catch (error) {

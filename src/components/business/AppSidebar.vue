@@ -27,7 +27,7 @@
     </SidebarContent>
 
     <SidebarFooter>
-      <NavUser :user="data.user" :onOpenProfileDialog="openProfileDialog" />
+      <NavUser :user="user" :onOpenProfileDialog="openProfileDialog" />
     </SidebarFooter>
 
     <SidebarRail />
@@ -46,9 +46,18 @@ import {
   type SidebarProps,
   SidebarRail,
 } from '@/components/ui/sidebar';
-import { Building2, FileText, GalleryVerticalEnd, LayoutDashboard, Users, Wallet } from 'lucide-vue-next';
+import {
+  Building2,
+  FileText,
+  GalleryVerticalEnd,
+  LayoutDashboard,
+  MessageCircle,
+  Users,
+  Wallet,
+} from 'lucide-vue-next';
 import NavMain from './NavMain.vue';
 import NavUser from './NavUser.vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 const props = withDefaults(defineProps<SidebarProps & {
   onOpenProfileDialog?: () => void;
@@ -58,13 +67,47 @@ const props = withDefaults(defineProps<SidebarProps & {
   },
 });
 
-// This is sample data.
+// 사용자 정보: localStorage에서 로드
+const user = ref<{ name: string; email: string; avatar: string }>({
+  name: 'User',
+  email: 'user@example.com',
+  avatar: '',
+});
+
+function loadUserFromStorage() {
+  try {
+    const raw = localStorage.getItem('user');
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+
+    // 다양한 필드 네이밍을 고려한 안전 추출
+    const name = parsed.name || parsed.username || [parsed.firstName, parsed.lastName].filter(Boolean).join(' ') || 'User';
+    const email = parsed.email || parsed.username || parsed.userId || 'user@example.com';
+    const avatar = parsed.avatarUrl || parsed.avatar || '';
+
+    user.value = { name, email, avatar };
+  } catch (e) {
+    console.warn('Failed to parse user from localStorage', e);
+  }
+}
+
+function onStorage(e: StorageEvent) {
+  if (e.key === 'user') {
+    loadUserFromStorage();
+  }
+}
+
+onMounted(() => {
+  loadUserFromStorage();
+  window.addEventListener('storage', onStorage);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('storage', onStorage);
+});
+
+// 네비게이션 항목
 const data = {
-  user: {
-    name: 'Admin',
-    email: 'admin@abacus.com',
-    avatar: '/avatars/admin.jpg',
-  },
   teams: [
     {
       name: 'Abacus Inc',
@@ -97,6 +140,11 @@ const data = {
       title: '매출',
       url: '/sales',
       icon: Wallet,
+    },
+    {
+      title: 'AI Assistant',
+      url: '/chat',
+      icon: MessageCircle,
     },
   ],
 };

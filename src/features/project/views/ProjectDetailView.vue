@@ -98,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { SidebarLayout } from '@/shared/components/sidebar';
+import { SidebarLayout } from '@/components/layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-vue-next';

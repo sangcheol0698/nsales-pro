@@ -138,7 +138,7 @@ async function logout() {
     // AuthRepository를 사용한 로그아웃 로직은 원래 구현에 따라 추가
     localStorage.removeItem('user');
     localStorage.removeItem('employee');
-    await router.push('/auth/login');
+    await router.push('/auths/login');
   } catch (error) {
     console.error('Logout error:', error);
   }

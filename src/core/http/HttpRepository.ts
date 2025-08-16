@@ -24,4 +24,12 @@ export default class HttpRepository {
   public async patch(config: HttpRequestConfig) {
     return this.httpClient.request({ ...config, method: 'PATCH' });
   }
+
+  public async downloadFile(config: HttpRequestConfig): Promise<Response> {
+    return this.httpClient.downloadFile({ ...config, method: 'GET' });
+  }
+
+  public async upload(config: HttpRequestConfig & { onProgress?: (progress: number) => void }) {
+    return this.httpClient.upload({ ...config, method: 'POST' });
+  }
 }

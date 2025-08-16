@@ -3,6 +3,7 @@ import { inject, singleton } from 'tsyringe';
 import ProjectSearch from '@/features/project/entity/ProjectSearch.ts';
 import ProjectStats from '@/features/project/entity/ProjectStats.ts';
 import PageResponse from '@/core/common/PageResponse.ts';
+import { createExcelFormData, downloadBlob, generateExcelFilename, extractFilenameFromResponse } from '@/core/utils/ExcelUtils.ts';
 
 @singleton()
 export default class ProjectRepository {
@@ -42,5 +43,39 @@ export default class ProjectRepository {
     });
 
     return ProjectStats.fromResponse(response);
+  }
+
+  // 엑셀 다운로드 (현재 데이터)
+  public async downloadExcel(params: object): Promise<void> {
+    const response = await this.httpRepository.downloadFile({
+      path: '/api/v1/projects/excel/download',
+      params: params,
+    });
+
+    const filename = extractFilenameFromResponse(response, generateExcelFilename('projects'));
+    const blob = await response.blob();
+    downloadBlob(blob, filename);
+  }
+
+  // 엑셀 샘플 다운로드
+  public async downloadSample(): Promise<void> {
+    const response = await this.httpRepository.downloadFile({
+      path: '/api/v1/projects/excel/sample',
+    });
+
+    const filename = extractFilenameFromResponse(response, generateExcelFilename('projects_sample'));
+    const blob = await response.blob();
+    downloadBlob(blob, filename);
+  }
+
+  // 엑셀 업로드
+  public async uploadExcel(file: File, onProgress?: (progress: number) => void): Promise<void> {
+    const formData = createExcelFormData(file);
+
+    await this.httpRepository.upload({
+      path: '/api/v1/projects/excel/upload',
+      data: formData,
+      onProgress: onProgress,
+    });
   }
 }

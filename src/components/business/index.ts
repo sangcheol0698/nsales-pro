@@ -14,3 +14,6 @@ export { default as NavMain } from './NavMain.vue';
 export { default as NavUser } from './NavUser.vue';
 export { default as CommandPalette } from './CommandPalette.vue';
 export { default as SettingsDialog } from './SettingsDialog.vue';
+export { default as ExcelUploadDialog } from './ExcelUploadDialog.vue';
+export { default as ExcelDownloadButton } from './ExcelDownloadButton.vue';
+export { default as MobileActionDropdown } from './MobileActionDropdown.vue';

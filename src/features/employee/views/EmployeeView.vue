@@ -33,14 +33,64 @@
           </template>
 
           <template #actions="{ table }">
-            <Button size="sm" class="h-8" @click="onAddEmployee">
-              <UserPlus class="mr-2 h-4 w-4" />
-              구성원 추가
-            </Button>
+            <div class="flex items-center gap-2">
+              <!-- 모바일: 통합 액션 드롭다운 -->
+              <MobileActionDropdown
+                addButtonText="구성원 추가"
+                :showSalaryUpload="false"
+                @download-current="() => downloadCurrentData(table)"
+                @download-sample="downloadSample"
+                @download-all="downloadAllData"
+                @upload-excel="openUploadDialog"
+                @upload-salary="() => {}"
+                @add-item="onAddEmployee"
+              />
+              
+              <!-- 데스크톱: 개별 버튼들 -->
+              <div class="hidden md:flex items-center gap-2">
+                <!-- 엑셀 다운로드 버튼 -->
+                <ExcelDownloadButton
+                  :onDownloadData="() => downloadCurrentData(table)"
+                  :onDownloadSample="downloadSample"
+                  :onDownloadAll="downloadAllData"
+                  @download-start="handleDownloadStart"
+                  @download-complete="handleDownloadComplete"
+                  @download-error="handleDownloadError"
+                />
+                
+                <!-- 엑셀 업로드 버튼 -->
+                <Button
+                  variant="outline"
+                  size="sm"
+                  class="h-8"
+                  @click="openUploadDialog"
+                >
+                  <Upload class="mr-2 h-4 w-4" />
+                  엑셀 업로드
+                </Button>
+
+                <!-- 구성원 추가 버튼 -->
+                <Button size="sm" class="h-8" @click="onAddEmployee">
+                  <UserPlus class="mr-2 h-4 w-4" />
+                  구성원 추가
+                </Button>
+              </div>
+            </div>
           </template>
         </DataTableWithUrl>
       </div>
     </main>
+
+    <!-- 엑셀 업로드 다이얼로그 -->
+    <ExcelUploadDialog
+      v-model:open="uploadDialogOpen"
+      title="구성원 엑셀 업로드"
+      description="엑셀 파일을 업로드하여 구성원 정보를 일괄 등록하세요."
+      :onUpload="handleExcelUpload"
+      :onDownloadSample="downloadSample"
+      @success="handleUploadSuccess"
+      @error="handleUploadError"
+    />
   </SidebarLayout>
 </template>
 
@@ -60,6 +110,9 @@ import {
   DataTableWithUrl,
   StatusBadge,
   SummaryCards,
+  ExcelUploadDialog,
+  ExcelDownloadButton,
+  MobileActionDropdown,
 } from '@/components/business';
 import { useToast } from '@/core/composables';
 
@@ -73,7 +126,8 @@ import {
   Users,
   Calendar,
   TrendingUp,
-  Award
+  Award,
+  Upload
 } from 'lucide-vue-next';
 import { computed, ref, onMounted } from 'vue';
 
@@ -87,6 +141,9 @@ const employeeStats = ref({
   newHires: 0,
   averageTenure: 0,
 });
+
+// 엑셀 업로드 상태
+const uploadDialogOpen = ref(false);
 
 // 요약 카드 구성
 const summaryCards = computed(() => [
@@ -332,6 +389,110 @@ function onDeleteEmployee(employee: EmployeeSearch) {
   console.log('Delete employee:', employee);
   toast.warning('구성원 삭제', {
     description: `${employee.name}을(를) 삭제하시겠습니까?`,
+    position: 'bottom-right',
+  });
+}
+
+// 엑셀 관련 함수들
+function openUploadDialog() {
+  uploadDialogOpen.value = true;
+}
+
+async function downloadCurrentData(table: any) {
+  try {
+    // 현재 테이블의 필터 및 검색 조건을 가져와서 전달
+    const filters = table.getState().columnFilters;
+    const search = table.getState().globalFilter;
+    
+    const params: any = {};
+    
+    // 필터 조건 처리
+    filters.forEach((filter: any) => {
+      if (filter.value !== undefined && filter.value !== null && filter.value !== '') {
+        // 배열 형태의 값 처리 (다중 선택 필터)
+        if (Array.isArray(filter.value) && filter.value.length > 0) {
+          // 배열의 첫 번째 값만 사용 (백엔드가 단일 값을 받을 때)
+          params[filter.id] = filter.value[0];
+        } else {
+          params[filter.id] = filter.value;
+        }
+      }
+    });
+    
+    // 검색 조건 추가 (name 필드로 전달)
+    if (search) {
+      params.name = search;
+    }
+    
+    await EMPLOYEE_REPOSITORY.downloadExcel(params);
+  } catch (error) {
+    console.error('Excel download error:', error);
+    throw error;
+  }
+}
+
+async function downloadSample() {
+  try {
+    await EMPLOYEE_REPOSITORY.downloadSample();
+  } catch (error) {
+    console.error('Sample download error:', error);
+    throw error;
+  }
+}
+
+async function downloadAllData() {
+  try {
+    await EMPLOYEE_REPOSITORY.downloadExcel({});
+  } catch (error) {
+    console.error('All data download error:', error);
+    throw error;
+  }
+}
+
+async function handleExcelUpload(file: File, onProgress: (progress: number) => void) {
+  try {
+    await EMPLOYEE_REPOSITORY.uploadExcel(file, onProgress);
+  } catch (error) {
+    console.error('Excel upload error:', error);
+    throw error;
+  }
+}
+
+function handleUploadSuccess() {
+  toast.success('엑셀 업로드 완료', {
+    description: '구성원 정보가 성공적으로 업로드되었습니다.',
+    position: 'bottom-right',
+  });
+  
+  // 통계 및 테이블 데이터 새로고침
+  fetchEmployeeStats();
+  // 테이블 새로고침은 DataTableWithUrl에서 자동으로 처리됨
+}
+
+function handleUploadError(error: string) {
+  toast.error('엑셀 업로드 실패', {
+    description: error,
+    position: 'bottom-right',
+  });
+}
+
+function handleDownloadStart() {
+  toast.info('다운로드 시작', {
+    description: '엑셀 파일을 준비하고 있습니다...',
+    position: 'bottom-right',
+  });
+}
+
+function handleDownloadComplete() {
+  toast.success('다운로드 완료', {
+    description: '엑셀 파일이 성공적으로 다운로드되었습니다.',
+    position: 'bottom-right',
+  });
+}
+
+function handleDownloadError(error: string) {
+  toast.error('다운로드 실패', {
+    description: error,
     position: 'bottom-right',
   });
 }

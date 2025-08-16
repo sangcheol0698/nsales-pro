@@ -10,6 +10,7 @@ export type HttpRequestConfig = {
   path: string;
   params?: any;
   body?: any;
+  data?: any;
 };
 
 @singleton()
@@ -84,7 +85,7 @@ export default class AxiosHttpClient {
         method: config.method,
         url: config.path,
         params: config.params,
-        data: config.body,
+        data: config.body || config.data,
       })
       .then((response: AxiosResponse) => {
         return response.data;
@@ -92,5 +93,52 @@ export default class AxiosHttpClient {
       .catch((error: AxiosError) => {
         return Promise.reject(new HttpError(error));
       });
+  }
+
+  public async downloadFile(config: HttpRequestConfig): Promise<Response> {
+    try {
+      const response = await this.client.request({
+        method: config.method,
+        url: config.path,
+        params: config.params,
+        responseType: 'blob',
+      });
+
+      // Response 객체와 유사한 형태로 반환
+      return {
+        blob: () => Promise.resolve(response.data),
+        headers: {
+          get: (name: string) => response.headers[name.toLowerCase()],
+        },
+        ok: response.status >= 200 && response.status < 300,
+        status: response.status,
+        statusText: response.statusText,
+      } as Response;
+    } catch (error) {
+      throw new HttpError(error as AxiosError);
+    }
+  }
+
+  public async upload(config: HttpRequestConfig & { onProgress?: (progress: number) => void }) {
+    try {
+      const response = await this.client.request({
+        method: config.method,
+        url: config.path,
+        data: config.data,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        onUploadProgress: (progressEvent) => {
+          if (config.onProgress && progressEvent.total) {
+            const progress = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+            config.onProgress(progress);
+          }
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      throw new HttpError(error as AxiosError);
+    }
   }
 }

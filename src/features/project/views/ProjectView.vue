@@ -33,14 +33,62 @@
           </template>
 
           <template #actions="{ table }">
-            <Button size="sm" class="h-8" @click="onAddProject">
-              <Plus class="mr-2 h-4 w-4" />
-              프로젝트 추가
-            </Button>
+            <div class="flex items-center gap-2">
+              <!-- 모바일: 통합 액션 드롭다운 -->
+              <MobileActionDropdown
+                addButtonText="프로젝트 추가"
+                @download-current="() => downloadCurrentData(table)"
+                @download-sample="downloadSample"
+                @download-all="downloadAllData"
+                @upload-excel="openUploadDialog"
+                @add-item="onAddProject"
+              />
+              
+              <!-- 데스크톱: 개별 버튼들 -->
+              <div class="hidden md:flex items-center gap-2">
+                <!-- 엑셀 다운로드 버튼 -->
+                <ExcelDownloadButton
+                  :onDownloadData="() => downloadCurrentData(table)"
+                  :onDownloadSample="downloadSample"
+                  :onDownloadAll="downloadAllData"
+                  @download-start="handleDownloadStart"
+                  @download-complete="handleDownloadComplete"
+                  @download-error="handleDownloadError"
+                />
+                
+                <!-- 엑셀 업로드 버튼 -->
+                <Button
+                  variant="outline"
+                  size="sm"
+                  class="h-8"
+                  @click="openUploadDialog"
+                >
+                  <Upload class="mr-2 h-4 w-4" />
+                  엑셀 업로드
+                </Button>
+
+                <!-- 프로젝트 추가 버튼 -->
+                <Button size="sm" class="h-8" @click="onAddProject">
+                  <Plus class="mr-2 h-4 w-4" />
+                  프로젝트 추가
+                </Button>
+              </div>
+            </div>
           </template>
         </DataTableWithUrl>
       </div>
     </main>
+
+    <!-- 엑셀 업로드 다이얼로그 -->
+    <ExcelUploadDialog
+      v-model:open="uploadDialogOpen"
+      title="프로젝트 엑셀 업로드"
+      description="엑셀 파일을 업로드하여 프로젝트 정보를 일괄 등록하세요."
+      :onUpload="handleExcelUpload"
+      :onDownloadSample="downloadSample"
+      @success="handleUploadSuccess"
+      @error="handleUploadError"
+    />
   </SidebarLayout>
 </template>
 
@@ -61,6 +109,9 @@ import {
   DataTableWithUrl,
   StatusBadge,
   SummaryCards,
+  ExcelUploadDialog,
+  ExcelDownloadButton,
+  MobileActionDropdown,
 } from '@/components/business';
 import { useToast } from '@/core/composables';
 
@@ -75,7 +126,8 @@ import {
   Plus,
   FolderOpen,
   TrendingUp,
-  DollarSign
+  DollarSign,
+  Upload
 } from 'lucide-vue-next';
 import { computed, ref, onMounted } from 'vue';
 
@@ -90,6 +142,9 @@ const projectStats = ref({
   totalValue: 0,
   completionRate: 0,
 });
+
+// 엑셀 업로드 상태
+const uploadDialogOpen = ref(false);
 
 // 요약 카드 구성
 const summaryCards = computed(() => [
@@ -360,6 +415,107 @@ function onDeleteProject(project: ProjectSearch) {
   console.log('Delete project:', project);
   toast.warning('프로젝트 삭제', {
     description: `${project.name}을(를) 삭제하시겠습니까?`,
+    position: 'bottom-right',
+  });
+}
+
+// 엑셀 관련 함수들
+function openUploadDialog() {
+  uploadDialogOpen.value = true;
+}
+
+async function downloadCurrentData(table: any) {
+  try {
+    const filters = table.getState().columnFilters;
+    const search = table.getState().globalFilter;
+    
+    const params: any = {};
+    
+    // 필터 조건 처리
+    filters.forEach((filter: any) => {
+      if (filter.value !== undefined && filter.value !== null && filter.value !== '') {
+        // 배열 형태의 값 처리 (다중 선택 필터)
+        if (Array.isArray(filter.value) && filter.value.length > 0) {
+          // 배열의 첫 번째 값만 사용 (백엔드가 단일 값을 받을 때)
+          params[filter.id] = filter.value[0];
+        } else {
+          params[filter.id] = filter.value;
+        }
+      }
+    });
+    
+    // 검색 조건 추가 (name 필드로 전달)
+    if (search) {
+      params.name = search;
+    }
+    
+    await PROJECT_REPOSITORY.downloadExcel(params);
+  } catch (error) {
+    console.error('Excel download error:', error);
+    throw error;
+  }
+}
+
+async function downloadSample() {
+  try {
+    await PROJECT_REPOSITORY.downloadSample();
+  } catch (error) {
+    console.error('Sample download error:', error);
+    throw error;
+  }
+}
+
+async function downloadAllData() {
+  try {
+    await PROJECT_REPOSITORY.downloadExcel({});
+  } catch (error) {
+    console.error('All data download error:', error);
+    throw error;
+  }
+}
+
+async function handleExcelUpload(file: File, onProgress: (progress: number) => void) {
+  try {
+    await PROJECT_REPOSITORY.uploadExcel(file, onProgress);
+  } catch (error) {
+    console.error('Excel upload error:', error);
+    throw error;
+  }
+}
+
+function handleUploadSuccess() {
+  toast.success('엑셀 업로드 완료', {
+    description: '프로젝트 정보가 성공적으로 업로드되었습니다.',
+    position: 'bottom-right',
+  });
+  
+  fetchProjectStats();
+}
+
+function handleUploadError(error: string) {
+  toast.error('엑셀 업로드 실패', {
+    description: error,
+    position: 'bottom-right',
+  });
+}
+
+function handleDownloadStart() {
+  toast.info('다운로드 시작', {
+    description: '엑셀 파일을 준비하고 있습니다...',
+    position: 'bottom-right',
+  });
+}
+
+function handleDownloadComplete() {
+  toast.success('다운로드 완료', {
+    description: '엑셀 파일이 성공적으로 다운로드되었습니다.',
+    position: 'bottom-right',
+  });
+}
+
+function handleDownloadError(error: string) {
+  toast.error('다운로드 실패', {
+    description: error,
     position: 'bottom-right',
   });
 }

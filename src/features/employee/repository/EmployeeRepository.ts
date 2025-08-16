@@ -4,6 +4,7 @@ import EmployeeSearch from '@/features/employee/entity/EmployeeSearch.ts';
 import EmployeeMyInfo from '@/features/employee/entity/EmployeeMyInfo.ts';
 import EmployeeStats from '@/features/employee/entity/EmployeeStats.ts';
 import PageResponse from '@/core/common/PageResponse.ts';
+import { createExcelFormData, downloadBlob, generateExcelFilename, extractFilenameFromResponse } from '@/core/utils/ExcelUtils.ts';
 
 @singleton()
 export default class EmployeeRepository {
@@ -47,5 +48,50 @@ export default class EmployeeRepository {
     });
 
     return EmployeeStats.fromResponse(response);
+  }
+
+  // 엑셀 다운로드 (현재 데이터)
+  public async downloadExcel(params: object): Promise<void> {
+    const response = await this.httpRepository.downloadFile({
+      path: '/api/v1/employees/excel/download',
+      params: params,
+    });
+
+    const filename = extractFilenameFromResponse(response, generateExcelFilename('employees'));
+    const blob = await response.blob();
+    downloadBlob(blob, filename);
+  }
+
+  // 엑셀 샘플 다운로드
+  public async downloadSample(): Promise<void> {
+    const response = await this.httpRepository.downloadFile({
+      path: '/api/v1/employees/excel/sample',
+    });
+
+    const filename = extractFilenameFromResponse(response, generateExcelFilename('employees_sample'));
+    const blob = await response.blob();
+    downloadBlob(blob, filename);
+  }
+
+  // 엑셀 업로드
+  public async uploadExcel(file: File, onProgress?: (progress: number) => void): Promise<void> {
+    const formData = createExcelFormData(file);
+
+    await this.httpRepository.upload({
+      path: '/api/v1/employees/excel/upload',
+      data: formData,
+      onProgress: onProgress,
+    });
+  }
+
+  // 연봉 엑셀 업로드
+  public async uploadSalaryExcel(file: File, onProgress?: (progress: number) => void): Promise<void> {
+    const formData = createExcelFormData(file);
+
+    await this.httpRepository.upload({
+      path: '/api/v1/employees/excel/upload/sales',
+      data: formData,
+      onProgress: onProgress,
+    });
   }
 }

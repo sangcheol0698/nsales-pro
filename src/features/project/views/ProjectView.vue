@@ -16,7 +16,6 @@
           emptyMessage="프로젝트가 없습니다"
           emptyDescription="새 프로젝트를 추가하거나 검색 조건을 변경해보세요"
           storageKey="project-table-visibility"
-          @rowClick="onRowClick"
         >
           <template #filters="{ table }">
             <!-- 날짜 검색 유형 선택 -->
@@ -39,7 +38,6 @@
             <DateRangeFilter
               v-model="dateRange"
               placeholder="날짜 범위 선택"
-              @change="handleDateRangeChange"
             />
 
             <DataTableFacetedFilter
@@ -293,26 +291,31 @@ const columns: ColumnDef<ProjectSearch>[] = [
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '프로젝트' }),
     cell: ({ row }) => {
       return h('div', { class: 'flex flex-col w-48' }, [
-        h(TruncatedCell, { text: row.getValue('name'), maxWidth: '12rem', className: 'font-medium' }),
-        h(TruncatedCell, { text: row.original.code, maxWidth: '12rem', className: 'text-xs text-muted-foreground' }),
+        h(TruncatedCell, { text: String(row.getValue('name') ?? ''), maxWidth: '12rem', className: 'font-medium' }),
+        h(TruncatedCell, {
+          text: String(row.original.code ?? ''),
+          maxWidth: '12rem',
+          className: 'text-xs text-muted-foreground',
+        }),
       ]);
     },
     enableHiding: true,
-    size: 200,
+    size: 240,
+    meta: { skeleton: 'title-subtitle' },
   },
   {
     accessorKey: 'type',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '유형' }),
     cell: ({ row }) => h(TruncatedCell, {
-      text: row.getValue('type'),
+      text: String(row.getValue('type') ?? ''),
       maxWidth: '5rem',
-      className: 'font-medium text-center',
+      className: 'font-medium text-left',
     }),
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
+    filterFn: (row, _id, value) => {
+      return value.includes(String(row.getValue('type') ?? ''));
     },
     enableHiding: true,
-    size: 80,
+    size: 90,
   },
   {
     accessorKey: 'period',
@@ -321,27 +324,27 @@ const columns: ColumnDef<ProjectSearch>[] = [
       const startDate = row.original.startDate || '-';
       const endDate = row.original.endDate || '';
       const separator = startDate !== '-' && endDate ? ' ~ ' : '';
-      const periodText = startDate + separator + endDate;
+      const periodText = String(startDate) + separator + String(endDate);
 
-      return h(TruncatedCell, { text: periodText, maxWidth: '14rem' });
+      return h(TruncatedCell, { text: periodText, maxWidth: '14rem', className: 'text-left' });
     },
     enableHiding: true,
-    size: 220,
+    size: 240,
   },
   {
     accessorKey: 'contractDate',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '계약일' }),
     cell: ({ row }) => h(TruncatedCell, {
-      text: row.getValue('contractDate'),
+      text: String(row.getValue('contractDate') ?? ''),
       maxWidth: '7rem',
-      className: 'text-center',
+      className: 'text-left',
     }),
     enableHiding: true,
     size: 120,
   },
   {
     accessorKey: 'contractAmount',
-    header: ({ column }) => h(DataTableColumnHeader, { column, title: '계약금액' }),
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '계약금액', align: 'right' }),
     cell: ({ row }) => {
       const amount = row.getValue('contractAmount') as number;
       const formattedAmount = amount ? amount.toLocaleString() + '원' : '-';
@@ -354,14 +357,22 @@ const columns: ColumnDef<ProjectSearch>[] = [
   {
     accessorKey: 'mainCompany',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '주관사' }),
-    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('mainCompany'), maxWidth: '10rem' }),
+    cell: ({ row }) => h(TruncatedCell, {
+      text: String(row.getValue('mainCompany') ?? ''),
+      maxWidth: '10rem',
+      className: 'text-left',
+    }),
     enableHiding: true,
     size: 160,
   },
   {
     accessorKey: 'clientCompany',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '고객사' }),
-    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('clientCompany'), maxWidth: '10rem' }),
+    cell: ({ row }) => h(TruncatedCell, {
+      text: String(row.getValue('clientCompany') ?? ''),
+      maxWidth: '10rem',
+      className: 'text-left',
+    }),
     enableHiding: true,
     size: 160,
   },
@@ -375,8 +386,8 @@ const columns: ColumnDef<ProjectSearch>[] = [
         type: 'project',
       });
     },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
+    filterFn: (row, _id, value) => {
+      return value.includes(String(row.getValue('status') ?? ''));
     },
     enableHiding: true,
   },
@@ -422,8 +433,8 @@ function getColumnLabel(columnId: string): string {
 const tableRef = ref<any>(null);
 
 // 날짜 범위 변경 핸들러
-function handleDateRangeChange(range: { start?: Date; end?: Date } | null) {
-  dateRange.value = range;
+function handleDateRangeChange(range: any) {
+  dateRange.value = range as { start?: Date; end?: Date } | null;
 
   // 테이블의 컬럼 필터로 날짜 범위 설정
   if (tableRef.value?.table) {
@@ -500,10 +511,14 @@ function restoreUIStateFromTable() {
 
 // searchType 변경 감지
 watch(searchType, () => {
-  // 날짜 범위가 설정되어 있으면 필터 업데이트
   if (dateRange.value && tableRef.value?.table) {
     handleDateRangeChange(dateRange.value);
   }
+});
+
+// 날짜 범위 변경 감지하여 필터 적용
+watch(dateRange, (val) => {
+  handleDateRangeChange(val);
 });
 
 // 테이블 필터 변경 감지하여 UI 상태 동기화
@@ -522,12 +537,6 @@ onMounted(() => {
     }, 100);
   });
 });
-
-function onRowClick(row: ProjectSearch) {
-  if (row && row.id) {
-    router.push(`/projects/${row.id}`);
-  }
-}
 
 // Action handlers
 function onAddProject() {

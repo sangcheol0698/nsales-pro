@@ -4,7 +4,7 @@
       <div class="w-full">
         <!-- 요약 카드 -->
         <SummaryCards :cards="summaryCards" />
-        
+
         <!-- 데이터 테이블 -->
         <DataTableWithUrl
           :columns="columns"
@@ -48,7 +48,7 @@
                 @upload-excel="openUploadDialog"
                 @add-item="onAddPartner"
               />
-              
+
               <!-- 데스크톱: 개별 버튼들 -->
               <div class="hidden md:flex items-center gap-2">
                 <!-- 엑셀 다운로드 버튼 -->
@@ -60,7 +60,7 @@
                   @download-complete="handleDownloadComplete"
                   @download-error="handleDownloadError"
                 />
-                
+
                 <!-- 엑셀 업로드 버튼 -->
                 <Button
                   variant="outline"
@@ -99,7 +99,7 @@
 
 <script setup lang="ts">
 import type { ColumnDef } from '@tanstack/vue-table';
-import { h } from 'vue';
+import { computed, h, onMounted, ref } from 'vue';
 import { container } from 'tsyringe';
 import PartnerRepository from '@/features/partner/repository/PartnerRepository.ts';
 import PartnerSearch from '@/features/partner/entity/PartnerSearch.ts';
@@ -107,35 +107,34 @@ import PartnerStats from '@/features/partner/entity/PartnerStats.ts';
 import PageResponse from '@/core/common/PageResponse.ts';
 import { SidebarLayout } from '@/components/layout';
 import {
-  DataTableWithUrl,
   DataTableColumnHeader,
   DataTableFacetedFilter,
   DataTableRowActions,
+  DataTableWithUrl,
+  ExcelDownloadButton,
+  ExcelUploadDialog,
+  MobileActionDropdown,
   StatusBadge,
   SummaryCards,
-  ExcelUploadDialog,
-  ExcelDownloadButton,
-  MobileActionDropdown,
   TruncatedCell,
 } from '@/components/business';
 import { useToast } from '@/core/composables';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { 
-  Star, 
-  Award, 
-  Shield, 
-  CircleDot, 
-  Circle,
-  Plus,
+import {
+  Award,
   Building2,
-  TrendingUp,
+  Circle,
+  CircleDot,
   Percent,
+  Plus,
+  Shield,
+  Star,
+  TrendingUp,
+  Upload,
   Users,
-  Upload
 } from 'lucide-vue-next';
-import { computed, ref, onMounted } from 'vue';
 
 const toast = useToast();
 const PARTNER_REPOSITORY = container.resolve(PartnerRepository);
@@ -172,7 +171,6 @@ const summaryCards = computed(() => [
   {
     title: '평균 등급',
     value: partnerStats.value.averageGrade,
-    previousValue: 'B+',
     description: '전체 평균',
     icon: Award,
     formatType: 'text' as const,
@@ -243,46 +241,59 @@ const columns: ColumnDef<PartnerSearch>[] = [
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '협력사명' }),
     cell: ({ row }) => {
       return h('div', { class: 'flex flex-col w-48' }, [
-        h(TruncatedCell, { text: row.getValue('name'), maxWidth: '12rem', className: 'font-medium' }),
-        h(TruncatedCell, { text: row.original.address, maxWidth: '12rem', className: 'text-xs text-muted-foreground' }),
+        h(TruncatedCell, { text: String(row.getValue('name') ?? ''), maxWidth: '12rem', className: 'font-medium' }),
+        h(TruncatedCell, {
+          text: String(row.original.address ?? ''),
+          maxWidth: '12rem',
+          className: 'text-xs text-muted-foreground',
+        }),
       ]);
     },
     enableHiding: true,
-    size: 200,
+    size: 240,
+    meta: { skeleton: 'title-subtitle' },
   },
   {
     accessorKey: 'ceoName',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '대표자' }),
-    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('ceoName'), maxWidth: '6rem' }),
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
+    cell: ({ row }) => h(TruncatedCell, { text: String(row.getValue('ceoName') ?? ''), maxWidth: '6rem' }),
+    filterFn: (row, _id, value) => {
+      return value.includes(String(row.getValue('ceoName') ?? ''));
     },
     enableHiding: true,
-    size: 100,
+    size: 110,
   },
   {
     accessorKey: 'salesRepName',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '영업대표' }),
-    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('salesRepName'), maxWidth: '6rem' }),
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
+    cell: ({ row }) => h(TruncatedCell, { text: String(row.getValue('salesRepName') ?? ''), maxWidth: '6rem' }),
+    filterFn: (row, _id, value) => {
+      return value.includes(String(row.getValue('salesRepName') ?? ''));
     },
     enableHiding: true,
-    size: 100,
+    size: 120,
   },
   {
     accessorKey: 'salesRepPhone',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '영업대표 연락처' }),
-    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('salesRepPhone'), maxWidth: '8rem', className: 'text-center font-mono' }),
+    cell: ({ row }) => h(TruncatedCell, {
+      text: String(row.getValue('salesRepPhone') ?? ''),
+      maxWidth: '8rem',
+      className: 'text-left font-mono',
+    }),
     enableHiding: true,
     size: 140,
   },
   {
     accessorKey: 'salesRepEmail',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '영업대표 이메일' }),
-    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('salesRepEmail'), maxWidth: '10rem', className: 'font-mono' }),
+    cell: ({ row }) => h(TruncatedCell, {
+      text: String(row.getValue('salesRepEmail') ?? ''),
+      maxWidth: '10rem',
+      className: 'font-mono',
+    }),
     enableHiding: true,
-    size: 180,
+    size: 200,
   },
   {
     accessorKey: 'grade',
@@ -294,10 +305,11 @@ const columns: ColumnDef<PartnerSearch>[] = [
         type: 'partner',
       });
     },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
+    filterFn: (row, _id, value) => {
+      return value.includes(String(row.getValue('grade') ?? ''));
     },
     enableHiding: true,
+    size: 90,
   },
   {
     id: 'actions',
@@ -340,20 +352,20 @@ async function fetchPartnerStats() {
   try {
     // 새로운 통계 API 사용
     const stats: PartnerStats = await PARTNER_REPOSITORY.getPartnerStats();
-    
+
     partnerStats.value.totalPartners = stats.totalPartners;
     partnerStats.value.activePartners = stats.activePartners;
     partnerStats.value.averageGrade = stats.averageGrade;
     partnerStats.value.revenueContribution = stats.revenueContribution;
   } catch (error) {
     console.error('Error loading partner statistics:', error);
-    
+
     // API 실패 시 가데이터 설정
     partnerStats.value.totalPartners = 15; // 가데이터
     partnerStats.value.activePartners = 12; // 가데이터
     partnerStats.value.averageGrade = 'B+'; // 가데이터
     partnerStats.value.revenueContribution = 68; // 가데이터
-    
+
     toast.error('협력사 통계 로드 실패', {
       description: '협력사 통계를 불러오는 중 오류가 발생했습니다.',
       position: 'bottom-right',
@@ -367,7 +379,7 @@ async function fetchPartners(params: Record<string, any>): Promise<PageResponse<
     console.log('Fetching partners with params:', params);
     const response = await PARTNER_REPOSITORY.getPartners(params);
     console.log('Partners loaded:', response.content);
-    
+
     // 필터 옵션을 위해 모든 파트너 데이터를 저장
     // 페이지네이션된 데이터이므로 전체 데이터는 별도 요청이 필요하지만, 
     // 현재 페이지의 데이터라도 필터 옵션에 포함
@@ -377,7 +389,7 @@ async function fetchPartners(params: Record<string, any>): Promise<PageResponse<
       const newPartners = response.content.filter(p => !existingIds.has(p.id));
       partnerData.value = [...partnerData.value, ...newPartners];
     }
-    
+
     return response;
   } catch (error) {
     console.error('Error loading partners:', error);
@@ -457,9 +469,9 @@ async function downloadCurrentData(table: any) {
   try {
     const filters = table.getState().columnFilters;
     const search = table.getState().globalFilter;
-    
+
     const params: any = {};
-    
+
     // 필터 조건 처리
     filters.forEach((filter: any) => {
       if (filter.value !== undefined && filter.value !== null && filter.value !== '') {
@@ -472,12 +484,12 @@ async function downloadCurrentData(table: any) {
         }
       }
     });
-    
+
     // 검색 조건 추가 (name 필드로 전달)
     if (search) {
       params.name = search;
     }
-    
+
     await PARTNER_REPOSITORY.downloadExcel(params);
   } catch (error) {
     console.error('Excel download error:', error);
@@ -517,7 +529,7 @@ function handleUploadSuccess() {
     description: '협력사 정보가 성공적으로 업로드되었습니다.',
     position: 'bottom-right',
   });
-  
+
   fetchPartnerStats();
 }
 

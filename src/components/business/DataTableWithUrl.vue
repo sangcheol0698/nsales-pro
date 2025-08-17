@@ -3,17 +3,17 @@
     <DataTableToolbar
       :table="table"
       :searchPlaceholder="searchPlaceholder"
-      :searchColumnId="searchColumnId"  
+      :searchColumnId="searchColumnId"
       :getColumnLabel="getColumnLabel"
     >
       <template #filters>
         <slot name="filters" :table="table"></slot>
       </template>
-      
+
       <template #actions>
         <slot name="actions" :table="table"></slot>
       </template>
-      
+
       <slot name="toolbar"></slot>
     </DataTableToolbar>
 
@@ -24,7 +24,7 @@
       :emptyMessage="emptyMessage"
       :emptyDescription="emptyDescription"
       :tableInstance="table"
-      @rowClick="$emit('rowClick', $event)"
+      :pageSize="params.size"
     >
       <template v-if="$slots['expanded-row']" #expanded-row="slotProps">
         <slot name="expanded-row" v-bind="slotProps"></slot>
@@ -45,23 +45,17 @@
 </template>
 
 <script setup lang="ts">
-import type {
-  ColumnDef,
-  ColumnFiltersState,
-  ExpandedState,
-  SortingState,
-  VisibilityState,
-} from '@tanstack/vue-table';
+import type { ColumnDef, ColumnFiltersState, ExpandedState, SortingState, VisibilityState } from '@tanstack/vue-table';
 import {
   getCoreRowModel,
   getExpandedRowModel,
-  getFilteredRowModel,
   getFacetedRowModel,
   getFacetedUniqueValues,
+  getFilteredRowModel,
   getSortedRowModel,
   useVueTable,
 } from '@tanstack/vue-table';
-import { onMounted, ref, watch, nextTick } from 'vue';
+import { nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { valueUpdater } from '@/components/ui/table/utils';
 import { debounce } from 'lodash-es';
@@ -194,7 +188,7 @@ const table = useVueTable({
 
     // Process all column filters and update params
     const newParams = { ...params.value };
-    
+
     // Clear existing filter params (except page, size, sort)
     Object.keys(newParams).forEach(key => {
       if (!['page', 'size', 'sort', 'direction'].includes(key)) {
@@ -220,7 +214,7 @@ const table = useVueTable({
           } else {
             newParams[`${filter.id}From`] = filter.value.start.toISOString().split('T')[0];
             if (filter.value.end) {
-              newParams[`${filter.id}To`] = filter.value.end.toISOString().split('T')[0]; 
+              newParams[`${filter.id}To`] = filter.value.end.toISOString().split('T')[0];
             }
           }
         }
@@ -237,16 +231,16 @@ const table = useVueTable({
     params.value.page = 1;
 
     // Update URL and fetch data with debouncing for text searches
-    const hasTextFilter = columnFilters.value.some(filter => 
-      filter.id === props.searchColumnId && typeof filter.value === 'string'
+    const hasTextFilter = columnFilters.value.some(filter =>
+      filter.id === props.searchColumnId && typeof filter.value === 'string',
     );
-    
+
     if (hasTextFilter) {
       updateUrlDebounced();
     } else {
       updateUrl();
     }
-    
+
     loadData();
   },
   onColumnVisibilityChange: (updaterOrValue) => {
@@ -405,15 +399,15 @@ onMounted(() => {
 
   // Handle all query parameters as potential column filters
   const newColumnFilters: any[] = [];
-  
+
   Object.entries(query).forEach(([key, value]) => {
     if (!['page', 'size', 'sort', 'direction', 'limit'].includes(key) && value) {
       params.value[key] = value;
-      
+
       // Handle date range filters - specific handling for startDate/endDate
       if (key === 'startDate' || key === 'endDate') {
         const existingFilter = newColumnFilters.find(f => f.id === 'dateRange');
-        
+
         if (existingFilter) {
           if (key === 'startDate') {
             existingFilter.value.start = new Date(value as string);
@@ -427,7 +421,7 @@ onMounted(() => {
           } else {
             dateRangeValue.end = new Date(value as string);
           }
-          
+
           newColumnFilters.push({
             id: 'dateRange',
             value: dateRangeValue,
@@ -438,7 +432,7 @@ onMounted(() => {
       else if (key.endsWith('From') || key.endsWith('To')) {
         const baseKey = key.replace(/From$|To$/, '');
         const existingFilter = newColumnFilters.find(f => f.id === baseKey);
-        
+
         if (existingFilter) {
           if (key.endsWith('From')) {
             existingFilter.value.start = new Date(value as string);
@@ -452,7 +446,7 @@ onMounted(() => {
           } else {
             dateRangeValue.end = new Date(value as string);
           }
-          
+
           newColumnFilters.push({
             id: baseKey,
             value: dateRangeValue,
@@ -478,7 +472,7 @@ onMounted(() => {
       }
     }
   });
-  
+
   // Apply filters after table is ready
   if (newColumnFilters.length > 0) {
     // Use nextTick to ensure table is fully initialized
@@ -488,7 +482,7 @@ onMounted(() => {
       console.log('🔄 Table columns available:', table.getAllColumns().map(c => c.id));
     });
   }
-  
+
   console.log('🔄 Final params:', params.value);
 
   // Load data with initial params
@@ -567,16 +561,16 @@ watch(
 
       // Handle all query parameters as potential column filters
       const newColumnFilters: any[] = [];
-      
+
       Object.entries(newQuery).forEach(([key, value]) => {
         if (!['page', 'size', 'sort', 'direction', 'limit'].includes(key) && value) {
           params.value[key] = value;
-          
+
           // Handle date range filters (ending with From/To)
           if (key.endsWith('From') || key.endsWith('To')) {
             const baseKey = key.replace(/From$|To$/, '');
             const existingFilter = newColumnFilters.find(f => f.id === baseKey);
-            
+
             if (existingFilter) {
               if (key.endsWith('From')) {
                 existingFilter.value.start = new Date(value as string);
@@ -590,7 +584,7 @@ watch(
               } else {
                 dateRangeValue.end = new Date(value as string);
               }
-              
+
               newColumnFilters.push({
                 id: baseKey,
                 value: dateRangeValue,
@@ -613,7 +607,7 @@ watch(
           }
         }
       });
-      
+
       // Apply filters after table is ready (same as onMounted)
       if (newColumnFilters.length > 0) {
         nextTick(() => {
@@ -628,7 +622,7 @@ watch(
       loadData();
     }
   },
-  { deep: true }
+  { deep: true },
 );
 
 // Expose table instance and data

@@ -16,7 +16,6 @@
           emptyMessage="구성원이 없습니다"
           emptyDescription="새 구성원을 추가하거나 검색 조건을 변경해보세요"
           storageKey="employee-table-visibility"
-          @rowClick="onViewEmployee"
         >
           <template #filters="{ table }">
             <DataTableFacetedFilter
@@ -312,7 +311,7 @@ const columns: ColumnDef<EmployeeSearch>[] = [
       }
 
       return h('div', { class: 'flex flex-col w-32' }, [
-        h(TruncatedCell, { text: row.getValue('name'), maxWidth: '8rem', className: 'font-medium' }),
+        h(TruncatedCell, { text: String(row.getValue('name') ?? ''), maxWidth: '8rem', className: 'font-medium' }),
         h(TruncatedCell, {
           text: tenureText,
           maxWidth: '8rem',
@@ -322,11 +321,12 @@ const columns: ColumnDef<EmployeeSearch>[] = [
     },
     enableHiding: true,
     size: 140,
+    meta: { skeleton: 'title-subtitle' },
   },
   {
     accessorKey: 'teamName',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '부서' }),
-    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('teamName'), maxWidth: '8rem' }),
+    cell: ({ row }) => h(TruncatedCell, { text: String(row.getValue('teamName') ?? ''), maxWidth: '8rem' }),
     enableHiding: true,
     size: 140,
   },
@@ -334,7 +334,7 @@ const columns: ColumnDef<EmployeeSearch>[] = [
     accessorKey: 'departmentId',
     header: () => null,
     cell: () => null,
-    filterFn: (row, id, value) => {
+    filterFn: (row, _id, value) => {
       return value.includes(row.original.departmentId?.toString() || '');
     },
     enableHiding: false,
@@ -347,9 +347,13 @@ const columns: ColumnDef<EmployeeSearch>[] = [
   {
     accessorKey: 'rank',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '직급' }),
-    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('rank'), maxWidth: '5rem', className: 'text-center' }),
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
+    cell: ({ row }) => h(TruncatedCell, {
+      text: String(row.getValue('rank') ?? ''),
+      maxWidth: '5rem',
+      className: 'text-left',
+    }),
+    filterFn: (row, _id, value) => {
+      return value.includes(row.getValue('rank'));
     },
     enableHiding: true,
     size: 100,
@@ -357,16 +361,24 @@ const columns: ColumnDef<EmployeeSearch>[] = [
   {
     accessorKey: 'joinDate',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '입사일' }),
-    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('joinDate'), maxWidth: '7rem', className: 'text-center' }),
+    cell: ({ row }) => h(TruncatedCell, {
+      text: String(row.getValue('joinDate') ?? ''),
+      maxWidth: '7rem',
+      className: 'text-left',
+    }),
     enableHiding: true,
     size: 120,
   },
   {
     accessorKey: 'grade',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '등급' }),
-    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('grade'), maxWidth: '4rem', className: 'text-center' }),
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
+    cell: ({ row }) => h(TruncatedCell, {
+      text: String(row.getValue('grade') ?? ''),
+      maxWidth: '4rem',
+      className: 'text-left',
+    }),
+    filterFn: (row, _id, value) => {
+      return value.includes(row.getValue('grade'));
     },
     enableHiding: true,
     size: 80,
@@ -374,9 +386,13 @@ const columns: ColumnDef<EmployeeSearch>[] = [
   {
     accessorKey: 'type',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '유형' }),
-    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('type'), maxWidth: '5rem', className: 'text-center' }),
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
+    cell: ({ row }) => h(TruncatedCell, {
+      text: String(row.getValue('type') ?? ''),
+      maxWidth: '5rem',
+      className: 'text-left',
+    }),
+    filterFn: (row, _id, value) => {
+      return value.includes(row.getValue('type'));
     },
     enableHiding: true,
     size: 100,

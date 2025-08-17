@@ -1,14 +1,14 @@
 <template>
-  <div v-if="!column.getCanSort()" class="flex items-center space-x-2">
+  <div v-if="!column.getCanSort()" :class="nonSortableClass">
     <span>{{ title }}</span>
   </div>
-  
+
   <DropdownMenu v-else>
     <DropdownMenuTrigger as-child>
       <Button
         variant="ghost"
         size="sm"
-        class="-ml-3 h-8 data-[state=open]:bg-accent"
+        :class="buttonClass"
       >
         <span>{{ title }}</span>
         <template v-if="column.getIsSorted() === 'desc'">
@@ -49,11 +49,27 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { computed } from 'vue';
 
 interface Props {
   column: Column<any>;
   title: string;
+  align?: 'left' | 'center' | 'right';
 }
 
-defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  align: 'left',
+});
+
+const nonSortableClass = computed(() => {
+  if (props.align === 'right') return 'w-full flex items-center justify-end space-x-2 text-right';
+  if (props.align === 'center') return 'w-full flex items-center justify-center space-x-2 text-center';
+  return 'flex items-center space-x-2';
+});
+
+const buttonClass = computed(() => {
+  if (props.align === 'right') return 'h-8 w-full justify-end pr-2 data-[state=open]:bg-accent';
+  if (props.align === 'center') return 'h-8 w-full justify-center data-[state=open]:bg-accent';
+  return '-ml-3 h-8 data-[state=open]:bg-accent';
+});
 </script>

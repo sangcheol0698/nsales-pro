@@ -381,6 +381,20 @@ const routes = [
       ],
     },
   },
+  {
+    path: '/notifications',
+    name: 'notifications',
+    component: () => import('@/features/notification/views/NotificationsView.vue'),
+    meta: {
+      menu: true,
+      activeIndex: 7,
+      title: '알림',
+      breadcrumbs: [
+        { title: '대시보드', disabled: false, to: '/' },
+        { title: '알림', disabled: true },
+      ],
+    },
+  },
 ];
 
 const router = createRouter({
@@ -400,7 +414,6 @@ router.beforeEach((to, _from, next) => {
     // 로그인 페이지로 리다이렉트
     next({ name: 'login' });
   } else {
-    // 그 외의 경우 정상적으로 라우팅
     next();
   }
 });

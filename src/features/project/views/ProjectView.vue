@@ -113,6 +113,12 @@
       @success="handleUploadSuccess"
       @error="handleUploadError"
     />
+
+    <!-- 프로젝트 추가 다이얼로그 -->
+    <ProjectAddDialog
+      v-model:open="addDialogOpen"
+      @success="handleProjectCreateSuccess"
+    />
   </SidebarLayout>
 </template>
 
@@ -124,7 +130,9 @@ import { container } from 'tsyringe';
 import ProjectRepository from '@/features/project/repository/ProjectRepository.ts';
 import ProjectSearch from '@/features/project/entity/ProjectSearch.ts';
 import ProjectStats from '@/features/project/entity/ProjectStats.ts';
+import ProjectCreate from '@/features/project/entity/ProjectCreate.ts';
 import PageResponse from '@/core/common/PageResponse.ts';
+import ProjectAddDialog from '@/features/project/components/ProjectAddDialog.vue';
 import { SidebarLayout } from '@/components/layout';
 import {
   DataTableColumnHeader,
@@ -172,15 +180,18 @@ const projectStats = ref({
 // 엑셀 업로드 상태
 const uploadDialogOpen = ref(false);
 
+// 프로젝트 추가 다이얼로그 상태
+const addDialogOpen = ref(false);
+
 // 날짜 필터 상태
-const searchType = ref('시작일자');
+const searchType = ref('계약일자');
 const dateRange = ref<{ start?: Date; end?: Date } | null>(null);
 
 // 날짜 검색 유형 옵션
 const searchTypeOptions = [
+  { label: '계약일자', value: '계약일자' },
   { label: '시작일자', value: '시작일자' },
   { label: '종료일자', value: '종료일자' },
-  { label: '계약일자', value: '계약일자' },
 ];
 
 // 요약 카드 구성
@@ -464,10 +475,10 @@ async function fetchProjects(params: Record<string, any>): Promise<PageResponse<
 // 테이블 필터에서 UI 상태 복원
 function restoreUIStateFromTable() {
   if (!tableRef.value?.table) return;
-  
+
   const table = tableRef.value.table;
   const columnFilters = table.getState().columnFilters;
-  
+
   // dateRange 필터 복원
   const dateRangeFilter = columnFilters.find((f: any) => f.id === 'dateRange');
   if (dateRangeFilter && dateRangeFilter.value) {
@@ -476,14 +487,14 @@ function restoreUIStateFromTable() {
     // 필터가 없으면 초기화
     dateRange.value = null;
   }
-  
+
   // searchType 필터 복원
   const searchTypeFilter = columnFilters.find((f: any) => f.id === 'searchType');
   if (searchTypeFilter && searchTypeFilter.value) {
     searchType.value = searchTypeFilter.value;
   } else {
     // 필터가 없으면 기본값으로 초기화
-    searchType.value = '시작일자';
+    searchType.value = '계약일자';
   }
 }
 
@@ -503,7 +514,7 @@ watch(() => tableRef.value?.table?.getState().columnFilters, () => {
 // 컴포넌트 마운트 시 통계 데이터 로드
 onMounted(() => {
   fetchProjectStats();
-  
+
   // 테이블이 준비되면 UI 상태 복원
   nextTick(() => {
     setTimeout(() => {
@@ -520,10 +531,7 @@ function onRowClick(row: ProjectSearch) {
 
 // Action handlers
 function onAddProject() {
-  toast.info('프로젝트 추가', {
-    description: '프로젝트 추가 기능이 곧 제공될 예정입니다.',
-    position: 'bottom-right',
-  });
+  addDialogOpen.value = true;
 }
 
 function onViewProject(project: ProjectSearch) {
@@ -664,6 +672,31 @@ function handleDownloadError(error: string) {
     description: error,
     position: 'bottom-right',
   });
+}
+
+// 프로젝트 생성 성공 핸들러
+async function handleProjectCreateSuccess(project: ProjectCreate) {
+  try {
+    await PROJECT_REPOSITORY.createProject(project);
+
+    toast.success('프로젝트 생성 완료', {
+      description: `${project.name} 프로젝트가 성공적으로 생성되었습니다.`,
+      position: 'bottom-right',
+    });
+
+    // 다이얼로그 닫기
+    addDialogOpen.value = false;
+
+    // 통계 및 테이블 데이터 새로고침
+    fetchProjectStats();
+    // 테이블 새로고침은 DataTableWithUrl에서 자동으로 처리됨
+  } catch (error) {
+    console.error('Project creation error:', error);
+    toast.error('프로젝트 생성 실패', {
+      description: '프로젝트 생성 중 오류가 발생했습니다. 다시 시도해주세요.',
+      position: 'bottom-right',
+    });
+  }
 }
 
 // API용 날짜 포맷팅 함수

@@ -53,7 +53,7 @@ export function useDepartments() {
   const departmentOptions = computed(() => 
     departments.value.map(dept => ({
       label: dept.name,
-      value: dept.id.toString(),
+      value: dept.id, // 숫자 타입 유지
       icon: Users, // You may want to import this or make it configurable
     }))
   );

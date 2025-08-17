@@ -2,6 +2,7 @@ import HttpRepository from '@/core/http/HttpRepository.ts';
 import { inject, singleton } from 'tsyringe';
 import ProjectSearch from '@/features/project/entity/ProjectSearch.ts';
 import ProjectStats from '@/features/project/entity/ProjectStats.ts';
+import ProjectCreate from '@/features/project/entity/ProjectCreate.ts';
 import PageResponse from '@/core/common/PageResponse.ts';
 import { createExcelFormData, downloadBlob, generateExcelFilename, extractFilenameFromResponse } from '@/core/utils/ExcelUtils.ts';
 
@@ -34,6 +35,14 @@ export default class ProjectRepository {
     });
 
     return ProjectSearch.fromResponse(response);
+  }
+
+  // 프로젝트 생성
+  public async createProject(project: ProjectCreate): Promise<void> {
+    await this.httpRepository.post({
+      path: '/api/v1/projects',
+      data: project.toRequest(),
+    });
   }
 
   // 프로젝트 통계 조회

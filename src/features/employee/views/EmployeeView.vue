@@ -44,10 +44,10 @@
               :options="typeOptions"
             />
             <DataTableFacetedFilter
-              v-if="table.getColumn('departmentId') && departmentOptions.length > 0"
+              v-if="table.getColumn('departmentId') && departmentFilterOptions.length > 0"
               :column="table.getColumn('departmentId')"
               title="부서"
-              :options="departmentOptions"
+              :options="departmentFilterOptions"
             />
 
             <!-- 조직도 기반 부서 선택 버튼 -->
@@ -156,6 +156,11 @@ import { Award, Clock, Star, TrendingUp, Upload, User, UserCheck, UserPlus, User
 const toast = useToast();
 const EMPLOYEE_REPOSITORY = container.resolve(EmployeeRepository);
 const { departmentOptions, fetchDepartments } = useDepartments();
+
+// 부서 필터 옵션: value를 문자열로 매핑하여 필터 UI와 동기화되도록 함
+const departmentFilterOptions = computed(() =>
+  departmentOptions.value.map((opt: any) => ({ ...opt, value: String(opt.value) })),
+);
 
 // 요약 카드 데이터
 const employeeStats = ref({

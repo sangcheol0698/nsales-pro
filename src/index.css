@@ -53,6 +53,38 @@
     --color-sidebar-ring: hsl(var(--sidebar-ring));
     --animate-accordion-down: accordion-down 0.2s ease-out;
     --animate-accordion-up: accordion-up 0.2s ease-out;
+  @keyframes accordion-down {
+  from {
+    height: 0;
+        }
+  to {
+    height: var(--reka-accordion-content-height);
+        }
+    }
+  @keyframes accordion-up {
+  from {
+    height: var(--reka-accordion-content-height);
+        }
+  to {
+    height: 0;
+        }
+    }
+  @keyframes accordion-down {
+  from {
+    height: 0;
+        }
+  to {
+    height: var(--reka-accordion-content-height);
+        }
+    }
+  @keyframes accordion-up {
+  from {
+    height: var(--reka-accordion-content-height);
+        }
+  to {
+    height: 0;
+        }
+    }
 }
 
 @layer base {
@@ -213,4 +245,34 @@
 /* Sidebar 메뉴 기본 텍스트 색상 */
 [data-sidebar="menu-button"] {
     color: hsl(var(--sidebar-foreground)) !important;
+}
+
+/* 폼 필수값 스타일 - 전역 적용 */
+.form-required-asterisk {
+    @apply text-red-500 font-medium;
+}
+
+/* 폼 에러 메시지 스타일 - 전역 적용 */
+.form-error-message {
+    @apply text-red-500 text-sm mt-1;
+}
+
+/* FormLabel에서 * 표시 빨간색으로 */
+[data-slot="label"] span {
+    @apply text-red-500;
+}
+
+/* FormMessage (에러 메시지) 빨간색으로 */
+[data-slot="message"] {
+    @apply text-red-500;
+}
+
+/* FormLabel 가시성 보장 - 라이트/다크 모드 모두 */
+[data-slot="form-label"] {
+    @apply text-foreground;
+}
+
+/* 에러 상태의 FormLabel도 기본 foreground 색상 유지 */
+[data-slot="form-label"][data-error="true"] {
+    @apply text-foreground;
 }

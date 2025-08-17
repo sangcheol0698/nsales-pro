@@ -8,7 +8,12 @@ import babel from 'vite-plugin-babel';
 // Vite configuration
 const viteConfig = defineConfig({
   plugins: [
-    vue(), 
+    vue({
+      script: {
+        defineModel: true,
+        propsDestructure: true
+      }
+    }), 
     tailwindcss(),
     babel({
       include: ['src/**/*.ts'],

@@ -23,6 +23,18 @@
               title="등급"
               :options="gradeOptions"
             />
+            <DataTableFacetedFilter
+              v-if="table.getColumn('ceoName') && ceoNameOptions.length > 0"
+              :column="table.getColumn('ceoName')"
+              title="대표자"
+              :options="ceoNameOptions"
+            />
+            <DataTableFacetedFilter
+              v-if="table.getColumn('salesRepName') && salesRepNameOptions.length > 0"
+              :column="table.getColumn('salesRepName')"
+              title="영업대표"
+              :options="salesRepNameOptions"
+            />
           </template>
 
           <template #actions="{ table }">
@@ -104,6 +116,7 @@ import {
   ExcelUploadDialog,
   ExcelDownloadButton,
   MobileActionDropdown,
+  TruncatedCell,
 } from '@/components/business';
 import { useToast } from '@/core/composables';
 
@@ -183,6 +196,28 @@ const gradeOptions = [
   { label: 'E등급', value: 'E', icon: Circle },
 ];
 
+// CEO 이름 및 영업대표 이름은 동적으로 로드된 데이터에서 추출
+const partnerData = ref<PartnerSearch[]>([]);
+
+// 동적으로 계산되는 CEO 및 영업대표 옵션
+const ceoNameOptions = computed(() => {
+  const uniqueCeoNames = [...new Set(partnerData.value.map(p => p.ceoName).filter(Boolean))];
+  return uniqueCeoNames.map(name => ({
+    label: name,
+    value: name,
+    icon: Users,
+  }));
+});
+
+const salesRepNameOptions = computed(() => {
+  const uniqueSalesRepNames = [...new Set(partnerData.value.map(p => p.salesRepName).filter(Boolean))];
+  return uniqueSalesRepNames.map(name => ({
+    label: name,
+    value: name,
+    icon: Users,
+  }));
+});
+
 const columns: ColumnDef<PartnerSearch>[] = [
   {
     id: 'select',
@@ -207,36 +242,47 @@ const columns: ColumnDef<PartnerSearch>[] = [
     accessorKey: 'name',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '협력사명' }),
     cell: ({ row }) => {
-      return h('div', { class: 'flex flex-col' }, [
-        h('span', { class: 'font-medium' }, row.getValue('name') || '-'),
-        h('span', { class: 'text-xs text-muted-foreground' }, row.original.address || ''),
+      return h('div', { class: 'flex flex-col w-48' }, [
+        h(TruncatedCell, { text: row.getValue('name'), maxWidth: '12rem', className: 'font-medium' }),
+        h(TruncatedCell, { text: row.original.address, maxWidth: '12rem', className: 'text-xs text-muted-foreground' }),
       ]);
     },
     enableHiding: true,
+    size: 200,
   },
   {
     accessorKey: 'ceoName',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '대표자' }),
-    cell: ({ row }) => h('div', {}, row.getValue('ceoName') || '-'),
+    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('ceoName'), maxWidth: '6rem' }),
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id));
+    },
     enableHiding: true,
+    size: 100,
   },
   {
     accessorKey: 'salesRepName',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '영업대표' }),
-    cell: ({ row }) => h('div', {}, row.getValue('salesRepName') || '-'),
+    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('salesRepName'), maxWidth: '6rem' }),
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id));
+    },
     enableHiding: true,
+    size: 100,
   },
   {
     accessorKey: 'salesRepPhone',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '영업대표 연락처' }),
-    cell: ({ row }) => h('div', {}, row.getValue('salesRepPhone') || '-'),
+    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('salesRepPhone'), maxWidth: '8rem', className: 'text-center font-mono' }),
     enableHiding: true,
+    size: 140,
   },
   {
     accessorKey: 'salesRepEmail',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '영업대표 이메일' }),
-    cell: ({ row }) => h('div', {}, row.getValue('salesRepEmail') || '-'),
+    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('salesRepEmail'), maxWidth: '10rem', className: 'font-mono' }),
     enableHiding: true,
+    size: 180,
   },
   {
     accessorKey: 'grade',
@@ -321,6 +367,17 @@ async function fetchPartners(params: Record<string, any>): Promise<PageResponse<
     console.log('Fetching partners with params:', params);
     const response = await PARTNER_REPOSITORY.getPartners(params);
     console.log('Partners loaded:', response.content);
+    
+    // 필터 옵션을 위해 모든 파트너 데이터를 저장
+    // 페이지네이션된 데이터이므로 전체 데이터는 별도 요청이 필요하지만, 
+    // 현재 페이지의 데이터라도 필터 옵션에 포함
+    if (response.content && response.content.length > 0) {
+      // 기존 데이터와 새 데이터를 합쳐서 중복 제거
+      const existingIds = new Set(partnerData.value.map(p => p.id));
+      const newPartners = response.content.filter(p => !existingIds.has(p.id));
+      partnerData.value = [...partnerData.value, ...newPartners];
+    }
+    
     return response;
   } catch (error) {
     console.error('Error loading partners:', error);
@@ -332,9 +389,23 @@ async function fetchPartners(params: Record<string, any>): Promise<PageResponse<
   }
 }
 
-// 컴포넌트 마운트 시 통계 데이터 로드
+// 필터 옵션용 전체 파트너 데이터 로드
+async function loadAllPartnersForFilters() {
+  try {
+    // 필터 옵션을 위해 전체 데이터를 한 번에 로드 (size=1000으로 충분히 큰 값)
+    const response = await PARTNER_REPOSITORY.getPartners({ size: 1000, page: 0 });
+    partnerData.value = response.content || [];
+  } catch (error) {
+    console.error('Error loading partners for filters:', error);
+    // 에러가 발생해도 필터는 계속 작동하도록 빈 배열 유지
+    partnerData.value = [];
+  }
+}
+
+// 컴포넌트 마운트 시 데이터 로드
 onMounted(() => {
   fetchPartnerStats();
+  loadAllPartnersForFilters();
 });
 
 // Action handlers

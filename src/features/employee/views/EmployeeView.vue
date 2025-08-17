@@ -30,6 +30,24 @@
               title="직급"
               :options="rankOptions"
             />
+            <DataTableFacetedFilter
+              v-if="table.getColumn('grade')"
+              :column="table.getColumn('grade')"
+              title="등급"
+              :options="gradeOptions"
+            />
+            <DataTableFacetedFilter
+              v-if="table.getColumn('type')"
+              :column="table.getColumn('type')"
+              title="유형"
+              :options="typeOptions"
+            />
+            <DataTableFacetedFilter
+              v-if="table.getColumn('departmentId') && departmentOptions.length > 0"
+              :column="table.getColumn('departmentId')"
+              title="부서"
+              :options="departmentOptions"
+            />
           </template>
 
           <template #actions="{ table }">
@@ -113,8 +131,9 @@ import {
   ExcelUploadDialog,
   ExcelDownloadButton,
   MobileActionDropdown,
+  TruncatedCell,
 } from '@/components/business';
-import { useToast } from '@/core/composables';
+import { useToast, useDepartments } from '@/core/composables';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -127,12 +146,15 @@ import {
   Calendar,
   TrendingUp,
   Award,
-  Upload
+  Upload,
+  Star,
+  User
 } from 'lucide-vue-next';
 import { computed, ref, onMounted } from 'vue';
 
 const toast = useToast();
 const EMPLOYEE_REPOSITORY = container.resolve(EmployeeRepository);
+const { departmentOptions, fetchDepartments } = useDepartments();
 
 // 요약 카드 데이터
 const employeeStats = ref({
@@ -201,6 +223,21 @@ const rankOptions = [
   { label: '사장', value: '사장' },
 ];
 
+const gradeOptions = [
+  { label: '초급', value: '초급', icon: Star },
+  { label: '중급', value: '중급', icon: Star },
+  { label: '고급', value: '고급', icon: Star },
+  { label: '특급', value: '특급', icon: Star },
+];
+
+const typeOptions = [
+  { label: '정직원', value: '정직원', icon: User },
+  { label: '프리랜서', value: '프리랜서', icon: UserCheck },
+  { label: '외주', value: '외주', icon: Users },
+];
+
+// departmentOptions는 이제 useDepartments composable에서 제공됨
+
 const columns: ColumnDef<EmployeeSearch>[] = [
   {
     id: 'select',
@@ -225,33 +262,115 @@ const columns: ColumnDef<EmployeeSearch>[] = [
     accessorKey: 'name',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '이름' }),
     cell: ({ row }) => {
-      return h('div', { class: 'flex flex-col' }, [
-        h('span', { class: 'font-medium' }, row.getValue('name') || '-'),
-        h('span', { class: 'text-xs text-muted-foreground' }, row.original.code || ''),
+      const joinDate = new Date(row.original.joinDate);
+      const leaveDate = row.original.leaveDate ? new Date(row.original.leaveDate) : null;
+      const today = new Date();
+      
+      let tenureText = '';
+      
+      if (leaveDate) {
+        // 퇴사한 경우
+        const workingTime = leaveDate.getTime() - joinDate.getTime();
+        const workingDays = Math.floor(workingTime / (1000 * 60 * 60 * 24));
+        
+        if (workingDays < 365) {
+          tenureText = `근무 ${workingDays}일`;
+        } else {
+          const years = Math.floor(workingDays / 365);
+          const months = Math.floor((workingDays % 365) / 30);
+          if (months > 0) {
+            tenureText = `근무 ${years}년 ${months}개월`;
+          } else {
+            tenureText = `근무 ${years}년`;
+          }
+        }
+      } else {
+        // 재직 중인 경우
+        const diffTime = today.getTime() - joinDate.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 365) {
+          tenureText = `재직 ${diffDays}일`;
+        } else {
+          const years = Math.floor(diffDays / 365);
+          const months = Math.floor((diffDays % 365) / 30);
+          if (months > 0) {
+            tenureText = `재직 ${years}년 ${months}개월`;
+          } else {
+            tenureText = `재직 ${years}년`;
+          }
+        }
+      }
+      
+      return h('div', { class: 'flex flex-col w-32' }, [
+        h(TruncatedCell, { text: row.getValue('name'), maxWidth: '8rem', className: 'font-medium' }),
+        h(TruncatedCell, { 
+          text: tenureText, 
+          maxWidth: '8rem', 
+          className: `text-xs ${leaveDate ? 'text-gray-500' : 'text-muted-foreground'}` 
+        }),
       ]);
     },
     enableHiding: true,
+    size: 140,
   },
   {
     accessorKey: 'teamName',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '부서' }),
-    cell: ({ row }) => h('div', {}, row.getValue('teamName') || '-'),
+    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('teamName'), maxWidth: '8rem' }),
     enableHiding: true,
+    size: 140,
+  },
+  {
+    accessorKey: 'departmentId',
+    header: () => null,
+    cell: () => null,
+    filterFn: (row, id, value) => {
+      return value.includes(row.original.departmentId?.toString() || '');
+    },
+    enableHiding: false,
+    enableSorting: false,
+    size: 0,
+    meta: {
+      isFilterOnly: true, // 필터링 전용 컬럼 표시
+    },
   },
   {
     accessorKey: 'rank',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '직급' }),
-    cell: ({ row }) => h('div', {}, row.getValue('rank') || '-'),
+    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('rank'), maxWidth: '5rem', className: 'text-center' }),
     filterFn: (row, id, value) => {
       return value.includes(row.getValue(id));
     },
     enableHiding: true,
+    size: 100,
   },
   {
     accessorKey: 'joinDate',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '입사일' }),
-    cell: ({ row }) => h('div', {}, row.getValue('joinDate') || '-'),
+    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('joinDate'), maxWidth: '7rem', className: 'text-center' }),
     enableHiding: true,
+    size: 120,
+  },
+  {
+    accessorKey: 'grade',
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '등급' }),
+    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('grade'), maxWidth: '4rem', className: 'text-center' }),
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id));
+    },
+    enableHiding: true,
+    size: 80,
+  },
+  {
+    accessorKey: 'type',
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '유형' }),
+    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('type'), maxWidth: '5rem', className: 'text-center' }),
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id));
+    },
+    enableHiding: true,
+    size: 100,
   },
   {
     accessorKey: 'status',
@@ -293,6 +412,10 @@ function getColumnLabel(columnId: string): string {
       return '부서';
     case 'rank':
       return '직급';
+    case 'grade':
+      return '등급';
+    case 'type':
+      return '유형';
     case 'joinDate':
       return '입사일';
     case 'status':
@@ -303,6 +426,8 @@ function getColumnLabel(columnId: string): string {
       return columnId;
   }
 }
+
+// fetchDepartments는 이제 useDepartments composable에서 제공됨
 
 // Function to fetch employee statistics
 async function fetchEmployeeStats() {
@@ -348,9 +473,10 @@ async function fetchEmployees(params: Record<string, any>): Promise<PageResponse
   }
 }
 
-// 컴포넌트 마운트 시 통계 데이터 로드
+// 컴포넌트 마운트 시 데이터 로드
 onMounted(() => {
   fetchEmployeeStats();
+  fetchDepartments();
 });
 
 // Action handlers

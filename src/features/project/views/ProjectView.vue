@@ -4,9 +4,10 @@
       <div class="w-full">
         <!-- 요약 카드 -->
         <SummaryCards :cards="summaryCards" />
-        
+
         <!-- 데이터 테이블 -->
         <DataTableWithUrl
+          ref="tableRef"
           :columns="columns"
           :fetchData="fetchProjects"
           searchPlaceholder="프로젝트 검색..."
@@ -18,6 +19,29 @@
           @rowClick="onRowClick"
         >
           <template #filters="{ table }">
+            <!-- 날짜 검색 유형 선택 -->
+            <Select v-model="searchType">
+              <SelectTrigger class="w-32 h-8">
+                <SelectValue placeholder="날짜 유형" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="option in searchTypeOptions"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
+            <!-- 날짜 범위 필터 -->
+            <DateRangeFilter
+              v-model="dateRange"
+              placeholder="날짜 범위 선택"
+              @change="handleDateRangeChange"
+            />
+
             <DataTableFacetedFilter
               v-if="table.getColumn('type')"
               :column="table.getColumn('type')"
@@ -43,7 +67,7 @@
                 @upload-excel="openUploadDialog"
                 @add-item="onAddProject"
               />
-              
+
               <!-- 데스크톱: 개별 버튼들 -->
               <div class="hidden md:flex items-center gap-2">
                 <!-- 엑셀 다운로드 버튼 -->
@@ -55,7 +79,7 @@
                   @download-complete="handleDownloadComplete"
                   @download-error="handleDownloadError"
                 />
-                
+
                 <!-- 엑셀 업로드 버튼 -->
                 <Button
                   variant="outline"
@@ -94,7 +118,7 @@
 
 <script setup lang="ts">
 import type { ColumnDef } from '@tanstack/vue-table';
-import { h } from 'vue';
+import { computed, h, nextTick, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { container } from 'tsyringe';
 import ProjectRepository from '@/features/project/repository/ProjectRepository.ts';
@@ -107,29 +131,31 @@ import {
   DataTableFacetedFilter,
   DataTableRowActions,
   DataTableWithUrl,
+  DateRangeFilter,
+  ExcelDownloadButton,
+  ExcelUploadDialog,
+  MobileActionDropdown,
   StatusBadge,
   SummaryCards,
-  ExcelUploadDialog,
-  ExcelDownloadButton,
-  MobileActionDropdown,
+  TruncatedCell,
 } from '@/components/business';
 import { useToast } from '@/core/composables';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { 
-  Briefcase, 
-  CalendarClock, 
-  CheckCircle, 
-  Clock, 
-  Factory, 
-  Plus,
-  FolderOpen,
-  TrendingUp,
+import {
+  Briefcase,
+  CalendarClock,
+  CheckCircle,
+  Clock,
   DollarSign,
-  Upload
+  Factory,
+  FolderOpen,
+  Plus,
+  TrendingUp,
+  Upload,
 } from 'lucide-vue-next';
-import { computed, ref, onMounted } from 'vue';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const router = useRouter();
 const toast = useToast();
@@ -145,6 +171,17 @@ const projectStats = ref({
 
 // 엑셀 업로드 상태
 const uploadDialogOpen = ref(false);
+
+// 날짜 필터 상태
+const searchType = ref('시작일자');
+const dateRange = ref<{ start?: Date; end?: Date } | null>(null);
+
+// 날짜 검색 유형 옵션
+const searchTypeOptions = [
+  { label: '시작일자', value: '시작일자' },
+  { label: '종료일자', value: '종료일자' },
+  { label: '계약일자', value: '계약일자' },
+];
 
 // 요약 카드 구성
 const summaryCards = computed(() => [
@@ -187,20 +224,20 @@ async function fetchProjectStats() {
   try {
     // 새로운 통계 API 사용
     const stats: ProjectStats = await PROJECT_REPOSITORY.getProjectStats();
-    
+
     projectStats.value.totalProjects = stats.totalProjects;
     projectStats.value.activeProjects = stats.activeProjects;
     projectStats.value.totalValue = stats.totalValue;
     projectStats.value.completionRate = stats.completionRate;
   } catch (error) {
     console.error('Error loading project statistics:', error);
-    
+
     // API 실패 시 가데이터 설정
     projectStats.value.totalProjects = 12; // 가데이터
     projectStats.value.activeProjects = 8; // 가데이터
     projectStats.value.totalValue = 3500000000; // 가데이터
     projectStats.value.completionRate = 85; // 가데이터
-    
+
     toast.error('프로젝트 통계 로드 실패', {
       description: '프로젝트 통계를 불러오는 중 오류가 발생했습니다.',
       position: 'bottom-right',
@@ -244,21 +281,27 @@ const columns: ColumnDef<ProjectSearch>[] = [
     accessorKey: 'name',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '프로젝트' }),
     cell: ({ row }) => {
-      return h('div', { class: 'flex flex-col' }, [
-        h('span', { class: 'font-medium' }, row.getValue('name') || '-'),
-        h('span', { class: 'text-xs text-muted-foreground' }, row.original.code || ''),
+      return h('div', { class: 'flex flex-col w-48' }, [
+        h(TruncatedCell, { text: row.getValue('name'), maxWidth: '12rem', className: 'font-medium' }),
+        h(TruncatedCell, { text: row.original.code, maxWidth: '12rem', className: 'text-xs text-muted-foreground' }),
       ]);
     },
     enableHiding: true,
+    size: 200,
   },
   {
     accessorKey: 'type',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '유형' }),
-    cell: ({ row }) => h('div', { class: 'font-medium' }, row.getValue('type') || '-'),
+    cell: ({ row }) => h(TruncatedCell, {
+      text: row.getValue('type'),
+      maxWidth: '5rem',
+      className: 'font-medium text-center',
+    }),
     filterFn: (row, id, value) => {
       return value.includes(row.getValue(id));
     },
     enableHiding: true,
+    size: 80,
   },
   {
     accessorKey: 'period',
@@ -267,39 +310,49 @@ const columns: ColumnDef<ProjectSearch>[] = [
       const startDate = row.original.startDate || '-';
       const endDate = row.original.endDate || '';
       const separator = startDate !== '-' && endDate ? ' ~ ' : '';
+      const periodText = startDate + separator + endDate;
 
-      return h('div', {}, startDate + separator + endDate);
+      return h(TruncatedCell, { text: periodText, maxWidth: '14rem' });
     },
     enableHiding: true,
+    size: 220,
   },
   {
     accessorKey: 'contractDate',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '계약일' }),
-    cell: ({ row }) => h('div', {}, row.getValue('contractDate') || '-'),
+    cell: ({ row }) => h(TruncatedCell, {
+      text: row.getValue('contractDate'),
+      maxWidth: '7rem',
+      className: 'text-center',
+    }),
     enableHiding: true,
+    size: 120,
   },
   {
     accessorKey: 'contractAmount',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '계약금액' }),
     cell: ({ row }) => {
       const amount = row.getValue('contractAmount') as number;
-      if (!amount) return h('div', {}, '-');
+      const formattedAmount = amount ? amount.toLocaleString() + '원' : '-';
 
-      return h('div', {}, amount.toLocaleString() + '원');
+      return h(TruncatedCell, { text: formattedAmount, maxWidth: '8rem', className: 'text-right' });
     },
     enableHiding: true,
+    size: 140,
   },
   {
     accessorKey: 'mainCompany',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '주관사' }),
-    cell: ({ row }) => h('div', {}, row.getValue('mainCompany') || '-'),
+    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('mainCompany'), maxWidth: '10rem' }),
     enableHiding: true,
+    size: 160,
   },
   {
     accessorKey: 'clientCompany',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '고객사' }),
-    cell: ({ row }) => h('div', {}, row.getValue('clientCompany') || '-'),
+    cell: ({ row }) => h(TruncatedCell, { text: row.getValue('clientCompany'), maxWidth: '10rem' }),
     enableHiding: true,
+    size: 160,
   },
   {
     accessorKey: 'status',
@@ -354,6 +407,43 @@ function getColumnLabel(columnId: string): string {
   }
 }
 
+// 테이블 인스턴스 참조
+const tableRef = ref<any>(null);
+
+// 날짜 범위 변경 핸들러
+function handleDateRangeChange(range: { start?: Date; end?: Date } | null) {
+  dateRange.value = range;
+
+  // 테이블의 컬럼 필터로 날짜 범위 설정
+  if (tableRef.value?.table) {
+    const table = tableRef.value.table;
+
+    // 기존 날짜 관련 필터 제거
+    const currentFilters = table.getState().columnFilters.filter((filter: any) =>
+      !['dateRange', 'searchType'].includes(filter.id),
+    );
+
+    // 새로운 필터 추가
+    const newFilters = [...currentFilters];
+
+    if (range && range.start && range.end) {
+      newFilters.push({
+        id: 'dateRange',
+        value: range,
+      });
+    }
+
+    if (searchType.value) {
+      newFilters.push({
+        id: 'searchType',
+        value: searchType.value,
+      });
+    }
+
+    table.setColumnFilters(newFilters);
+  }
+}
+
 // Function to fetch projects data
 async function fetchProjects(params: Record<string, any>): Promise<PageResponse<ProjectSearch>> {
   try {
@@ -371,9 +461,55 @@ async function fetchProjects(params: Record<string, any>): Promise<PageResponse<
   }
 }
 
+// 테이블 필터에서 UI 상태 복원
+function restoreUIStateFromTable() {
+  if (!tableRef.value?.table) return;
+  
+  const table = tableRef.value.table;
+  const columnFilters = table.getState().columnFilters;
+  
+  // dateRange 필터 복원
+  const dateRangeFilter = columnFilters.find((f: any) => f.id === 'dateRange');
+  if (dateRangeFilter && dateRangeFilter.value) {
+    dateRange.value = dateRangeFilter.value;
+  } else {
+    // 필터가 없으면 초기화
+    dateRange.value = null;
+  }
+  
+  // searchType 필터 복원
+  const searchTypeFilter = columnFilters.find((f: any) => f.id === 'searchType');
+  if (searchTypeFilter && searchTypeFilter.value) {
+    searchType.value = searchTypeFilter.value;
+  } else {
+    // 필터가 없으면 기본값으로 초기화
+    searchType.value = '시작일자';
+  }
+}
+
+// searchType 변경 감지
+watch(searchType, () => {
+  // 날짜 범위가 설정되어 있으면 필터 업데이트
+  if (dateRange.value && tableRef.value?.table) {
+    handleDateRangeChange(dateRange.value);
+  }
+});
+
+// 테이블 필터 변경 감지하여 UI 상태 동기화
+watch(() => tableRef.value?.table?.getState().columnFilters, () => {
+  restoreUIStateFromTable();
+}, { deep: true });
+
 // 컴포넌트 마운트 시 통계 데이터 로드
 onMounted(() => {
   fetchProjectStats();
+  
+  // 테이블이 준비되면 UI 상태 복원
+  nextTick(() => {
+    setTimeout(() => {
+      restoreUIStateFromTable();
+    }, 100);
+  });
 });
 
 function onRowClick(row: ProjectSearch) {
@@ -428,27 +564,37 @@ async function downloadCurrentData(table: any) {
   try {
     const filters = table.getState().columnFilters;
     const search = table.getState().globalFilter;
-    
+
     const params: any = {};
-    
-    // 필터 조건 처리
+
+    // 필터 조건 처리 (DataTableWithUrl과 동일한 로직 사용)
     filters.forEach((filter: any) => {
       if (filter.value !== undefined && filter.value !== null && filter.value !== '') {
         // 배열 형태의 값 처리 (다중 선택 필터)
         if (Array.isArray(filter.value) && filter.value.length > 0) {
-          // 배열의 첫 번째 값만 사용 (백엔드가 단일 값을 받을 때)
-          params[filter.id] = filter.value[0];
-        } else {
+          params[filter.id] = filter.value.join(',');
+        }
+        // 날짜 범위 값 처리 
+        else if (typeof filter.value === 'object' && filter.value.start) {
+          if (filter.id === 'dateRange') {
+            params.startDate = formatDateForAPI(filter.value.start);
+            if (filter.value.end) {
+              params.endDate = formatDateForAPI(filter.value.end);
+            }
+          }
+        }
+        // 일반 값 처리
+        else {
           params[filter.id] = filter.value;
         }
       }
     });
-    
+
     // 검색 조건 추가 (name 필드로 전달)
     if (search) {
       params.name = search;
     }
-    
+
     await PROJECT_REPOSITORY.downloadExcel(params);
   } catch (error) {
     console.error('Excel download error:', error);
@@ -488,7 +634,7 @@ function handleUploadSuccess() {
     description: '프로젝트 정보가 성공적으로 업로드되었습니다.',
     position: 'bottom-right',
   });
-  
+
   fetchProjectStats();
 }
 
@@ -518,6 +664,15 @@ function handleDownloadError(error: string) {
     description: error,
     position: 'bottom-right',
   });
+}
+
+// API용 날짜 포맷팅 함수
+function formatDateForAPI(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 </script>
 

@@ -17,3 +17,5 @@ export { default as SettingsDialog } from './SettingsDialog.vue';
 export { default as ExcelUploadDialog } from './ExcelUploadDialog.vue';
 export { default as ExcelDownloadButton } from './ExcelDownloadButton.vue';
 export { default as MobileActionDropdown } from './MobileActionDropdown.vue';
+export { default as TruncatedCell } from './TruncatedCell.vue';
+export { default as DateRangeFilter } from './DateRangeFilter.vue';

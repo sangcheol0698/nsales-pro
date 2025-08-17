@@ -154,6 +154,7 @@ const table = useVueTable({
   },
   columns: props.columns,
   manualPagination: true,
+  manualFiltering: true, // 서버 사이드 필터링 사용
   getCoreRowModel: getCoreRowModel(),
   getSortedRowModel: getSortedRowModel(),
   getFilteredRowModel: getFilteredRowModel(),
@@ -210,9 +211,17 @@ const table = useVueTable({
         }
         // Handle date range values
         else if (typeof filter.value === 'object' && filter.value.start) {
-          newParams[`${filter.id}From`] = filter.value.start.toISOString().split('T')[0];
-          if (filter.value.end) {
-            newParams[`${filter.id}To`] = filter.value.end.toISOString().split('T')[0]; 
+          // For dateRange filter, use startDate and endDate parameters
+          if (filter.id === 'dateRange') {
+            newParams.startDate = filter.value.start.toISOString().split('T')[0];
+            if (filter.value.end) {
+              newParams.endDate = filter.value.end.toISOString().split('T')[0];
+            }
+          } else {
+            newParams[`${filter.id}From`] = filter.value.start.toISOString().split('T')[0];
+            if (filter.value.end) {
+              newParams[`${filter.id}To`] = filter.value.end.toISOString().split('T')[0]; 
+            }
           }
         }
         // Handle simple string/number values
@@ -289,9 +298,12 @@ function loadData() {
   props
     .fetchData(params.value)
     .then((response: PageResponse<any>) => {
+      console.log('🔄 DataTableWithUrl - loadData response:', response);
+      console.log('🔄 DataTableWithUrl - New data length:', response.content.length);
       data.value = response.content;
       pagination.value.totalPages = response.totalPages;
       pagination.value.totalElements = response.totalElements;
+      console.log('🔄 DataTableWithUrl - Data updated, current data length:', data.value.length);
     })
     .catch((error) => {
       console.error('Error loading data:', error);
@@ -398,8 +410,32 @@ onMounted(() => {
     if (!['page', 'size', 'sort', 'direction', 'limit'].includes(key) && value) {
       params.value[key] = value;
       
-      // Handle date range filters (ending with From/To)
-      if (key.endsWith('From') || key.endsWith('To')) {
+      // Handle date range filters - specific handling for startDate/endDate
+      if (key === 'startDate' || key === 'endDate') {
+        const existingFilter = newColumnFilters.find(f => f.id === 'dateRange');
+        
+        if (existingFilter) {
+          if (key === 'startDate') {
+            existingFilter.value.start = new Date(value as string);
+          } else {
+            existingFilter.value.end = new Date(value as string);
+          }
+        } else {
+          const dateRangeValue: any = {};
+          if (key === 'startDate') {
+            dateRangeValue.start = new Date(value as string);
+          } else {
+            dateRangeValue.end = new Date(value as string);
+          }
+          
+          newColumnFilters.push({
+            id: 'dateRange',
+            value: dateRangeValue,
+          });
+        }
+      }
+      // Handle date range filters (ending with From/To) - for other date filters
+      else if (key.endsWith('From') || key.endsWith('To')) {
         const baseKey = key.replace(/From$|To$/, '');
         const existingFilter = newColumnFilters.find(f => f.id === baseKey);
         

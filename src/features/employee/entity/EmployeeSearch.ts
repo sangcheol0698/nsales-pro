@@ -5,8 +5,12 @@ export default class EmployeeSearch {
   email: string;
   teamName: string;
   rank: string;
-  joinDate: string;
+  grade: string;
+  type: string;
   status: '재직' | '휴직' | '퇴사';
+  joinDate: string;
+  leaveDate?: string;
+  departmentId?: number;
   createdAt: string;
   updatedAt: string;
 
@@ -17,8 +21,12 @@ export default class EmployeeSearch {
     email: string;
     teamName: string;
     rank: string;
-    joinDate: string;
+    grade: string;
+    type: string;
     status: '재직' | '휴직' | '퇴사';
+    joinDate: string;
+    leaveDate?: string;
+    departmentId?: number;
     createdAt: string;
     updatedAt: string;
   }) {
@@ -28,8 +36,12 @@ export default class EmployeeSearch {
     this.email = data.email;
     this.teamName = data.teamName;
     this.rank = data.rank;
-    this.joinDate = data.joinDate;
+    this.grade = data.grade;
+    this.type = data.type;
     this.status = data.status;
+    this.joinDate = data.joinDate;
+    this.leaveDate = data.leaveDate;
+    this.departmentId = data.departmentId;
     this.createdAt = data.createdAt;
     this.updatedAt = data.updatedAt;
   }
@@ -42,8 +54,12 @@ export default class EmployeeSearch {
       email: response.email || '',
       teamName: response.teamName || '',
       rank: response.rank || '',
-      joinDate: response.joinDate || '',
+      grade: response.grade || '',
+      type: response.type || '',
       status: response.status || '재직',
+      joinDate: response.joinDate || '',
+      leaveDate: response.leaveDate,
+      departmentId: response.departmentId,
       createdAt: response.createdAt || '',
       updatedAt: response.updatedAt || '',
     });

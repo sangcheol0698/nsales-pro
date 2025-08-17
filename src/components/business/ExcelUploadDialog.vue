@@ -7,7 +7,7 @@
           {{ description }}
         </DialogDescription>
       </DialogHeader>
-      
+
       <div class="grid gap-4 py-4">
         <!-- 샘플 다운로드 섹션 -->
         <div class="border-2 border-dashed border-gray-200 rounded-lg p-4">
@@ -30,7 +30,17 @@
         </div>
 
         <!-- 파일 업로드 섹션 -->
-        <div class="border-2 border-dashed border-gray-200 rounded-lg p-4">
+        <div
+          ref="dropZoneRef"
+          class="rounded-lg p-4 transition-colors"
+          :class="[
+            'border-2 border-dashed',
+            isDragging ? 'border-blue-400 bg-blue-50' : 'border-gray-200',
+          ]"
+          @dragover.prevent="onDragOver"
+          @dragleave.prevent="onDragLeave"
+          @drop.prevent="onDrop"
+        >
           <div class="text-center">
             <Upload class="mx-auto h-8 w-8 text-gray-400 mb-2" />
             <div class="space-y-2">
@@ -50,7 +60,11 @@
                 <Upload class="h-4 w-4 mr-2" />
                 파일 선택
               </Button>
-              
+
+              <p class="text-xs text-gray-500">
+                또는 이 영역에 파일을 끌어다 놓으세요 (.xlsx, .xls, 최대 10MB)
+              </p>
+
               <!-- 선택된 파일 정보 -->
               <div v-if="selectedFile" class="text-sm text-gray-600">
                 <div class="flex items-center justify-center gap-2">
@@ -80,7 +94,7 @@
             <span>{{ Math.round(uploadProgress) }}%</span>
           </div>
           <div class="w-full bg-gray-200 rounded-full h-2">
-            <div 
+            <div
               class="bg-blue-600 h-2 rounded-full transition-all duration-300"
               :style="{ width: `${uploadProgress}%` }"
             ></div>
@@ -100,8 +114,8 @@
         <Button variant="outline" @click="closeDialog" :disabled="isUploading">
           취소
         </Button>
-        <Button 
-          @click="uploadFile" 
+        <Button
+          @click="uploadFile"
           :disabled="!selectedFile || isUploading"
         >
           <Upload class="h-4 w-4 mr-2" />
@@ -113,7 +127,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed, ref } from 'vue';
 import {
   Dialog,
   DialogContent,
@@ -123,13 +137,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { 
-  Upload, 
-  Download, 
-  FileSpreadsheet, 
-  X, 
-  AlertCircle 
-} from 'lucide-vue-next';
+import { AlertCircle, Download, FileSpreadsheet, Upload, X } from 'lucide-vue-next';
 
 interface Props {
   open: boolean;
@@ -141,7 +149,9 @@ interface Props {
 
 interface Emits {
   (e: 'update:open', value: boolean): void;
+
   (e: 'success'): void;
+
   (e: 'error', error: string): void;
 }
 
@@ -160,6 +170,10 @@ const isDownloading = ref(false);
 const uploadProgress = ref(0);
 const errorMessage = ref('');
 
+// Drag & Drop state
+const dropZoneRef = ref<HTMLElement | null>(null);
+const isDragging = ref(false);
+
 // Computed
 const isOpen = computed({
   get: () => props.open,
@@ -171,31 +185,31 @@ function triggerFileSelect() {
   fileInput.value?.click();
 }
 
+function validateAndSetFile(file: File) {
+  const allowedTypes = [
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel',
+  ];
+
+  if (!allowedTypes.includes(file.type)) {
+    errorMessage.value = '엑셀 파일(.xlsx, .xls)만 업로드 가능합니다.';
+    return false;
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    errorMessage.value = '파일 크기는 10MB를 초과할 수 없습니다.';
+    return false;
+  }
+
+  selectedFile.value = file;
+  errorMessage.value = '';
+  return true;
+}
+
 function handleFileSelect(event: Event) {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
-  
-  if (file) {
-    // 파일 형식 검증
-    const allowedTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel'
-    ];
-    
-    if (!allowedTypes.includes(file.type)) {
-      errorMessage.value = '엑셀 파일(.xlsx, .xls)만 업로드 가능합니다.';
-      return;
-    }
-
-    // 파일 크기 검증 (10MB 제한)
-    if (file.size > 10 * 1024 * 1024) {
-      errorMessage.value = '파일 크기는 10MB를 초과할 수 없습니다.';
-      return;
-    }
-
-    selectedFile.value = file;
-    errorMessage.value = '';
-  }
+  if (file) validateAndSetFile(file);
 }
 
 function clearFile() {
@@ -203,6 +217,23 @@ function clearFile() {
   if (fileInput.value) {
     fileInput.value.value = '';
   }
+}
+
+// Drag & Drop handlers
+function onDragOver() {
+  isDragging.value = true;
+}
+
+function onDragLeave() {
+  isDragging.value = false;
+}
+
+function onDrop(e: DragEvent) {
+  isDragging.value = false;
+  const files = e.dataTransfer?.files;
+  if (!files || files.length === 0) return;
+  const file = files[0];
+  validateAndSetFile(file);
 }
 
 async function uploadFile() {
@@ -216,7 +247,7 @@ async function uploadFile() {
     await props.onUpload(selectedFile.value, (progress) => {
       uploadProgress.value = progress;
     });
-    
+
     emit('success');
     closeDialog();
   } catch (error) {
@@ -253,11 +284,11 @@ function closeDialog() {
 
 function formatFileSize(bytes: number): string {
   if (bytes === 0) return '0 Bytes';
-  
+
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
+
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 </script>

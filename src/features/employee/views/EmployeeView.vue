@@ -4,9 +4,10 @@
       <div class="w-full">
         <!-- 요약 카드 -->
         <SummaryCards :cards="summaryCards" />
-        
+
         <!-- 데이터 테이블 -->
         <DataTableWithUrl
+          ref="tableRef"
           :columns="columns"
           :fetchData="fetchEmployees"
           searchPlaceholder="구성원 검색..."
@@ -48,6 +49,11 @@
               title="부서"
               :options="departmentOptions"
             />
+
+            <!-- 조직도 기반 부서 선택 버튼 -->
+            <Button variant="outline" size="sm" class="h-8" @click="openOrgDialog(table)">
+              부서 선택(조직도)
+            </Button>
           </template>
 
           <template #actions="{ table }">
@@ -63,7 +69,7 @@
                 @upload-salary="() => {}"
                 @add-item="onAddEmployee"
               />
-              
+
               <!-- 데스크톱: 개별 버튼들 -->
               <div class="hidden md:flex items-center gap-2">
                 <!-- 엑셀 다운로드 버튼 -->
@@ -75,7 +81,7 @@
                   @download-complete="handleDownloadComplete"
                   @download-error="handleDownloadError"
                 />
-                
+
                 <!-- 엑셀 업로드 버튼 -->
                 <Button
                   variant="outline"
@@ -109,12 +115,19 @@
       @success="handleUploadSuccess"
       @error="handleUploadError"
     />
+
+    <!-- 조직도 선택 다이얼로그 -->
+    <OrganizationSelectDialog
+      v-model:open="orgDialogOpen"
+      :withMembers="false"
+      @select="handleOrgSelected"
+    />
   </SidebarLayout>
 </template>
 
 <script setup lang="ts">
 import type { ColumnDef } from '@tanstack/vue-table';
-import { h } from 'vue';
+import { computed, h, onMounted, ref } from 'vue';
 import { container } from 'tsyringe';
 import EmployeeRepository from '@/features/employee/repository/EmployeeRepository.ts';
 import EmployeeSearch from '@/features/employee/entity/EmployeeSearch.ts';
@@ -126,31 +139,19 @@ import {
   DataTableFacetedFilter,
   DataTableRowActions,
   DataTableWithUrl,
+  ExcelDownloadButton,
+  ExcelUploadDialog,
+  MobileActionDropdown,
   StatusBadge,
   SummaryCards,
-  ExcelUploadDialog,
-  ExcelDownloadButton,
-  MobileActionDropdown,
   TruncatedCell,
 } from '@/components/business';
-import { useToast, useDepartments } from '@/core/composables';
+import OrganizationSelectDialog from '@/features/organization/components/OrganizationSelectDialog.vue';
+import { useDepartments, useToast } from '@/core/composables';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { 
-  Clock, 
-  UserCheck, 
-  UserPlus, 
-  UserX,
-  Users,
-  Calendar,
-  TrendingUp,
-  Award,
-  Upload,
-  Star,
-  User
-} from 'lucide-vue-next';
-import { computed, ref, onMounted } from 'vue';
+import { Award, Clock, Star, TrendingUp, Upload, User, UserCheck, UserPlus, Users, UserX } from 'lucide-vue-next';
 
 const toast = useToast();
 const EMPLOYEE_REPOSITORY = container.resolve(EmployeeRepository);
@@ -166,6 +167,9 @@ const employeeStats = ref({
 
 // 엑셀 업로드 상태
 const uploadDialogOpen = ref(false);
+// 조직도 선택 상태
+const orgDialogOpen = ref(false);
+const tableRef = ref<any>(null);
 
 // 요약 카드 구성
 const summaryCards = computed(() => [
@@ -265,14 +269,14 @@ const columns: ColumnDef<EmployeeSearch>[] = [
       const joinDate = new Date(row.original.joinDate);
       const leaveDate = row.original.leaveDate ? new Date(row.original.leaveDate) : null;
       const today = new Date();
-      
+
       let tenureText = '';
-      
+
       if (leaveDate) {
         // 퇴사한 경우
         const workingTime = leaveDate.getTime() - joinDate.getTime();
         const workingDays = Math.floor(workingTime / (1000 * 60 * 60 * 24));
-        
+
         if (workingDays < 365) {
           tenureText = `근무 ${workingDays}일`;
         } else {
@@ -288,7 +292,7 @@ const columns: ColumnDef<EmployeeSearch>[] = [
         // 재직 중인 경우
         const diffTime = today.getTime() - joinDate.getTime();
         const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays < 365) {
           tenureText = `재직 ${diffDays}일`;
         } else {
@@ -301,13 +305,13 @@ const columns: ColumnDef<EmployeeSearch>[] = [
           }
         }
       }
-      
+
       return h('div', { class: 'flex flex-col w-32' }, [
         h(TruncatedCell, { text: row.getValue('name'), maxWidth: '8rem', className: 'font-medium' }),
-        h(TruncatedCell, { 
-          text: tenureText, 
-          maxWidth: '8rem', 
-          className: `text-xs ${leaveDate ? 'text-gray-500' : 'text-muted-foreground'}` 
+        h(TruncatedCell, {
+          text: tenureText,
+          maxWidth: '8rem',
+          className: `text-xs ${leaveDate ? 'text-gray-500' : 'text-muted-foreground'}`,
         }),
       ]);
     },
@@ -434,20 +438,20 @@ async function fetchEmployeeStats() {
   try {
     // 새로운 통계 API 사용
     const stats: EmployeeStats = await EMPLOYEE_REPOSITORY.getEmployeeStats();
-    
+
     employeeStats.value.totalEmployees = stats.totalEmployees;
     employeeStats.value.activeEmployees = stats.activeEmployees;
     employeeStats.value.newHires = stats.newHires;
     employeeStats.value.averageTenure = stats.averageTenure;
   } catch (error) {
     console.error('Error loading employee statistics:', error);
-    
+
     // API 실패 시 가데이터 설정
     employeeStats.value.totalEmployees = 25; // 가데이터
     employeeStats.value.activeEmployees = 23; // 가데이터
     employeeStats.value.newHires = 3; // 가데이터
     employeeStats.value.averageTenure = 3.2; // 가데이터 (년 단위)
-    
+
     // 에러 토스트는 개발 중에만 표시 (실제 서비스에서는 제거)
     // toast.error('구성원 통계 로드 실패', {
     //   description: '구성원 통계를 불러오는 중 오류가 발생했습니다.',
@@ -529,9 +533,9 @@ async function downloadCurrentData(table: any) {
     // 현재 테이블의 필터 및 검색 조건을 가져와서 전달
     const filters = table.getState().columnFilters;
     const search = table.getState().globalFilter;
-    
+
     const params: any = {};
-    
+
     // 필터 조건 처리
     filters.forEach((filter: any) => {
       if (filter.value !== undefined && filter.value !== null && filter.value !== '') {
@@ -544,12 +548,12 @@ async function downloadCurrentData(table: any) {
         }
       }
     });
-    
+
     // 검색 조건 추가 (name 필드로 전달)
     if (search) {
       params.name = search;
     }
-    
+
     await EMPLOYEE_REPOSITORY.downloadExcel(params);
   } catch (error) {
     console.error('Excel download error:', error);
@@ -589,7 +593,7 @@ function handleUploadSuccess() {
     description: '구성원 정보가 성공적으로 업로드되었습니다.',
     position: 'bottom-right',
   });
-  
+
   // 통계 및 테이블 데이터 새로고침
   fetchEmployeeStats();
   // 테이블 새로고침은 DataTableWithUrl에서 자동으로 처리됨
@@ -621,6 +625,25 @@ function handleDownloadError(error: string) {
     description: error,
     position: 'bottom-right',
   });
+}
+
+// 조직도 다이얼로그 열기 (filters 슬롯의 table을 보관)
+function openOrgDialog(table: any) {
+  tableRef.value = { table };
+  orgDialogOpen.value = true;
+}
+
+// 조직도에서 부서 선택 시 컬럼 필터에 적용
+function handleOrgSelected(node: { departmentId?: number }) {
+  if (!node?.departmentId) return;
+  const table = tableRef.value?.table;
+  if (!table) return;
+  const currentFilters = table.getState().columnFilters.filter((f: any) => f.id !== 'departmentId');
+  const newFilters = [
+    ...currentFilters,
+    { id: 'departmentId', value: [String(node.departmentId)] },
+  ];
+  table.setColumnFilters(newFilters);
 }
 </script>
 

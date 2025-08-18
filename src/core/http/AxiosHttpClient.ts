@@ -4,6 +4,7 @@ import { singleton } from 'tsyringe';
 import router from '@/core/router';
 import { useToast } from '@/core/composables';
 import { useAuthStore } from '@/core/stores/auth.store';
+import type { ZodTypeAny } from 'zod';
 
 export type HttpRequestConfig = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -11,6 +12,9 @@ export type HttpRequestConfig = {
   params?: any;
   body?: any;
   data?: any;
+  // 선��적 스키마 검증 훅
+  requestSchema?: ZodTypeAny;
+  responseSchema?: ZodTypeAny;
 };
 
 @singleton()
@@ -46,10 +50,10 @@ export default class AxiosHttpClient {
       },
       (error) => {
         return Promise.reject(error);
-      }
+      },
     );
 
-    // 응답 인터셉터
+    // 응답 인터��터
     this.client.interceptors.response.use(
       (response) => {
         return response;
@@ -75,11 +79,20 @@ export default class AxiosHttpClient {
           }
         }
         return Promise.reject(error);
-      }
+      },
     );
   }
 
   public async request(config: HttpRequestConfig) {
+    // 요청 바디 스키마 검증 (옵션)
+    if (config.requestSchema && (config.body ?? config.data)) {
+      const body = config.body ?? config.data;
+      const parsed = config.requestSchema.safeParse(body);
+      if (!parsed.success) {
+        throw HttpError.fromZodError(parsed.error, 'REQUEST_VALIDATION');
+      }
+    }
+
     return this.client
       .request({
         method: config.method,
@@ -88,10 +101,22 @@ export default class AxiosHttpClient {
         data: config.body || config.data,
       })
       .then((response: AxiosResponse) => {
+        // 응답 스키마 검증 (옵션)
+        if (config.responseSchema) {
+          const parsed = config.responseSchema.safeParse(response.data);
+          if (!parsed.success) {
+            throw HttpError.fromZodError(parsed.error, 'RESPONSE_VALIDATION');
+          }
+          return parsed.data;
+        }
         return response.data;
       })
-      .catch((error: AxiosError) => {
-        return Promise.reject(new HttpError(error));
+      .catch((error: unknown) => {
+        // 이미 포장된 HttpError면 그대로 전달
+        if (error instanceof HttpError) {
+          return Promise.reject(error);
+        }
+        return Promise.reject(new HttpError(error as AxiosError));
       });
   }
 

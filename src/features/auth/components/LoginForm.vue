@@ -50,9 +50,9 @@
                   </div>
                 </FormItem>
               </FormField>
-              <Button 
-                class="w-full" 
-                type="submit" 
+              <Button
+                class="w-full"
+                type="submit"
                 :disabled="Object.keys(errors).length > 0"
                 :loading="isLoading"
                 loading-text="로그인 중..."
@@ -72,23 +72,10 @@
 </template>
 
 <script setup lang="ts">
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toTypedSchema } from '@vee-validate/zod';
 import * as z from 'zod';
 import type Login from '@/features/auth/entity/Login.ts';
@@ -112,7 +99,7 @@ const loginSchema = toTypedSchema(
     password: z.string({
       required_error: '비밀번호를 입력해주세요.',
     }),
-  })
+  }),
 );
 
 const toast = useToast();
@@ -145,7 +132,7 @@ const MEMBER_REPOSITORY = container.resolve(MemberRepository);
 async function handleLogin(values: any) {
   try {
     isLoading.value = true;
-    
+
     // 로그인 시도
     await AUTH_REPOSITORY.login(values as Login, remember.value);
 

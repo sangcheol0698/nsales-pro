@@ -5,11 +5,17 @@ import PartnerStats from '@/features/partner/entity/PartnerStats.ts';
 import PartnerCreate from '@/features/partner/entity/PartnerCreate.ts';
 import PartnerUpdate from '@/features/partner/entity/PartnerUpdate.ts';
 import PageResponse from '@/core/common/PageResponse.ts';
-import { createExcelFormData, downloadBlob, generateExcelFilename, extractFilenameFromResponse } from '@/core/utils/ExcelUtils.ts';
+import {
+  createExcelFormData,
+  downloadBlob,
+  extractFilenameFromResponse,
+  generateExcelFilename,
+} from '@/core/utils/ExcelUtils.ts';
 
 @singleton()
 export default class PartnerRepository {
-  constructor(@inject(HttpRepository) private readonly httpRepository: HttpRepository) {}
+  constructor(@inject(HttpRepository) private readonly httpRepository: HttpRepository) {
+  }
 
   public async getPartners(params: object): Promise<PageResponse<PartnerSearch>> {
     const response = await this.httpRepository.get({
@@ -17,8 +23,9 @@ export default class PartnerRepository {
       params: params,
     });
 
-    // Transform the raw content array into PartnerSearch instances
-    const transformedContent = response.content.map((item: any) => PartnerSearch.fromResponse(item));
+    // Transform the raw content array into PartnerSearch instances (방어 처리)
+    const list = Array.isArray(response?.content) ? response.content : [];
+    const transformedContent = list.map((item: any) => PartnerSearch.fromResponse(item));
 
     // Create and return a PageResponse with the transformed content
     return new PageResponse<PartnerSearch>({
@@ -26,7 +33,7 @@ export default class PartnerRepository {
       size: response.size,
       totalPages: response.totalPages,
       totalElements: response.totalElements,
-      content: transformedContent
+      content: transformedContent,
     });
   }
 

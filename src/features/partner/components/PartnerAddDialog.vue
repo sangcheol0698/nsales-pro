@@ -20,17 +20,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { container } from 'tsyringe';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import PartnerForm from './PartnerForm.vue';
 import PartnerCreate from '@/features/partner/entity/PartnerCreate';
 import PartnerRepository from '@/features/partner/repository/PartnerRepository';
 import { useToast } from '@/core/composables';
+import type HttpError from '@/core/http/HttpError.ts';
 
 interface PartnerAddDialogProps {
   open: boolean;
@@ -53,21 +48,21 @@ const handleSubmit = async (partner: PartnerCreate) => {
   try {
     loading.value = true;
     console.log('협력사 생성 요청:', partner);
-    
+
     await PARTNER_REPOSITORY.createPartner(partner);
-    
+
     toast.success('협력사 생성 완료', {
       description: `${partner.name}이(가) 성공적으로 추가되었습니다.`,
       position: 'bottom-right',
     });
-    
+
     emit('success');
     emit('update:open', false);
   } catch (error) {
     console.error('협력사 생성 실패:', error);
-    
+
     toast.error('협력사 생성 실패', {
-      description: '협력사를 생성하는 중 오류가 발생했습니다. 다시 시도해주세요.',
+      description: (error as HttpError).getMessage?.() ?? '협력사를 생성하는 중 오류가 발생했습니다. 다시 시도해주세요.',
       position: 'bottom-right',
     });
   } finally {

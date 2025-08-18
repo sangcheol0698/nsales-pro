@@ -246,6 +246,32 @@ const routes = [
     },
   },
   {
+    path: '/employees/:id',
+    name: 'employeeDetail',
+    component: () => import('@/features/employee/views/EmployeeDetailView.vue'),
+    meta: {
+      menu: false,
+      activeIndex: 1,
+      title: '구성원 상세',
+      breadcrumbs: [
+        {
+          title: '대시보드',
+          disabled: false,
+          to: '/',
+        },
+        {
+          title: '구성원 관리',
+          disabled: false,
+          to: '/employees',
+        },
+        {
+          title: '구성원 상세',
+          disabled: true,
+        },
+      ],
+    },
+  },
+  {
     path: '/partners',
     name: 'partners',
     component: () => import('@/features/partner/views/PartnerView.vue'),
@@ -261,6 +287,32 @@ const routes = [
         },
         {
           title: '협력사 관리',
+          disabled: true,
+        },
+      ],
+    },
+  },
+  {
+    path: '/partners/:id',
+    name: 'partnerDetail',
+    component: () => import('@/features/partner/views/PartnerDetailView.vue'),
+    meta: {
+      menu: false,
+      activeIndex: 2,
+      title: '협력사 상세',
+      breadcrumbs: [
+        {
+          title: '대시보드',
+          disabled: false,
+          to: '/',
+        },
+        {
+          title: '협력사 관리',
+          disabled: false,
+          to: '/partners',
+        },
+        {
+          title: '협력사 상세',
           disabled: true,
         },
       ],
@@ -403,6 +455,11 @@ const router = createRouter({
 });
 
 router.beforeEach((to, _from, next) => {
+  // E2E 테스트용 인증 가드 우회 플래그
+  if (import.meta.env.VITE_E2E_BYPASS_AUTH === 'true') {
+    return next();
+  }
+
   // 인증이 필요하지 않은 경로 목록
   const publicPaths = ['/auths/login', '/auths/register', '/auths/forgot-password', '/auths/initialize'];
 

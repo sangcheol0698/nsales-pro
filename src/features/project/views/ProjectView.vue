@@ -117,6 +117,22 @@
       v-model:open="addDialogOpen"
       @success="handleProjectCreateSuccess"
     />
+
+    <!-- 프로젝트 수정 다이얼로그 -->
+    <ProjectEditDialog
+      v-model:open="editDialogOpen"
+      :loading="editLoading"
+      :project="selectedProject"
+      @submit="handleEditSubmit"
+    />
+
+    <!-- 프로젝트 삭제 다이얼로그 -->
+    <ProjectDeleteDialog
+      v-model:open="deleteDialogOpen"
+      :loading="deleteLoading"
+      :project="selectedProject"
+      @confirm="handleDeleteConfirm"
+    />
   </SidebarLayout>
 </template>
 
@@ -131,6 +147,9 @@ import ProjectStats from '@/features/project/entity/ProjectStats.ts';
 import ProjectCreate from '@/features/project/entity/ProjectCreate.ts';
 import PageResponse from '@/core/common/PageResponse.ts';
 import ProjectAddDialog from '@/features/project/components/ProjectAddDialog.vue';
+import ProjectEditDialog from '@/features/project/components/ProjectEditDialog.vue';
+import ProjectDeleteDialog from '@/features/project/components/ProjectDeleteDialog.vue';
+import ProjectUpdate from '@/features/project/entity/ProjectUpdate.ts';
 import { SidebarLayout } from '@/components/layout';
 import {
   DataTableColumnHeader,
@@ -180,6 +199,13 @@ const uploadDialogOpen = ref(false);
 
 // 프로젝트 추가 다이얼로그 상태
 const addDialogOpen = ref(false);
+// 프로젝트 수정 관련 상태
+const editDialogOpen = ref(false);
+const editLoading = ref(false);
+const selectedProject = ref<ProjectSearch | null>(null);
+// 프로젝트 삭제 관련 상태
+const deleteDialogOpen = ref(false);
+const deleteLoading = ref(false);
 
 // 날짜 필터 상태
 const searchType = ref('계약일자');
@@ -290,17 +316,18 @@ const columns: ColumnDef<ProjectSearch>[] = [
     accessorKey: 'name',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '프로젝트' }),
     cell: ({ row }) => {
-      return h('div', { class: 'flex flex-col w-48' }, [
-        h(TruncatedCell, { text: String(row.getValue('name') ?? ''), maxWidth: '12rem', className: 'font-medium' }),
-        h(TruncatedCell, {
-          text: String(row.original.code ?? ''),
-          maxWidth: '12rem',
-          className: 'text-xs text-muted-foreground',
-        }),
+      return h('div', { class: 'flex flex-col w-96' }, [
+        h('button', { 
+          class: 'font-medium text-left text-primary hover:text-primary/80 hover:underline transition-all duration-200 truncate max-w-96 cursor-pointer',
+          onClick: () => onViewProject(row.original)
+        }, String(row.getValue('name') ?? '')),
+        h('div', {
+          class: 'text-xs text-muted-foreground truncate max-w-96'
+        }, String(row.original.code ?? '')),
       ]);
     },
     enableHiding: true,
-    size: 240,
+    size: 500,
     meta: { skeleton: 'title-subtitle' },
   },
   {
@@ -548,12 +575,20 @@ function onViewProject(project: ProjectSearch) {
   router.push(`/projects/${project.id}`);
 }
 
-function onEditProject(project: ProjectSearch) {
-  console.log('Edit project:', project);
-  toast.info('프로젝트 편집', {
-    description: `${project.name}의 정보를 편집합니다.`,
-    position: 'bottom-right',
-  });
+async function onEditProject(project: ProjectSearch) {
+  try {
+    console.log('Edit project:', project);
+
+    // 선택된 프로젝트 정보를 상태에 저장
+    selectedProject.value = project;
+    editDialogOpen.value = true;
+  } catch (error) {
+    console.error('프로젝트 정보 로드 실패:', error);
+    toast.error('프로젝트 정보 로드 실패', {
+      description: '프로젝트 정보를 불러오는 중 오류가 발생했습니다.',
+      position: 'bottom-right',
+    });
+  }
 }
 
 function onDuplicateProject(project: ProjectSearch) {
@@ -566,11 +601,12 @@ function onDuplicateProject(project: ProjectSearch) {
 
 function onDeleteProject(project: ProjectSearch) {
   console.log('Delete project:', project);
-  toast.warning('프로젝트 삭제', {
-    description: `${project.name}을(를) 삭제하시겠습니까?`,
-    position: 'bottom-right',
-  });
+
+  // 선택된 프로젝트 정보를 상태에 저장
+  selectedProject.value = project;
+  deleteDialogOpen.value = true;
 }
+
 
 // 엑셀 관련 함수들
 function openUploadDialog() {
@@ -715,6 +751,91 @@ function formatDateForAPI(date: Date | string): string {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+// 프로젝트 수정 처리
+async function handleEditSubmit(project: ProjectUpdate) {
+  editLoading.value = true;
+
+  try {
+    console.log('프로젝트 수정 요청:', project);
+
+    await PROJECT_REPOSITORY.updateProject(project);
+
+    toast.success('프로젝트 수정 완료', {
+      description: `${project.name}의 정보가 성공적으로 수정되었습니다.`,
+      position: 'bottom-right',
+    });
+
+    // 다이얼로그 닫기
+    editDialogOpen.value = false;
+    selectedProject.value = null;
+
+    // 통계 새로고침
+    fetchProjectStats();
+
+    // 테이블 데이터 새로고침
+    if (tableRef.value && tableRef.value.loadData) {
+      console.log('프로젝트 수정 완료 - 테이블 새로고침 중...');
+      tableRef.value.loadData();
+    }
+
+  } catch (error: any) {
+    console.error('프로젝트 수정 실패:', error);
+
+    let errorMessage = '프로젝트 수정 중 오류가 발생했습니다.';
+    if (error?.message?.includes('modifiedDateTime')) {
+      errorMessage = '다른 사용자가 이미 수정했습니다. 새로고침 후 다시 시도해주세요.';
+    }
+
+    toast.error('프로젝트 수정 실패', {
+      description: errorMessage,
+      position: 'bottom-right',
+    });
+  } finally {
+    editLoading.value = false;
+  }
+}
+
+// 프로젝트 삭제 처리
+async function handleDeleteConfirm(projectId: number) {
+  deleteLoading.value = true;
+
+  try {
+    console.log('프로젝트 삭제 요청:', projectId);
+
+    const projectName = selectedProject.value?.name || '';
+
+    await PROJECT_REPOSITORY.deleteProject(projectId);
+
+    toast.success('프로젝트 삭제 완료', {
+      description: `${projectName}이(가) 성공적으로 삭제되었습니다.`,
+      position: 'bottom-right',
+    });
+
+    // 다이얼로그 닫기
+    deleteDialogOpen.value = false;
+    selectedProject.value = null;
+
+    // 통계 새로고침
+    fetchProjectStats();
+
+    // 테이블 데이터 새로고침
+    if (tableRef.value && tableRef.value.loadData) {
+      console.log('프로젝트 삭제 완료 - 테이블 새로고침 중...');
+      tableRef.value.loadData();
+    }
+
+  } catch (error: any) {
+    console.error('프로젝트 삭제 실패:', error);
+
+    toast.error('프로젝트 삭제 실패', {
+      description: '프로젝트 삭제 중 오류가 발생했습니다.',
+      position: 'bottom-right',
+    });
+  } finally {
+    deleteLoading.value = false;
+  }
 }
 </script>
 

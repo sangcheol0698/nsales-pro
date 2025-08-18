@@ -148,6 +148,7 @@
 <script setup lang="ts">
 import type { ColumnDef } from '@tanstack/vue-table';
 import { computed, h, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { container } from 'tsyringe';
 import EmployeeRepository from '@/features/employee/repository/EmployeeRepository.ts';
 import EmployeeSearch from '@/features/employee/entity/EmployeeSearch.ts';
@@ -176,6 +177,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Award, Clock, Star, TrendingUp, Upload, User, UserCheck, UserPlus, Users, UserX } from 'lucide-vue-next';
 
+const router = useRouter();
 const toast = useToast();
 const EMPLOYEE_REPOSITORY = container.resolve(EmployeeRepository);
 const { departmentOptions, fetchDepartments } = useDepartments();
@@ -341,8 +343,11 @@ const columns: ColumnDef<EmployeeSearch>[] = [
         }
       }
 
-      return h('div', { class: 'flex flex-col w-32' }, [
-        h(TruncatedCell, { text: String(row.getValue('name') ?? ''), maxWidth: '8rem', className: 'font-medium' }),
+      return h('div', { class: 'flex flex-col w-80' }, [
+        h('button', { 
+          class: 'font-medium text-left text-primary hover:text-primary/80 hover:underline transition-all duration-200 truncate max-w-80 cursor-pointer',
+          onClick: () => onViewEmployee(row.original)
+        }, String(row.getValue('name') ?? '')),
         h(TruncatedCell, {
           text: tenureText,
           maxWidth: '8rem',
@@ -351,7 +356,7 @@ const columns: ColumnDef<EmployeeSearch>[] = [
       ]);
     },
     enableHiding: true,
-    size: 140,
+    size: 380,
     meta: { skeleton: 'title-subtitle' },
   },
   {
@@ -542,10 +547,7 @@ function onAddEmployee() {
 
 function onViewEmployee(employee: EmployeeSearch) {
   console.log('View employee:', employee);
-  toast.info('구성원 상세보기', {
-    description: `${employee.name}의 상세 정보를 확인합니다.`,
-    position: 'bottom-right',
-  });
+  router.push(`/employees/${employee.id}`);
 }
 
 function onEditEmployee(employee: EmployeeSearch) {

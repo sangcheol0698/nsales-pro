@@ -138,13 +138,27 @@ function lineWidthPx(col: any, lineIdx = 0): number {
   let primary = 0.72; // 제목줄
   let secondary = 0.45; // 서브줄
 
-  // 작은 컬럼에서는 비율 증가, 큰 컬럼에서는 약간 축소
+  // 컬럼 크기별 비율 세분화
   if (base <= 80) {
+    // 작은 컬럼 (체크박스, 상태 등)
     primary = 0.9;
     secondary = 0.6;
-  } else if (base >= 260) {
+  } else if (base <= 160) {
+    // 중간 컬럼 (일반 텍스트)
+    primary = 0.72;
+    secondary = 0.45;
+  } else if (base <= 260) {
+    // 큰 컬럼 (긴 텍스트)
     primary = 0.65;
     secondary = 0.4;
+  } else if (base <= 400) {
+    // 매우 큰 컬럼 (프로젝트명, 직원명 등)
+    primary = 0.6;
+    secondary = 0.35;
+  } else {
+    // 초대형 컬럼 (500px 프로젝트명 등)
+    primary = 0.55;
+    secondary = 0.3;
   }
 
   const ratio = lineIdx === 1 ? secondary : primary;

@@ -74,7 +74,7 @@
                 </Button>
 
                 <!-- 협력사 추가 버튼 -->
-                <Button size="sm" class="h-8" @click="onAddPartner">
+                <Button size="sm" class="h-8" @click="onAddPartner" data-testid="add-partner-btn">
                   <Plus class="mr-2 h-4 w-4" />
                   협력사 추가
                 </Button>
@@ -123,6 +123,7 @@
 <script setup lang="ts">
 import type { ColumnDef } from '@tanstack/vue-table';
 import { computed, h, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { container } from 'tsyringe';
 import PartnerRepository from '@/features/partner/repository/PartnerRepository.ts';
 import PartnerSearch from '@/features/partner/entity/PartnerSearch.ts';
@@ -163,6 +164,7 @@ import {
   Users,
 } from 'lucide-vue-next';
 
+const router = useRouter();
 const toast = useToast();
 const PARTNER_REPOSITORY = container.resolve(PartnerRepository);
 
@@ -279,17 +281,18 @@ const columns: ColumnDef<PartnerSearch>[] = [
     accessorKey: 'name',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '협력사명' }),
     cell: ({ row }) => {
-      return h('div', { class: 'flex flex-col w-48' }, [
-        h(TruncatedCell, { text: String(row.getValue('name') ?? ''), maxWidth: '12rem', className: 'font-medium' }),
-        h(TruncatedCell, {
-          text: String(row.original.address ?? ''),
-          maxWidth: '12rem',
-          className: 'text-xs text-muted-foreground',
-        }),
+      return h('div', { class: 'flex flex-col w-96' }, [
+        h('button', { 
+          class: 'font-medium text-left text-primary hover:text-primary/80 hover:underline transition-all duration-200 truncate max-w-96 cursor-pointer',
+          onClick: () => onViewPartner(row.original)
+        }, String(row.getValue('name') ?? '')),
+        h('div', {
+          class: 'text-xs text-muted-foreground truncate max-w-96',
+        }, String(row.original.address ?? '')),
       ]);
     },
     enableHiding: true,
-    size: 240,
+    size: 500,
     meta: { skeleton: 'title-subtitle' },
   },
   {
@@ -466,16 +469,13 @@ function onAddPartner() {
 
 function onViewPartner(partner: PartnerSearch) {
   console.log('View partner:', partner);
-  toast.info('협력사 상세보기', {
-    description: `${partner.name}의 상세 정보를 확인합니다.`,
-    position: 'bottom-right',
-  });
+  router.push(`/partners/${partner.id}`);
 }
 
 async function onEditPartner(partner: PartnerSearch) {
   try {
     console.log('Edit partner:', partner);
-    
+
     // 선택된 협력사 정보를 상태에 저장
     selectedPartner.value = partner;
     editDialogOpen.value = true;
@@ -498,7 +498,7 @@ function onDuplicatePartner(partner: PartnerSearch) {
 
 function onDeletePartner(partner: PartnerSearch) {
   console.log('Delete partner:', partner);
-  
+
   // 선택된 협력사 정보를 상태에 저장
   selectedPartner.value = partner;
   deleteDialogOpen.value = true;
@@ -621,41 +621,41 @@ function handleDownloadError(error: string) {
 // 협력사 수정 처리
 async function handleEditSubmit(partner: PartnerUpdate) {
   editLoading.value = true;
-  
+
   try {
     console.log('협력사 수정 요청:', partner);
-    
+
     await PARTNER_REPOSITORY.updatePartner(partner);
-    
+
     toast.success('협력사 수정 완료', {
       description: `${partner.name}의 정보가 성공적으로 수정되었습니다.`,
       position: 'bottom-right',
     });
-    
+
     // 다이얼로그 닫기
     editDialogOpen.value = false;
     selectedPartner.value = null;
-    
+
     // 통계 새로고침
     fetchPartnerStats();
-    
+
     // 테이블 데이터 새로고침
     if (tableRef.value && tableRef.value.loadData) {
       console.log('협력사 수정 완료 - 테이블 새로고침 중...');
       tableRef.value.loadData();
     }
-    
+
     // 필터 옵션을 위한 전체 데이터 새로고침
     loadAllPartnersForFilters();
-    
+
   } catch (error: any) {
     console.error('협력사 수정 실패:', error);
-    
+
     let errorMessage = '협력사 수정 중 오류가 발생했습니다.';
     if (error?.message?.includes('modifiedDateTime')) {
       errorMessage = '다른 사용자가 이미 수정했습니다. 새로고침 후 다시 시도해주세요.';
     }
-    
+
     toast.error('협력사 수정 실패', {
       description: errorMessage,
       position: 'bottom-right',
@@ -668,38 +668,38 @@ async function handleEditSubmit(partner: PartnerUpdate) {
 // 협력사 삭제 처리
 async function handleDeleteConfirm(partnerId: number) {
   deleteLoading.value = true;
-  
+
   try {
     console.log('협력사 삭제 요청:', partnerId);
-    
+
     const partnerName = selectedPartner.value?.name || '';
-    
+
     await PARTNER_REPOSITORY.deletePartner(partnerId);
-    
+
     toast.success('협력사 삭제 완료', {
       description: `${partnerName}이(가) 성공적으로 삭제되었습니다.`,
       position: 'bottom-right',
     });
-    
+
     // 다이얼로그 닫기
     deleteDialogOpen.value = false;
     selectedPartner.value = null;
-    
+
     // 통계 새로고침
     fetchPartnerStats();
-    
+
     // 테이블 데이터 새로고침
     if (tableRef.value && tableRef.value.loadData) {
       console.log('협력사 삭제 완료 - 테이블 새로고침 중...');
       tableRef.value.loadData();
     }
-    
+
     // 필터 옵션을 위한 전체 데이터 새로고침
     loadAllPartnersForFilters();
-    
+
   } catch (error: any) {
     console.error('협력사 삭제 실패:', error);
-    
+
     toast.error('협력사 삭제 실패', {
       description: '협력사 삭제 중 오류가 발생했습니다.',
       position: 'bottom-right',

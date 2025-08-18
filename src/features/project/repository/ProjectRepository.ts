@@ -3,6 +3,7 @@ import { inject, singleton } from 'tsyringe';
 import ProjectSearch from '@/features/project/entity/ProjectSearch.ts';
 import ProjectStats from '@/features/project/entity/ProjectStats.ts';
 import ProjectCreate from '@/features/project/entity/ProjectCreate.ts';
+import ProjectUpdate from '@/features/project/entity/ProjectUpdate.ts';
 import PageResponse from '@/core/common/PageResponse.ts';
 import { createExcelFormData, downloadBlob, generateExcelFilename, extractFilenameFromResponse } from '@/core/utils/ExcelUtils.ts';
 
@@ -85,6 +86,21 @@ export default class ProjectRepository {
       path: '/api/v1/projects/excel/upload',
       data: formData,
       onProgress: onProgress,
+    });
+  }
+
+  // 프로젝트 수정
+  public async updateProject(project: ProjectUpdate): Promise<void> {
+    await this.httpRepository.put({
+      path: `/api/v1/projects/${project.id}`,
+      data: project,
+    });
+  }
+
+  // 프로젝트 삭제
+  public async deleteProject(id: number): Promise<void> {
+    await this.httpRepository.delete({
+      path: `/api/v1/projects/${id}`,
     });
   }
 }

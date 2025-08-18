@@ -52,6 +52,7 @@ import {
   DataTableRowActions,
   DataTableWithUrl,
   SummaryCards,
+  TruncatedCell,
 } from '@/components/business';
 import { useToast } from '@/core/composables';
 
@@ -143,132 +144,209 @@ const columns: ColumnDef<SalesSearch>[] = [
     accessorKey: '부서이름',
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '부서명' }),
     cell: ({ row }) => {
-      return h('div', { class: 'flex flex-col' }, [
-        h('span', { class: 'font-medium' }, row.getValue('부서이름') || '-'),
-        h('span', { class: 'text-xs text-muted-foreground' }, row.original.부서범위 || ''),
+      return h('div', { class: 'flex flex-col w-40' }, [
+        h(TruncatedCell, { 
+          text: String(row.getValue('부서이름') ?? '-'), 
+          maxWidth: '10rem', 
+          className: 'font-medium' 
+        }),
+        h(TruncatedCell, {
+          text: String(row.original.부서범위 ?? ''),
+          maxWidth: '10rem',
+          className: 'text-xs text-muted-foreground',
+        }),
       ]);
     },
     enableHiding: true,
+    size: 180,
+    meta: { skeleton: 'title-subtitle' },
   },
   {
     accessorKey: '매출합계',
-    header: ({ column }) => h(DataTableColumnHeader, { column, title: '매출합계' }),
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '매출합계', align: 'right' }),
     cell: ({ row }) => {
       const amount = row.getValue('매출합계') as number;
-      if (!amount) return h('div', {}, '-');
-      return h('div', { class: 'font-medium' }, amount.toLocaleString() + '원');
+      const formattedAmount = amount ? amount.toLocaleString() + '원' : '-';
+      
+      return h(TruncatedCell, { 
+        text: formattedAmount, 
+        maxWidth: '8rem', 
+        className: 'text-right font-medium' 
+      });
     },
     enableHiding: true,
+    size: 140,
   },
   {
     accessorKey: '매출목표',
-    header: ({ column }) => h(DataTableColumnHeader, { column, title: '매출목표' }),
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '매출목표', align: 'right' }),
     cell: ({ row }) => {
       const amount = row.getValue('매출목표') as number;
-      if (!amount) return h('div', {}, '-');
-      return h('div', { class: 'font-medium' }, amount.toLocaleString() + '원');
+      const formattedAmount = amount ? amount.toLocaleString() + '원' : '-';
+      
+      return h(TruncatedCell, { 
+        text: formattedAmount, 
+        maxWidth: '8rem', 
+        className: 'text-right font-medium' 
+      });
     },
     enableHiding: true,
+    size: 140,
   },
   {
     accessorKey: '달성률',
-    header: ({ column }) => h(DataTableColumnHeader, { column, title: '달성률' }),
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '달성률', align: 'right' }),
     cell: ({ row }) => {
       const rate = row.getValue('달성률') as number;
-      if (!rate) return h('div', {}, '-');
-      return h('div', { class: 'font-semibold text-primary' }, rate.toFixed(1) + '%');
+      const formattedRate = rate ? rate.toFixed(1) + '%' : '-';
+      
+      return h(TruncatedCell, { 
+        text: formattedRate, 
+        maxWidth: '6rem', 
+        className: 'text-right font-semibold text-primary' 
+      });
     },
     enableHiding: true,
+    size: 100,
   },
   {
     accessorKey: '영업이익',
-    header: ({ column }) => h(DataTableColumnHeader, { column, title: '영업이익' }),
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '영업이익', align: 'right' }),
     cell: ({ row }) => {
       const amount = row.getValue('영업이익') as number;
-      if (!amount) return h('div', {}, '-');
+      if (!amount) {
+        return h(TruncatedCell, { 
+          text: '-', 
+          maxWidth: '8rem', 
+          className: 'text-right font-medium' 
+        });
+      }
+      
       const isNegative = amount < 0;
-      return h('div', {
-        class: `font-medium ${isNegative ? 'text-red-600' : 'text-green-600'}`,
-      }, amount.toLocaleString() + '원');
+      const formattedAmount = amount.toLocaleString() + '원';
+      
+      return h(TruncatedCell, { 
+        text: formattedAmount, 
+        maxWidth: '8rem', 
+        className: `text-right font-medium ${isNegative ? 'text-red-600' : 'text-green-600'}` 
+      });
     },
     enableHiding: true,
+    size: 140,
   },
   {
     accessorKey: '영업이익률',
-    header: ({ column }) => h(DataTableColumnHeader, { column, title: '영업이익률' }),
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '영업이익률', align: 'right' }),
     cell: ({ row }) => {
       const rate = row.getValue('영업이익률') as number;
-      if (!rate) return h('div', {}, '-');
+      if (!rate) {
+        return h(TruncatedCell, { 
+          text: '-', 
+          maxWidth: '6rem', 
+          className: 'text-right font-medium' 
+        });
+      }
+      
       const isNegative = rate < 0;
-      return h('div', {
-        class: `font-medium ${isNegative ? 'text-red-600' : 'text-green-600'}`,
-      }, rate.toFixed(1) + '%');
+      const formattedRate = rate.toFixed(1) + '%';
+      
+      return h(TruncatedCell, { 
+        text: formattedRate, 
+        maxWidth: '6rem', 
+        className: `text-right font-medium ${isNegative ? 'text-red-600' : 'text-green-600'}` 
+      });
     },
     enableHiding: true,
+    size: 120,
   },
   {
     accessorKey: '정직원',
-    header: ({ column }) => h(DataTableColumnHeader, { column, title: '정직원' }),
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '정직원', align: 'center' }),
     cell: ({ row }) => {
       const count = row.getValue('정직원') as number;
-      return h('div', { class: 'text-center' }, count?.toString() || '0');
+      const countText = count?.toString() || '0';
+      
+      return h(TruncatedCell, { 
+        text: countText, 
+        maxWidth: '4rem', 
+        className: 'text-center font-medium' 
+      });
     },
     enableHiding: true,
+    size: 80,
   },
   {
     accessorKey: '프리랜서',
-    header: ({ column }) => h(DataTableColumnHeader, { column, title: '프리랜서' }),
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '프리랜서', align: 'center' }),
     cell: ({ row }) => {
       const count = row.getValue('프리랜서') as number;
-      return h('div', { class: 'text-center' }, count?.toString() || '0');
+      const countText = count?.toString() || '0';
+      
+      return h(TruncatedCell, { 
+        text: countText, 
+        maxWidth: '5rem', 
+        className: 'text-center font-medium' 
+      });
     },
     enableHiding: true,
+    size: 90,
   },
   {
     accessorKey: '외주',
-    header: ({ column }) => h(DataTableColumnHeader, { column, title: '외주' }),
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '외주', align: 'center' }),
     cell: ({ row }) => {
       const count = row.getValue('외주') as number;
-      return h('div', { class: 'text-center' }, count?.toString() || '0');
+      const countText = count?.toString() || '0';
+      
+      return h(TruncatedCell, { 
+        text: countText, 
+        maxWidth: '4rem', 
+        className: 'text-center font-medium' 
+      });
     },
     enableHiding: true,
+    size: 70,
   },
-  // Virtual columns for filtering
+  // Virtual columns for filtering (숨김 처리)
   {
     id: 'year',
-    header: '연도',
-    cell: () => h('div', { style: 'display: none' }),
+    header: () => null,
+    cell: () => null,
     filterFn: (row, id, value) => {
       return value.includes(new Date().getFullYear().toString());
     },
-    enableHiding: true,
+    enableHiding: false,
+    size: 0,
   },
   {
     id: 'departmentType',
-    header: '부서타입',
-    cell: () => h('div', { style: 'display: none' }),
+    header: () => null,
+    cell: () => null,
     filterFn: (row, id, value) => {
       return value.includes('팀');
     },
-    enableHiding: true,
+    enableHiding: false,
+    size: 0,
   },
   {
     id: 'projectType',
-    header: '프로젝트타입',
-    cell: () => h('div', { style: 'display: none' }),
+    header: () => null,
+    cell: () => null,
     filterFn: (row, id, value) => {
       return value.includes('SI');
     },
-    enableHiding: true,
+    enableHiding: false,
+    size: 0,
   },
   {
     id: 'personnelType',
-    header: '인력타입',
-    cell: () => h('div', { style: 'display: none' }),
+    header: () => null,
+    cell: () => null,
     filterFn: (row, id, value) => {
       return value.includes('정직원');
     },
-    enableHiding: true,
+    enableHiding: false,
+    size: 0,
   },
   {
     id: 'actions',

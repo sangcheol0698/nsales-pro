@@ -36,7 +36,7 @@
         <div class="ml-auto flex items-center gap-2 px-4">
           <!-- Search Command Palette -->
           <Button variant="outline" size="sm" @click="openCommandPalette"
-                  class="relative h-8 w-40 justify-start text-sm font-normal text-muted-foreground shadow-none">
+                  class="relative h-9 w-48 justify-start text-sm font-normal text-muted-foreground shadow-none">
             <Search class="mr-2 h-4 w-4"/>
             <span class="hidden lg:inline-flex">검색...</span>
             <span class="inline-flex lg:hidden">검색</span>
@@ -47,7 +47,7 @@
           </Button>
 
           <!-- Notifications -->
-          <Button variant="outline" size="sm" @click="openNotifications" class="relative h-8 w-8 px-0">
+          <Button variant="outline" size="sm" @click="openNotifications" class="relative h-9 w-9 px-0">
             <Bell class="h-4 w-4"/>
             <span v-if="unreadCount > 0"
                   class="absolute -top-1 -right-1 h-4 w-4 bg-destructive text-destructive-foreground text-xs rounded-full flex items-center justify-center">

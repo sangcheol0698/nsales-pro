@@ -1,6 +1,7 @@
 import HttpRepository from '@/core/http/HttpRepository.ts';
 import { inject, singleton } from 'tsyringe';
 import ProjectSearch from '@/features/project/entity/ProjectSearch.ts';
+import ProjectDetail from '@/features/project/entity/ProjectDetail.ts';
 import ProjectStats from '@/features/project/entity/ProjectStats.ts';
 import ProjectCreate from '@/features/project/entity/ProjectCreate.ts';
 import ProjectUpdate from '@/features/project/entity/ProjectUpdate.ts';
@@ -30,12 +31,12 @@ export default class ProjectRepository {
     });
   }
 
-  public async getProject(id: number): Promise<ProjectSearch> {
+  public async getProject(id: number): Promise<ProjectDetail> {
     const response = await this.httpRepository.get({
       path: `/api/v1/projects/${id}`,
     });
 
-    return ProjectSearch.fromResponse(response);
+    return ProjectDetail.fromResponse(response);
   }
 
   // 프로젝트 생성

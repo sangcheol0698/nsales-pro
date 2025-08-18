@@ -145,10 +145,10 @@ const columns: ColumnDef<SalesSearch>[] = [
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '부서명' }),
     cell: ({ row }) => {
       return h('div', { class: 'flex flex-col w-40' }, [
-        h(TruncatedCell, { 
-          text: String(row.getValue('부서이름') ?? '-'), 
-          maxWidth: '10rem', 
-          className: 'font-medium' 
+        h(TruncatedCell, {
+          text: String(row.getValue('부서이름') ?? '-'),
+          maxWidth: '10rem',
+          className: 'font-medium',
         }),
         h(TruncatedCell, {
           text: String(row.original.부서범위 ?? ''),
@@ -167,11 +167,11 @@ const columns: ColumnDef<SalesSearch>[] = [
     cell: ({ row }) => {
       const amount = row.getValue('매출합계') as number;
       const formattedAmount = amount ? amount.toLocaleString() + '원' : '-';
-      
-      return h(TruncatedCell, { 
-        text: formattedAmount, 
-        maxWidth: '8rem', 
-        className: 'text-right font-medium' 
+
+      return h(TruncatedCell, {
+        text: formattedAmount,
+        maxWidth: '8rem',
+        className: 'text-right font-medium',
       });
     },
     enableHiding: true,
@@ -183,11 +183,11 @@ const columns: ColumnDef<SalesSearch>[] = [
     cell: ({ row }) => {
       const amount = row.getValue('매출목표') as number;
       const formattedAmount = amount ? amount.toLocaleString() + '원' : '-';
-      
-      return h(TruncatedCell, { 
-        text: formattedAmount, 
-        maxWidth: '8rem', 
-        className: 'text-right font-medium' 
+
+      return h(TruncatedCell, {
+        text: formattedAmount,
+        maxWidth: '8rem',
+        className: 'text-right font-medium',
       });
     },
     enableHiding: true,
@@ -199,11 +199,11 @@ const columns: ColumnDef<SalesSearch>[] = [
     cell: ({ row }) => {
       const rate = row.getValue('달성률') as number;
       const formattedRate = rate ? rate.toFixed(1) + '%' : '-';
-      
-      return h(TruncatedCell, { 
-        text: formattedRate, 
-        maxWidth: '6rem', 
-        className: 'text-right font-semibold text-primary' 
+
+      return h(TruncatedCell, {
+        text: formattedRate,
+        maxWidth: '6rem',
+        className: 'text-right font-semibold text-primary',
       });
     },
     enableHiding: true,
@@ -215,20 +215,20 @@ const columns: ColumnDef<SalesSearch>[] = [
     cell: ({ row }) => {
       const amount = row.getValue('영업이익') as number;
       if (!amount) {
-        return h(TruncatedCell, { 
-          text: '-', 
-          maxWidth: '8rem', 
-          className: 'text-right font-medium' 
+        return h(TruncatedCell, {
+          text: '-',
+          maxWidth: '8rem',
+          className: 'text-right font-medium',
         });
       }
-      
+
       const isNegative = amount < 0;
       const formattedAmount = amount.toLocaleString() + '원';
-      
-      return h(TruncatedCell, { 
-        text: formattedAmount, 
-        maxWidth: '8rem', 
-        className: `text-right font-medium ${isNegative ? 'text-red-600' : 'text-green-600'}` 
+
+      return h(TruncatedCell, {
+        text: formattedAmount,
+        maxWidth: '8rem',
+        className: `text-right font-medium ${isNegative ? 'text-red-600' : 'text-green-600'}`,
       });
     },
     enableHiding: true,
@@ -240,20 +240,20 @@ const columns: ColumnDef<SalesSearch>[] = [
     cell: ({ row }) => {
       const rate = row.getValue('영업이익률') as number;
       if (!rate) {
-        return h(TruncatedCell, { 
-          text: '-', 
-          maxWidth: '6rem', 
-          className: 'text-right font-medium' 
+        return h(TruncatedCell, {
+          text: '-',
+          maxWidth: '6rem',
+          className: 'text-right font-medium',
         });
       }
-      
+
       const isNegative = rate < 0;
       const formattedRate = rate.toFixed(1) + '%';
-      
-      return h(TruncatedCell, { 
-        text: formattedRate, 
-        maxWidth: '6rem', 
-        className: `text-right font-medium ${isNegative ? 'text-red-600' : 'text-green-600'}` 
+
+      return h(TruncatedCell, {
+        text: formattedRate,
+        maxWidth: '6rem',
+        className: `text-right font-medium ${isNegative ? 'text-red-600' : 'text-green-600'}`,
       });
     },
     enableHiding: true,
@@ -265,11 +265,11 @@ const columns: ColumnDef<SalesSearch>[] = [
     cell: ({ row }) => {
       const count = row.getValue('정직원') as number;
       const countText = count?.toString() || '0';
-      
-      return h(TruncatedCell, { 
-        text: countText, 
-        maxWidth: '4rem', 
-        className: 'text-center font-medium' 
+
+      return h(TruncatedCell, {
+        text: countText,
+        maxWidth: '4rem',
+        className: 'text-center font-medium',
       });
     },
     enableHiding: true,
@@ -281,11 +281,11 @@ const columns: ColumnDef<SalesSearch>[] = [
     cell: ({ row }) => {
       const count = row.getValue('프리랜서') as number;
       const countText = count?.toString() || '0';
-      
-      return h(TruncatedCell, { 
-        text: countText, 
-        maxWidth: '5rem', 
-        className: 'text-center font-medium' 
+
+      return h(TruncatedCell, {
+        text: countText,
+        maxWidth: '5rem',
+        className: 'text-center font-medium',
       });
     },
     enableHiding: true,
@@ -297,11 +297,11 @@ const columns: ColumnDef<SalesSearch>[] = [
     cell: ({ row }) => {
       const count = row.getValue('외주') as number;
       const countText = count?.toString() || '0';
-      
-      return h(TruncatedCell, { 
-        text: countText, 
-        maxWidth: '4rem', 
-        className: 'text-center font-medium' 
+
+      return h(TruncatedCell, {
+        text: countText,
+        maxWidth: '4rem',
+        className: 'text-center font-medium',
       });
     },
     enableHiding: true,
@@ -351,6 +351,7 @@ const columns: ColumnDef<SalesSearch>[] = [
   {
     id: 'actions',
     enableHiding: false,
+    size: 44,
     cell: ({ row }) => {
       return h(DataTableRowActions, {
         row: row.original,

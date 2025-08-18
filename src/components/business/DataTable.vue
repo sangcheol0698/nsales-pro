@@ -22,10 +22,26 @@
         <template v-if="loading">
           <TableRow v-for="i in skeletonRowCount" :key="`skeleton-row-${i}`">
             <TableCell v-for="col in visibleColumns" :key="`skeleton-cell-${i}-${col.id}`"
-                       :class="col.id === 'select' ? 'px-2' : ''">
+                       :class="col.id === 'select' ? 'px-2' : ''"
+                       :style="{ width: getColumnSizePx(col) + 'px' }">
               <template v-if="getColSkeletonVariantByColumn(col) === 'checkbox'">
                 <div class="flex items-center">
                   <Skeleton class="h-4 w-4 rounded-sm" />
+                </div>
+              </template>
+              <template v-else-if="getColSkeletonVariantByColumn(col) === 'ellipsis'">
+                <div class="flex items-center">
+                  <Skeleton class="h-6 rounded-md" />
+                </div>
+              </template>
+              <template v-else-if="getColSkeletonVariantByColumn(col) === 'enum-badge'">
+                <div class="flex items-center">
+                  <Skeleton class="h-6 rounded-md" :style="{ width: enumBadgeWidthPx(col) + 'px' }" />
+                </div>
+              </template>
+              <template v-else-if="getColSkeletonVariantByColumn(col) === 'text-short'">
+                <div class="flex items-center">
+                  <Skeleton class="h-4 rounded-md" :style="{ width: textShortWidthPx(col) + 'px' }" />
                 </div>
               </template>
               <template v-else-if="getColSkeletonVariantByColumn(col) === 'title-subtitle'">
@@ -111,9 +127,12 @@ const visibleColumns = computed(() => props.tableInstance.getVisibleLeafColumns?
 const skeletonRowCount = computed(() => (props.pageSize && props.pageSize > 0 ? props.pageSize : 8));
 
 // 컬럼 메타에서 스켈레톤 변형 조회 (컬럼 객체 기반)
-function getColSkeletonVariantByColumn(col: any): 'single' | 'title-subtitle' | 'checkbox' {
+function getColSkeletonVariantByColumn(col: any): 'single' | 'title-subtitle' | 'checkbox' | 'ellipsis' | 'enum-badge' | 'text-short' {
   if (col?.id === 'select') return 'checkbox';
+  if (col?.id === 'actions') return 'ellipsis';
   const meta = (col?.columnDef as any)?.meta;
+  if (meta?.skeleton === 'enum-badge') return 'enum-badge';
+  if (meta?.skeleton === 'text-short') return 'text-short';
   return meta?.skeleton === 'title-subtitle' ? 'title-subtitle' : 'single';
 }
 
@@ -188,5 +207,32 @@ function getCellSizePx(cell: any): number {
   } catch {
     return 120;
   }
+}
+
+// enum 배지 스켈레톤 width(px) 계산
+function enumBadgeWidthPx(col: any): number {
+  const meta = (col?.columnDef as any)?.meta || {};
+  const size = meta?.skeletonSize as 'sm' | 'md' | 'lg' | undefined;
+  if (size === 'sm') return 48; // w-12
+  if (size === 'md') return 80; // w-20
+  if (size === 'lg') return 112; // w-28
+  const base = getColumnSizePx(col);
+  if (base <= 90) return 48;
+  if (base <= 140) return 80;
+  return 112;
+}
+
+// 짧은 텍스트용 스켈레톤 width(px) 계산
+function textShortWidthPx(col: any): number {
+  const meta = (col?.columnDef as any)?.meta || {};
+  const size = meta?.skeletonSize as 'sm' | 'md' | 'lg' | undefined;
+  if (size === 'sm') return 48; // w-12 (예: 4~5자)
+  if (size === 'md') return 64; // w-16 (예: 날짜, 6~8자)
+  if (size === 'lg') return 96; // w-24 (예: 9~12자)
+  // 자동: 컬럼 폭 기반 추정
+  const base = getColumnSizePx(col);
+  if (base <= 90) return 48;
+  if (base <= 140) return 64;
+  return 96;
 }
 </script>

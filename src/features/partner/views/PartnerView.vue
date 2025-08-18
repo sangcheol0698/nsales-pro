@@ -282,9 +282,9 @@ const columns: ColumnDef<PartnerSearch>[] = [
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '협력사명' }),
     cell: ({ row }) => {
       return h('div', { class: 'flex flex-col w-96' }, [
-        h('button', { 
+        h('button', {
           class: 'font-medium text-left text-primary hover:text-primary/80 hover:underline transition-all duration-200 truncate max-w-96 cursor-pointer',
-          onClick: () => onViewPartner(row.original)
+          onClick: () => onViewPartner(row.original),
         }, String(row.getValue('name') ?? '')),
         h('div', {
           class: 'text-xs text-muted-foreground truncate max-w-96',
@@ -352,10 +352,12 @@ const columns: ColumnDef<PartnerSearch>[] = [
     },
     enableHiding: true,
     size: 90,
+    meta: { skeleton: 'enum-badge' },
   },
   {
     id: 'actions',
     enableHiding: false,
+    size: 44,
     cell: ({ row }) => {
       return h(DataTableRowActions, {
         row: row.original,
@@ -476,8 +478,12 @@ async function onEditPartner(partner: PartnerSearch) {
   try {
     console.log('Edit partner:', partner);
 
-    // 선택된 협력사 정보를 상태에 저장
-    selectedPartner.value = partner;
+    // 서버에서 상세 데이터 가져오기
+    const detailPartner = await PARTNER_REPOSITORY.getPartner(partner.id);
+    console.log('Loaded detailed partner data:', detailPartner);
+
+    // 상세 데이터를 상태에 저장
+    selectedPartner.value = detailPartner;
     editDialogOpen.value = true;
   } catch (error) {
     console.error('협력사 정보 로드 실패:', error);

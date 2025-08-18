@@ -344,9 +344,9 @@ const columns: ColumnDef<EmployeeSearch>[] = [
       }
 
       return h('div', { class: 'flex flex-col w-80' }, [
-        h('button', { 
+        h('button', {
           class: 'font-medium text-left text-primary hover:text-primary/80 hover:underline transition-all duration-200 truncate max-w-80 cursor-pointer',
-          onClick: () => onViewEmployee(row.original)
+          onClick: () => onViewEmployee(row.original),
         }, String(row.getValue('name') ?? '')),
         h(TruncatedCell, {
           text: tenureText,
@@ -393,6 +393,7 @@ const columns: ColumnDef<EmployeeSearch>[] = [
     },
     enableHiding: true,
     size: 100,
+    meta: { skeleton: 'text-short', skeletonSize: 'sm' },
   },
   {
     accessorKey: 'joinDate',
@@ -404,6 +405,7 @@ const columns: ColumnDef<EmployeeSearch>[] = [
     }),
     enableHiding: true,
     size: 120,
+    meta: { skeleton: 'text-short', skeletonSize: 'md' },
   },
   {
     accessorKey: 'grade',
@@ -418,6 +420,7 @@ const columns: ColumnDef<EmployeeSearch>[] = [
     },
     enableHiding: true,
     size: 80,
+    meta: { skeleton: 'text-short', skeletonSize: 'sm' },
   },
   {
     accessorKey: 'type',
@@ -432,6 +435,7 @@ const columns: ColumnDef<EmployeeSearch>[] = [
     },
     enableHiding: true,
     size: 100,
+    meta: { skeleton: 'text-short', skeletonSize: 'sm' },
   },
   {
     accessorKey: 'status',
@@ -447,10 +451,13 @@ const columns: ColumnDef<EmployeeSearch>[] = [
       return value.includes(row.getValue(id));
     },
     enableHiding: true,
+    size: 100,
+    meta: { skeleton: 'enum-badge' },
   },
   {
     id: 'actions',
     enableHiding: false,
+    size: 44,
     cell: ({ row }) => {
       return h(DataTableRowActions, {
         row: row.original,
@@ -550,11 +557,24 @@ function onViewEmployee(employee: EmployeeSearch) {
   router.push(`/employees/${employee.id}`);
 }
 
-function onEditEmployee(employee: EmployeeSearch) {
-  console.log('Edit employee:', employee);
-  selectedEmployeeId.value = employee.id;
-  selectedEmployeeName.value = employee.name;
-  editDialogOpen.value = true;
+async function onEditEmployee(employee: EmployeeSearch) {
+  try {
+    console.log('Edit employee:', employee);
+
+    // 서버에서 상세 데이터 가져오기
+    const detailEmployee = await EMPLOYEE_REPOSITORY.getEmployee(employee.id);
+    console.log('Loaded detailed employee data:', detailEmployee);
+
+    selectedEmployeeId.value = employee.id;
+    selectedEmployeeName.value = employee.name;
+    editDialogOpen.value = true;
+  } catch (error) {
+    console.error('구성원 정보 로드 실패:', error);
+    toast.error('구성원 정보 로드 실패', {
+      description: '구성원 정보를 불러오는 중 오류가 발생했습니다.',
+      position: 'bottom-right',
+    });
+  }
 }
 
 function onDuplicateEmployee(employee: EmployeeSearch) {
@@ -645,7 +665,7 @@ function handleUploadSuccess() {
 
   // 통계 새로고침
   fetchEmployeeStats();
-  
+
   // 테이블 데이터 새로고침
   if (tableRef.value && tableRef.value.loadData) {
     console.log('엑셀 업로드 완료 - 테이블 새로고침 중...');
@@ -668,7 +688,7 @@ function handleAddSuccess() {
 
   // 통계 새로고침
   fetchEmployeeStats();
-  
+
   // 테이블 데이터 새로고침
   if (tableRef.value && tableRef.value.loadData) {
     console.log('구성원 추가 완료 - 테이블 새로고침 중...');
@@ -684,13 +704,13 @@ function handleEditSuccess() {
 
   // 통계 새로고침
   fetchEmployeeStats();
-  
+
   // 테이블 데이터 새로고침
   if (tableRef.value && tableRef.value.loadData) {
     console.log('구성원 수정 완료 - 테이블 새로고침 중...');
     tableRef.value.loadData();
   }
-  
+
   // 선택된 구성원 정보 초기화
   selectedEmployeeId.value = null;
   selectedEmployeeName.value = '';
@@ -704,13 +724,13 @@ function handleDeleteSuccess() {
 
   // 통계 새로고침
   fetchEmployeeStats();
-  
+
   // 테이블 데이터 새로고침
   if (tableRef.value && tableRef.value.loadData) {
     console.log('구성원 삭제 완료 - 테이블 새로고침 중...');
     tableRef.value.loadData();
   }
-  
+
   // 선택된 구성원 정보 초기화
   selectedEmployeeId.value = null;
   selectedEmployeeName.value = '';

@@ -345,13 +345,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { DatePicker } from '@/components/ui/date-picker';
 import { Loader2 } from 'lucide-vue-next';
 import ProjectUpdate from '@/features/project/entity/ProjectUpdate';
-import ProjectSearch from '@/features/project/entity/ProjectSearch';
+import ProjectDetail from '@/features/project/entity/ProjectDetail';
 import OrganizationSelectDialog from '@/features/organization/components/OrganizationSelectDialog.vue';
 import { useDepartments } from '@/core/composables';
 
 interface ProjectEditFormProps {
   loading?: boolean;
-  project?: ProjectSearch | null;
+  project?: ProjectDetail | null;
 }
 
 interface ProjectEditFormEmits {
@@ -438,21 +438,21 @@ watch(() => props.project, async (project) => {
     initialValues.value = {
       code: project.code || '',
       name: project.name || '',
-      type: (project.type as 'SI' | 'SM') || 'SI',
+      type: project.type || 'SI',
       contractDate: project.contractDate ? new Date(project.contractDate) : undefined,
-      departmentId: undefined, // ProjectSearch에는 departmentId가 없음
+      departmentId: project.department?.id, // ProjectDetail에서 department.id 사용
       mainCompany: project.mainCompany || '',
       clientCompany: project.clientCompany || '',
-      expectedAmount: undefined, // ProjectSearch에는 expectedAmount가 없음
+      expectedAmount: project.expectedAmount || undefined,
       contractAmount: project.contractAmount || undefined,
-      pmName: '', // ProjectSearch에는 pmName이 없음
-      pmPhone: '', // ProjectSearch에는 pmPhone이 없음
+      pmName: project.pmName || '',
+      pmPhone: project.pmPhone || '',
       startDate: project.startDate ? new Date(project.startDate) : undefined,
       endDate: project.endDate ? new Date(project.endDate) : undefined,
-      mainCompanyRep: '', // ProjectSearch에는 mainCompanyRep가 없음
-      mainCompanyRepPhone: '', // ProjectSearch에는 mainCompanyRepPhone이 없음
-      clientCompanyRep: '', // ProjectSearch에는 clientCompanyRep가 없음
-      clientCompanyRepPhone: '', // ProjectSearch에는 clientCompanyRepPhone이 없음
+      mainCompanyRep: project.mainCompanyRep || '',
+      mainCompanyRepPhone: project.mainCompanyRepPhone || '',
+      clientCompanyRep: project.clientCompanyRep || '',
+      clientCompanyRepPhone: project.clientCompanyRepPhone || '',
     };
 
     console.log('설정된 초기값:', initialValues.value);

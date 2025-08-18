@@ -20,7 +20,7 @@
           <template #filters="{ table }">
             <!-- 날짜 검색 유형 선택 -->
             <Select v-model="searchType">
-              <SelectTrigger class="w-32 h-7">
+              <SelectTrigger class="w-32 h-8">
                 <SelectValue placeholder="날짜 유형" />
               </SelectTrigger>
               <SelectContent>
@@ -121,8 +121,7 @@
     <!-- 프로젝트 수정 다이얼로그 -->
     <ProjectEditDialog
       v-model:open="editDialogOpen"
-      :loading="editLoading"
-      :project="selectedProject"
+      :project-id="selectedProjectId"
       @submit="handleEditSubmit"
     />
 
@@ -201,11 +200,11 @@ const uploadDialogOpen = ref(false);
 const addDialogOpen = ref(false);
 // 프로젝트 수정 관련 상태
 const editDialogOpen = ref(false);
-const editLoading = ref(false);
-const selectedProject = ref<ProjectSearch | null>(null);
+const selectedProjectId = ref<number | null>(null);
 // 프로젝트 삭제 관련 상태
 const deleteDialogOpen = ref(false);
 const deleteLoading = ref(false);
+const selectedProject = ref<ProjectSearch | null>(null);
 
 // 날짜 필터 상태
 const searchType = ref('계약일자');
@@ -317,12 +316,12 @@ const columns: ColumnDef<ProjectSearch>[] = [
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '프로젝트' }),
     cell: ({ row }) => {
       return h('div', { class: 'flex flex-col w-96' }, [
-        h('button', { 
+        h('button', {
           class: 'font-medium text-left text-primary hover:text-primary/80 hover:underline transition-all duration-200 truncate max-w-96 cursor-pointer',
-          onClick: () => onViewProject(row.original)
+          onClick: () => onViewProject(row.original),
         }, String(row.getValue('name') ?? '')),
         h('div', {
-          class: 'text-xs text-muted-foreground truncate max-w-96'
+          class: 'text-xs text-muted-foreground truncate max-w-96',
         }, String(row.original.code ?? '')),
       ]);
     },
@@ -417,10 +416,13 @@ const columns: ColumnDef<ProjectSearch>[] = [
       return value.includes(String(row.getValue('status') ?? ''));
     },
     enableHiding: true,
+    size: 100,
+    meta: { skeleton: 'enum-badge' },
   },
   {
     id: 'actions',
     enableHiding: false,
+    size: 44,
     cell: ({ row }) => {
       return h(DataTableRowActions, {
         row: row.original,
@@ -575,20 +577,10 @@ function onViewProject(project: ProjectSearch) {
   router.push(`/projects/${project.id}`);
 }
 
-async function onEditProject(project: ProjectSearch) {
-  try {
-    console.log('Edit project:', project);
-
-    // 선택된 프로젝트 정보를 상태에 저장
-    selectedProject.value = project;
-    editDialogOpen.value = true;
-  } catch (error) {
-    console.error('프로젝트 정보 로드 실패:', error);
-    toast.error('프로젝트 정보 로드 실패', {
-      description: '프로젝트 정보를 불러오는 중 오류가 발생했습니다.',
-      position: 'bottom-right',
-    });
-  }
+function onEditProject(project: ProjectSearch) {
+  console.log('Edit project:', project);
+  selectedProjectId.value = project.id;
+  editDialogOpen.value = true;
 }
 
 function onDuplicateProject(project: ProjectSearch) {
@@ -754,6 +746,8 @@ function formatDateForAPI(date: Date | string): string {
 }
 
 // 프로젝트 수정 처리
+const editLoading = ref(false);
+
 async function handleEditSubmit(project: ProjectUpdate) {
   editLoading.value = true;
 
@@ -769,7 +763,7 @@ async function handleEditSubmit(project: ProjectUpdate) {
 
     // 다이얼로그 닫기
     editDialogOpen.value = false;
-    selectedProject.value = null;
+    selectedProjectId.value = null;
 
     // 통계 새로고침
     fetchProjectStats();

@@ -4,7 +4,7 @@
       <div class="w-full">
         <!-- 요약 카드 -->
         <SummaryCards :cards="summaryCards" />
-        
+
         <!-- 데이터 테이블 -->
         <DataTableWithUrl
           :columns="columns"
@@ -39,7 +39,7 @@
 
 <script setup lang="ts">
 import type { ColumnDef } from '@tanstack/vue-table';
-import { h } from 'vue';
+import { computed, h, onMounted, ref } from 'vue';
 import { container } from 'tsyringe';
 import SalesRepository from '@/features/sales/repository/SalesRepository.ts';
 import type { SalesSearch } from '@/features/sales/entity/SalesSearch.ts';
@@ -51,29 +51,12 @@ import {
   DataTableFacetedFilter,
   DataTableRowActions,
   DataTableWithUrl,
-  StatusBadge,
   SummaryCards,
 } from '@/components/business';
 import { useToast } from '@/core/composables';
 
 import { Checkbox } from '@/components/ui/checkbox';
-import { Button } from '@/components/ui/button';
-import { 
-  Building2, 
-  Factory, 
-  User, 
-  Users, 
-  Briefcase,
-  Calendar,
-  CheckCircle,
-  Clock,
-  XCircle,
-  DollarSign,
-  TrendingUp,
-  CreditCard,
-  AlertCircle
-} from 'lucide-vue-next';
-import { computed, ref, onMounted } from 'vue';
+import { AlertCircle, Building2, Calendar, CheckCircle, Clock, DollarSign, User, Users } from 'lucide-vue-next';
 
 const toast = useToast();
 const SALES_REPOSITORY = container.resolve(SalesRepository);
@@ -124,6 +107,7 @@ const summaryCards = computed(() => [
 
 // Filter options
 const yearOptions = [
+  { label: '2025', value: '2025', icon: Calendar },
   { label: '2024', value: '2024', icon: Calendar },
   { label: '2023', value: '2023', icon: Calendar },
   { label: '2022', value: '2022', icon: Calendar },
@@ -203,8 +187,8 @@ const columns: ColumnDef<SalesSearch>[] = [
       const amount = row.getValue('영업이익') as number;
       if (!amount) return h('div', {}, '-');
       const isNegative = amount < 0;
-      return h('div', { 
-        class: `font-medium ${isNegative ? 'text-red-600' : 'text-green-600'}` 
+      return h('div', {
+        class: `font-medium ${isNegative ? 'text-red-600' : 'text-green-600'}`,
       }, amount.toLocaleString() + '원');
     },
     enableHiding: true,
@@ -216,8 +200,8 @@ const columns: ColumnDef<SalesSearch>[] = [
       const rate = row.getValue('영업이익률') as number;
       if (!rate) return h('div', {}, '-');
       const isNegative = rate < 0;
-      return h('div', { 
-        class: `font-medium ${isNegative ? 'text-red-600' : 'text-green-600'}` 
+      return h('div', {
+        class: `font-medium ${isNegative ? 'text-red-600' : 'text-green-600'}`,
       }, rate.toFixed(1) + '%');
     },
     enableHiding: true,
@@ -337,20 +321,20 @@ async function fetchSalesStats() {
   try {
     // 새로운 통계 API 사용
     const stats: SalesStats = await SALES_REPOSITORY.getSalesStats();
-    
+
     salesStats.value.totalRevenue = stats.totalRevenue;
     salesStats.value.collectedRevenue = stats.collectedRevenue;
     salesStats.value.outstandingAmount = stats.outstandingAmount;
     salesStats.value.averageCollectionPeriod = stats.averageCollectionPeriod;
   } catch (error) {
     console.error('Error loading sales statistics:', error);
-    
+
     // API 실패 시 가데이터 설정
     salesStats.value.totalRevenue = 125000000; // 가데이터
     salesStats.value.collectedRevenue = 100000000; // 가데이터
     salesStats.value.outstandingAmount = 25000000; // 가데이터
     salesStats.value.averageCollectionPeriod = 30; // 가데이터
-    
+
     toast.error('매출 통계 로드 실패', {
       description: '매출 통계를 불러오는 중 오류가 발생했습니다.',
       position: 'bottom-right',

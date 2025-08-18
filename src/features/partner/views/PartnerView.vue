@@ -94,6 +94,12 @@
       @success="handleUploadSuccess"
       @error="handleUploadError"
     />
+
+    <!-- 협력사 추가 다이얼로그 -->
+    <PartnerAddDialog
+      v-model:open="addDialogOpen"
+      @success="handleAddSuccess"
+    />
   </SidebarLayout>
 </template>
 
@@ -118,6 +124,7 @@ import {
   SummaryCards,
   TruncatedCell,
 } from '@/components/business';
+import PartnerAddDialog from '@/features/partner/components/PartnerAddDialog.vue';
 import { useToast } from '@/core/composables';
 
 import { Checkbox } from '@/components/ui/checkbox';
@@ -149,6 +156,8 @@ const partnerStats = ref({
 
 // 엑셀 업로드 상태
 const uploadDialogOpen = ref(false);
+// 협력사 추가 다이얼로그 상태
+const addDialogOpen = ref(false);
 
 // 요약 카드 구성
 const summaryCards = computed(() => [
@@ -422,10 +431,7 @@ onMounted(() => {
 
 // Action handlers
 function onAddPartner() {
-  toast.info('협력사 추가', {
-    description: '협력사 추가 기능이 곧 제공될 예정입니다.',
-    position: 'bottom-right',
-  });
+  addDialogOpen.value = true;
 }
 
 function onViewPartner(partner: PartnerSearch) {
@@ -538,6 +544,19 @@ function handleUploadError(error: string) {
     description: error,
     position: 'bottom-right',
   });
+}
+
+function handleAddSuccess() {
+  toast.success('협력사 추가 완료', {
+    description: '협력사가 성공적으로 추가되었습니다.',
+    position: 'bottom-right',
+  });
+
+  // 통계 새로고침
+  fetchPartnerStats();
+  // 필터 옵션을 위한 전체 데이터 새로고침
+  loadAllPartnersForFilters();
+  // 테이블 새로고침은 DataTableWithUrl에서 자동으로 처리됨
 }
 
 function handleDownloadStart() {

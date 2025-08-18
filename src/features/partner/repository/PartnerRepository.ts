@@ -2,6 +2,7 @@ import HttpRepository from '@/core/http/HttpRepository.ts';
 import { inject, singleton } from 'tsyringe';
 import PartnerSearch from '@/features/partner/entity/PartnerSearch.ts';
 import PartnerStats from '@/features/partner/entity/PartnerStats.ts';
+import PartnerCreate from '@/features/partner/entity/PartnerCreate.ts';
 import PageResponse from '@/core/common/PageResponse.ts';
 import { createExcelFormData, downloadBlob, generateExcelFilename, extractFilenameFromResponse } from '@/core/utils/ExcelUtils.ts';
 
@@ -68,6 +69,14 @@ export default class PartnerRepository {
       path: '/api/v1/partners/excel/upload',
       data: formData,
       onProgress: onProgress,
+    });
+  }
+
+  // 협력사 생성
+  public async createPartner(partner: PartnerCreate): Promise<void> {
+    await this.httpRepository.post({
+      path: '/api/v1/partners',
+      data: partner,
     });
   }
 }

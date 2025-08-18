@@ -91,11 +91,10 @@
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
                   @click="openOrgDialog(field)"
-                  class="whitespace-nowrap"
+                  class="whitespace-nowrap h-9 w-15"
                 >
-                  조직도 선택
+                  조직도
                 </Button>
               </div>
               <FormMessage />

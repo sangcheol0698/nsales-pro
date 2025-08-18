@@ -3,6 +3,7 @@ import { inject, singleton } from 'tsyringe';
 import EmployeeSearch from '@/features/employee/entity/EmployeeSearch.ts';
 import EmployeeMyInfo from '@/features/employee/entity/EmployeeMyInfo.ts';
 import EmployeeStats from '@/features/employee/entity/EmployeeStats.ts';
+import EmployeeCreate from '@/features/employee/entity/EmployeeCreate.ts';
 import PageResponse from '@/core/common/PageResponse.ts';
 import { createExcelFormData, downloadBlob, generateExcelFilename, extractFilenameFromResponse } from '@/core/utils/ExcelUtils.ts';
 
@@ -92,6 +93,14 @@ export default class EmployeeRepository {
       path: '/api/v1/employees/excel/upload/sales',
       data: formData,
       onProgress: onProgress,
+    });
+  }
+
+  // 구성원 생성
+  public async createEmployee(employee: EmployeeCreate): Promise<void> {
+    await this.httpRepository.post({
+      path: '/api/v1/employees',
+      data: employee,
     });
   }
 }

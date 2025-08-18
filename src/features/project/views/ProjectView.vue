@@ -20,7 +20,7 @@
           <template #filters="{ table }">
             <!-- 날짜 검색 유형 선택 -->
             <Select v-model="searchType">
-              <SelectTrigger class="w-32 h-8">
+              <SelectTrigger class="w-32 h-7">
                 <SelectValue placeholder="날짜 유형" />
               </SelectTrigger>
               <SelectContent>

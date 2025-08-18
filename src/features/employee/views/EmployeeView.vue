@@ -121,6 +121,12 @@
       :withMembers="false"
       @select="handleOrgSelected"
     />
+
+    <!-- 구성원 추가 다이얼로그 -->
+    <EmployeeAddDialog
+      v-model:open="addDialogOpen"
+      @success="handleAddSuccess"
+    />
   </SidebarLayout>
 </template>
 
@@ -146,6 +152,7 @@ import {
   TruncatedCell,
 } from '@/components/business';
 import OrganizationSelectDialog from '@/features/organization/components/OrganizationSelectDialog.vue';
+import EmployeeAddDialog from '@/features/employee/components/EmployeeAddDialog.vue';
 import { useDepartments, useToast } from '@/core/composables';
 
 import { Checkbox } from '@/components/ui/checkbox';
@@ -173,6 +180,8 @@ const employeeStats = ref({
 const uploadDialogOpen = ref(false);
 // 조직도 선택 상태
 const orgDialogOpen = ref(false);
+// 구성원 추가 다이얼로그 상태
+const addDialogOpen = ref(false);
 const tableRef = ref<any>(null);
 
 // 요약 카드 구성
@@ -506,10 +515,7 @@ onMounted(() => {
 
 // Action handlers
 function onAddEmployee() {
-  toast.info('구성원 추가', {
-    description: '구성원 추가 기능이 곧 제공될 예정입니다.',
-    position: 'bottom-right',
-  });
+  addDialogOpen.value = true;
 }
 
 function onViewEmployee(employee: EmployeeSearch) {
@@ -625,6 +631,17 @@ function handleUploadError(error: string) {
     description: error,
     position: 'bottom-right',
   });
+}
+
+function handleAddSuccess() {
+  toast.success('구성원 추가 완료', {
+    description: '구성원이 성공적으로 추가되었습니다.',
+    position: 'bottom-right',
+  });
+
+  // 통계 및 테이블 데이터 새로고침
+  fetchEmployeeStats();
+  // 테이블 새로고침은 DataTableWithUrl에서 자동으로 처리됨
 }
 
 function handleDownloadStart() {

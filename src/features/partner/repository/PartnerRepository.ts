@@ -3,6 +3,7 @@ import { inject, singleton } from 'tsyringe';
 import PartnerSearch from '@/features/partner/entity/PartnerSearch.ts';
 import PartnerStats from '@/features/partner/entity/PartnerStats.ts';
 import PartnerCreate from '@/features/partner/entity/PartnerCreate.ts';
+import PartnerUpdate from '@/features/partner/entity/PartnerUpdate.ts';
 import PageResponse from '@/core/common/PageResponse.ts';
 import { createExcelFormData, downloadBlob, generateExcelFilename, extractFilenameFromResponse } from '@/core/utils/ExcelUtils.ts';
 
@@ -77,6 +78,30 @@ export default class PartnerRepository {
     await this.httpRepository.post({
       path: '/api/v1/partners',
       data: partner,
+    });
+  }
+
+  // 협력사 단일 조회
+  public async getPartner(id: number): Promise<PartnerSearch> {
+    const response = await this.httpRepository.get({
+      path: `/api/v1/partners/${id}`,
+    });
+
+    return PartnerSearch.fromResponse(response);
+  }
+
+  // 협력사 수정
+  public async updatePartner(partner: PartnerUpdate): Promise<void> {
+    await this.httpRepository.put({
+      path: `/api/v1/partners/${partner.id}`,
+      data: partner,
+    });
+  }
+
+  // 협력사 삭제
+  public async deletePartner(id: number): Promise<void> {
+    await this.httpRepository.delete({
+      path: `/api/v1/partners/${id}`,
     });
   }
 }

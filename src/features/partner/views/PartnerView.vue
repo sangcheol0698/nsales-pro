@@ -7,6 +7,7 @@
 
         <!-- 데이터 테이블 -->
         <DataTableWithUrl
+          ref="tableRef"
           :columns="columns"
           :fetchData="fetchPartners"
           searchPlaceholder="협력사 검색..."
@@ -100,6 +101,22 @@
       v-model:open="addDialogOpen"
       @success="handleAddSuccess"
     />
+
+    <!-- 협력사 수정 다이얼로그 -->
+    <PartnerEditDialog
+      v-model:open="editDialogOpen"
+      :loading="editLoading"
+      :partner="selectedPartner"
+      @submit="handleEditSubmit"
+    />
+
+    <!-- 협력사 삭제 다이얼로그 -->
+    <PartnerDeleteDialog
+      v-model:open="deleteDialogOpen"
+      :loading="deleteLoading"
+      :partner="selectedPartner"
+      @confirm="handleDeleteConfirm"
+    />
   </SidebarLayout>
 </template>
 
@@ -125,6 +142,9 @@ import {
   TruncatedCell,
 } from '@/components/business';
 import PartnerAddDialog from '@/features/partner/components/PartnerAddDialog.vue';
+import PartnerEditDialog from '@/features/partner/components/PartnerEditDialog.vue';
+import PartnerDeleteDialog from '@/features/partner/components/PartnerDeleteDialog.vue';
+import PartnerUpdate from '@/features/partner/entity/PartnerUpdate.ts';
 import { useToast } from '@/core/composables';
 
 import { Checkbox } from '@/components/ui/checkbox';
@@ -158,6 +178,16 @@ const partnerStats = ref({
 const uploadDialogOpen = ref(false);
 // 협력사 추가 다이얼로그 상태
 const addDialogOpen = ref(false);
+// 협력사 수정 관련 상태
+const editDialogOpen = ref(false);
+const editLoading = ref(false);
+const selectedPartner = ref<PartnerSearch | null>(null);
+// 협력사 삭제 관련 상태
+const deleteDialogOpen = ref(false);
+const deleteLoading = ref(false);
+
+// 테이블 참조 (새로고침용)
+const tableRef = ref<any>(null);
 
 // 요약 카드 구성
 const summaryCards = computed(() => [
@@ -442,12 +472,20 @@ function onViewPartner(partner: PartnerSearch) {
   });
 }
 
-function onEditPartner(partner: PartnerSearch) {
-  console.log('Edit partner:', partner);
-  toast.info('협력사 편집', {
-    description: `${partner.name}의 정보를 편집합니다.`,
-    position: 'bottom-right',
-  });
+async function onEditPartner(partner: PartnerSearch) {
+  try {
+    console.log('Edit partner:', partner);
+    
+    // 선택된 협력사 정보를 상태에 저장
+    selectedPartner.value = partner;
+    editDialogOpen.value = true;
+  } catch (error) {
+    console.error('협력사 정보 로드 실패:', error);
+    toast.error('협력사 정보 로드 실패', {
+      description: '협력사 정보를 불러오는 중 오류가 발생했습니다.',
+      position: 'bottom-right',
+    });
+  }
 }
 
 function onDuplicatePartner(partner: PartnerSearch) {
@@ -460,10 +498,10 @@ function onDuplicatePartner(partner: PartnerSearch) {
 
 function onDeletePartner(partner: PartnerSearch) {
   console.log('Delete partner:', partner);
-  toast.warning('협력사 삭제', {
-    description: `${partner.name}을(를) 삭제하시겠습니까?`,
-    position: 'bottom-right',
-  });
+  
+  // 선택된 협력사 정보를 상태에 저장
+  selectedPartner.value = partner;
+  deleteDialogOpen.value = true;
 }
 
 // 엑셀 관련 함수들
@@ -578,6 +616,97 @@ function handleDownloadError(error: string) {
     description: error,
     position: 'bottom-right',
   });
+}
+
+// 협력사 수정 처리
+async function handleEditSubmit(partner: PartnerUpdate) {
+  editLoading.value = true;
+  
+  try {
+    console.log('협력사 수정 요청:', partner);
+    
+    await PARTNER_REPOSITORY.updatePartner(partner);
+    
+    toast.success('협력사 수정 완료', {
+      description: `${partner.name}의 정보가 성공적으로 수정되었습니다.`,
+      position: 'bottom-right',
+    });
+    
+    // 다이얼로그 닫기
+    editDialogOpen.value = false;
+    selectedPartner.value = null;
+    
+    // 통계 새로고침
+    fetchPartnerStats();
+    
+    // 테이블 데이터 새로고침
+    if (tableRef.value && tableRef.value.loadData) {
+      console.log('협력사 수정 완료 - 테이블 새로고침 중...');
+      tableRef.value.loadData();
+    }
+    
+    // 필터 옵션을 위한 전체 데이터 새로고침
+    loadAllPartnersForFilters();
+    
+  } catch (error: any) {
+    console.error('협력사 수정 실패:', error);
+    
+    let errorMessage = '협력사 수정 중 오류가 발생했습니다.';
+    if (error?.message?.includes('modifiedDateTime')) {
+      errorMessage = '다른 사용자가 이미 수정했습니다. 새로고침 후 다시 시도해주세요.';
+    }
+    
+    toast.error('협력사 수정 실패', {
+      description: errorMessage,
+      position: 'bottom-right',
+    });
+  } finally {
+    editLoading.value = false;
+  }
+}
+
+// 협력사 삭제 처리
+async function handleDeleteConfirm(partnerId: number) {
+  deleteLoading.value = true;
+  
+  try {
+    console.log('협력사 삭제 요청:', partnerId);
+    
+    const partnerName = selectedPartner.value?.name || '';
+    
+    await PARTNER_REPOSITORY.deletePartner(partnerId);
+    
+    toast.success('협력사 삭제 완료', {
+      description: `${partnerName}이(가) 성공적으로 삭제되었습니다.`,
+      position: 'bottom-right',
+    });
+    
+    // 다이얼로그 닫기
+    deleteDialogOpen.value = false;
+    selectedPartner.value = null;
+    
+    // 통계 새로고침
+    fetchPartnerStats();
+    
+    // 테이블 데이터 새로고침
+    if (tableRef.value && tableRef.value.loadData) {
+      console.log('협력사 삭제 완료 - 테이블 새로고침 중...');
+      tableRef.value.loadData();
+    }
+    
+    // 필터 옵션을 위한 전체 데이터 새로고침
+    loadAllPartnersForFilters();
+    
+  } catch (error: any) {
+    console.error('협력사 삭제 실패:', error);
+    
+    toast.error('협력사 삭제 실패', {
+      description: '협력사 삭제 중 오류가 발생했습니다.',
+      position: 'bottom-right',
+    });
+  } finally {
+    deleteLoading.value = false;
+  }
 }
 </script>
 

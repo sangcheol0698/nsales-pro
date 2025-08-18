@@ -152,12 +152,11 @@
           <!-- 예상 금액 -->
           <FormField v-slot="{ componentField }" name="expectedAmount">
             <FormItem>
-              <FormLabel>예상 금액 (원)</FormLabel>
+              <FormLabel>예상 금액</FormLabel>
               <FormControl>
                 <Input
                   type="number"
                   placeholder="0"
-                  min="0"
                   v-bind="componentField"
                 />
               </FormControl>
@@ -168,12 +167,11 @@
           <!-- 계약 금액 -->
           <FormField v-slot="{ componentField }" name="contractAmount">
             <FormItem>
-              <FormLabel>계약 금액 (원)</FormLabel>
+              <FormLabel>계약 금액</FormLabel>
               <FormControl>
                 <Input
                   type="number"
                   placeholder="0"
-                  min="0"
                   v-bind="componentField"
                 />
               </FormControl>

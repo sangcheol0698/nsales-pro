@@ -127,6 +127,21 @@
       v-model:open="addDialogOpen"
       @success="handleAddSuccess"
     />
+
+    <!-- 구성원 수정 다이얼로그 -->
+    <EmployeeEditDialog
+      v-model:open="editDialogOpen"
+      :employeeId="selectedEmployeeId"
+      @success="handleEditSuccess"
+    />
+
+    <!-- 구성원 삭제 다이얼로그 -->
+    <EmployeeDeleteDialog
+      v-model:open="deleteDialogOpen"
+      :employeeId="selectedEmployeeId"
+      :employeeName="selectedEmployeeName"
+      @success="handleDeleteSuccess"
+    />
   </SidebarLayout>
 </template>
 
@@ -153,6 +168,8 @@ import {
 } from '@/components/business';
 import OrganizationSelectDialog from '@/features/organization/components/OrganizationSelectDialog.vue';
 import EmployeeAddDialog from '@/features/employee/components/EmployeeAddDialog.vue';
+import EmployeeEditDialog from '@/features/employee/components/EmployeeEditDialog.vue';
+import EmployeeDeleteDialog from '@/features/employee/components/EmployeeDeleteDialog.vue';
 import { useDepartments, useToast } from '@/core/composables';
 
 import { Checkbox } from '@/components/ui/checkbox';
@@ -176,12 +193,17 @@ const employeeStats = ref({
   averageTenure: 0,
 });
 
-// 엑셀 업로드 상태
+// 다이얼로그 상태들
 const uploadDialogOpen = ref(false);
-// 조직도 선택 상태
 const orgDialogOpen = ref(false);
-// 구성원 추가 다이얼로그 상태
 const addDialogOpen = ref(false);
+const editDialogOpen = ref(false);
+const deleteDialogOpen = ref(false);
+
+// 선택된 구성원 정보
+const selectedEmployeeId = ref<number | null>(null);
+const selectedEmployeeName = ref<string>('');
+
 const tableRef = ref<any>(null);
 
 // 요약 카드 구성
@@ -528,10 +550,9 @@ function onViewEmployee(employee: EmployeeSearch) {
 
 function onEditEmployee(employee: EmployeeSearch) {
   console.log('Edit employee:', employee);
-  toast.info('구성원 편집', {
-    description: `${employee.name}의 정보를 편집합니다.`,
-    position: 'bottom-right',
-  });
+  selectedEmployeeId.value = employee.id;
+  selectedEmployeeName.value = employee.name;
+  editDialogOpen.value = true;
 }
 
 function onDuplicateEmployee(employee: EmployeeSearch) {
@@ -544,10 +565,9 @@ function onDuplicateEmployee(employee: EmployeeSearch) {
 
 function onDeleteEmployee(employee: EmployeeSearch) {
   console.log('Delete employee:', employee);
-  toast.warning('구성원 삭제', {
-    description: `${employee.name}을(를) 삭제하시겠습니까?`,
-    position: 'bottom-right',
-  });
+  selectedEmployeeId.value = employee.id;
+  selectedEmployeeName.value = employee.name;
+  deleteDialogOpen.value = true;
 }
 
 // 엑셀 관련 함수들
@@ -621,9 +641,14 @@ function handleUploadSuccess() {
     position: 'bottom-right',
   });
 
-  // 통계 및 테이블 데이터 새로고침
+  // 통계 새로고침
   fetchEmployeeStats();
-  // 테이블 새로고침은 DataTableWithUrl에서 자동으로 처리됨
+  
+  // 테이블 데이터 새로고침
+  if (tableRef.value && tableRef.value.loadData) {
+    console.log('엑셀 업로드 완료 - 테이블 새로고침 중...');
+    tableRef.value.loadData();
+  }
 }
 
 function handleUploadError(error: string) {
@@ -639,9 +664,54 @@ function handleAddSuccess() {
     position: 'bottom-right',
   });
 
-  // 통계 및 테이블 데이터 새로고침
+  // 통계 새로고침
   fetchEmployeeStats();
-  // 테이블 새로고침은 DataTableWithUrl에서 자동으로 처리됨
+  
+  // 테이블 데이터 새로고침
+  if (tableRef.value && tableRef.value.loadData) {
+    console.log('구성원 추가 완료 - 테이블 새로고침 중...');
+    tableRef.value.loadData();
+  }
+}
+
+function handleEditSuccess() {
+  toast.success('구성원 수정 완료', {
+    description: '구성원 정보가 성공적으로 수정되었습니다.',
+    position: 'bottom-right',
+  });
+
+  // 통계 새로고침
+  fetchEmployeeStats();
+  
+  // 테이블 데이터 새로고침
+  if (tableRef.value && tableRef.value.loadData) {
+    console.log('구성원 수정 완료 - 테이블 새로고침 중...');
+    tableRef.value.loadData();
+  }
+  
+  // 선택된 구성원 정보 초기화
+  selectedEmployeeId.value = null;
+  selectedEmployeeName.value = '';
+}
+
+function handleDeleteSuccess() {
+  toast.success('구성원 삭제 완료', {
+    description: '구성원이 성공적으로 삭제되었습니다.',
+    position: 'bottom-right',
+  });
+
+  // 통계 새로고침
+  fetchEmployeeStats();
+  
+  // 테이블 데이터 새로고침
+  if (tableRef.value && tableRef.value.loadData) {
+    console.log('구성원 삭제 완료 - 테이블 새로고침 중...');
+    tableRef.value.loadData();
+  }
+  
+  // 선택된 구성원 정보 초기화
+  selectedEmployeeId.value = null;
+  selectedEmployeeName.value = '';
 }
 
 function handleDownloadStart() {

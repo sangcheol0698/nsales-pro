@@ -4,6 +4,7 @@ import EmployeeSearch from '@/features/employee/entity/EmployeeSearch.ts';
 import EmployeeMyInfo from '@/features/employee/entity/EmployeeMyInfo.ts';
 import EmployeeStats from '@/features/employee/entity/EmployeeStats.ts';
 import EmployeeCreate from '@/features/employee/entity/EmployeeCreate.ts';
+import EmployeeUpdate from '@/features/employee/entity/EmployeeUpdate.ts';
 import PageResponse from '@/core/common/PageResponse.ts';
 import { createExcelFormData, downloadBlob, generateExcelFilename, extractFilenameFromResponse } from '@/core/utils/ExcelUtils.ts';
 
@@ -102,5 +103,33 @@ export default class EmployeeRepository {
       path: '/api/v1/employees',
       data: employee,
     });
+  }
+
+  // 구성원 수정
+  public async updateEmployee(employee: EmployeeUpdate): Promise<void> {
+    await this.httpRepository.put({
+      path: `/api/v1/employees/${employee.id}`,
+      data: employee,
+    });
+  }
+
+  // 구성원 삭제
+  public async deleteEmployee(id: number): Promise<void> {
+    await this.httpRepository.delete({
+      path: `/api/v1/employees/${id}`,
+    });
+  }
+
+  // 구성원 상세 조회
+  public async getEmployee(id: number): Promise<EmployeeSearch> {
+    const response = await this.httpRepository.get({
+      path: `/api/v1/employees/${id}`,
+    });
+
+    console.log('백엔드에서 받은 구성원 데이터:', response);
+    console.log('구성원 필드 확인 - phone:', response.phone, 'birthDate:', response.birthDate);
+    console.log('부서 정보 - department:', response.department, 'departmentId:', response.department?.id, 'teamName:', response.department?.name);
+
+    return EmployeeSearch.fromResponse(response);
   }
 }

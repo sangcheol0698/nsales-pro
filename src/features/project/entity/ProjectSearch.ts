@@ -12,6 +12,7 @@ export default class ProjectSearch {
   status: '진행중' | '완료' | '예약';
   createdAt: string;
   updatedAt: string;
+  modifiedDateTime: string;
 
   constructor(data: {
     id: number;
@@ -27,6 +28,7 @@ export default class ProjectSearch {
     status: '진행중' | '완료' | '예약';
     createdAt: string;
     updatedAt: string;
+    modifiedDateTime: string;
   }) {
     this.id = data.id;
     this.code = data.code;
@@ -41,6 +43,7 @@ export default class ProjectSearch {
     this.status = data.status;
     this.createdAt = data.createdAt;
     this.updatedAt = data.updatedAt;
+    this.modifiedDateTime = data.modifiedDateTime;
   }
 
   static fromResponse(response: any): ProjectSearch {
@@ -58,6 +61,7 @@ export default class ProjectSearch {
       status: response.status || '진행중',
       createdAt: response.createdAt || '',
       updatedAt: response.updatedAt || '',
+      modifiedDateTime: response.modifiedDateTime || '',
     });
   }
 }

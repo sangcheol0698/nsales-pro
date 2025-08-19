@@ -356,6 +356,7 @@ const columns: ColumnDef<EmployeeSearch>[] = [
       ]);
     },
     enableHiding: true,
+    enableSorting: true, // 이름은 정렬 가능
     size: 380,
     meta: { skeleton: 'title-subtitle' },
   },
@@ -364,6 +365,7 @@ const columns: ColumnDef<EmployeeSearch>[] = [
     header: ({ column }) => h(DataTableColumnHeader, { column, title: '부서' }),
     cell: ({ row }) => h(TruncatedCell, { text: String(row.getValue('teamName') ?? ''), maxWidth: '8rem' }),
     enableHiding: true,
+    enableSorting: false, // 부서는 정렬 불가
     size: 140,
   },
   {
@@ -392,6 +394,7 @@ const columns: ColumnDef<EmployeeSearch>[] = [
       return value.includes(row.getValue('rank'));
     },
     enableHiding: true,
+    enableSorting: true, // 직급은 정렬 가능
     size: 100,
     meta: { skeleton: 'text-short', skeletonSize: 'sm' },
   },
@@ -404,6 +407,7 @@ const columns: ColumnDef<EmployeeSearch>[] = [
       className: 'text-left',
     }),
     enableHiding: true,
+    enableSorting: true, // 입사일은 정렬 가능
     size: 120,
     meta: { skeleton: 'text-short', skeletonSize: 'md' },
   },
@@ -419,6 +423,7 @@ const columns: ColumnDef<EmployeeSearch>[] = [
       return value.includes(row.getValue('grade'));
     },
     enableHiding: true,
+    enableSorting: true, // 등급은 정렬 가능
     size: 80,
     meta: { skeleton: 'text-short', skeletonSize: 'sm' },
   },
@@ -434,6 +439,7 @@ const columns: ColumnDef<EmployeeSearch>[] = [
       return value.includes(row.getValue('type'));
     },
     enableHiding: true,
+    enableSorting: true, // 유형은 정렬 가능
     size: 100,
     meta: { skeleton: 'text-short', skeletonSize: 'sm' },
   },
@@ -451,12 +457,14 @@ const columns: ColumnDef<EmployeeSearch>[] = [
       return value.includes(row.getValue(id));
     },
     enableHiding: true,
+    enableSorting: false, // 상태는 정렬 불가
     size: 100,
     meta: { skeleton: 'enum-badge' },
   },
   {
     id: 'actions',
     enableHiding: false,
+    enableSorting: false, // 액션 버튼은 정렬 불가
     size: 44,
     cell: ({ row }) => {
       return h(DataTableRowActions, {

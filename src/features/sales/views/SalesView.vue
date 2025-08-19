@@ -158,6 +158,7 @@ const columns: ColumnDef<SalesSearch>[] = [
       ]);
     },
     enableHiding: true,
+    enableSorting: true, // 부서명은 정렬 가능
     size: 180,
     meta: { skeleton: 'title-subtitle' },
   },
@@ -175,6 +176,7 @@ const columns: ColumnDef<SalesSearch>[] = [
       });
     },
     enableHiding: true,
+    enableSorting: true, // 매출합계는 정렬 가능
     size: 140,
   },
   {
@@ -191,6 +193,7 @@ const columns: ColumnDef<SalesSearch>[] = [
       });
     },
     enableHiding: true,
+    enableSorting: true, // 매출목표는 정렬 가능
     size: 140,
   },
   {
@@ -207,6 +210,7 @@ const columns: ColumnDef<SalesSearch>[] = [
       });
     },
     enableHiding: true,
+    enableSorting: true, // 달성률은 정렬 가능
     size: 100,
   },
   {
@@ -232,6 +236,7 @@ const columns: ColumnDef<SalesSearch>[] = [
       });
     },
     enableHiding: true,
+    enableSorting: true, // 영업이익은 정렬 가능
     size: 140,
   },
   {
@@ -257,6 +262,7 @@ const columns: ColumnDef<SalesSearch>[] = [
       });
     },
     enableHiding: true,
+    enableSorting: true, // 영업이익률은 정렬 가능
     size: 120,
   },
   {
@@ -273,6 +279,7 @@ const columns: ColumnDef<SalesSearch>[] = [
       });
     },
     enableHiding: true,
+    enableSorting: true, // 정직원은 정렬 가능
     size: 80,
   },
   {
@@ -289,6 +296,7 @@ const columns: ColumnDef<SalesSearch>[] = [
       });
     },
     enableHiding: true,
+    enableSorting: true, // 프리랜서는 정렬 가능
     size: 90,
   },
   {
@@ -305,6 +313,7 @@ const columns: ColumnDef<SalesSearch>[] = [
       });
     },
     enableHiding: true,
+    enableSorting: true, // 외주는 정렬 가능
     size: 70,
   },
   // Virtual columns for filtering (숨김 처리)
@@ -316,6 +325,7 @@ const columns: ColumnDef<SalesSearch>[] = [
       return value.includes(new Date().getFullYear().toString());
     },
     enableHiding: false,
+    enableSorting: false, // 가상 컬럼은 정렬 불가
     size: 0,
   },
   {
@@ -326,6 +336,7 @@ const columns: ColumnDef<SalesSearch>[] = [
       return value.includes('팀');
     },
     enableHiding: false,
+    enableSorting: false, // 가상 컬럼은 정렬 불가
     size: 0,
   },
   {
@@ -336,6 +347,7 @@ const columns: ColumnDef<SalesSearch>[] = [
       return value.includes('SI');
     },
     enableHiding: false,
+    enableSorting: false, // 가상 컬럼은 정렬 불가
     size: 0,
   },
   {

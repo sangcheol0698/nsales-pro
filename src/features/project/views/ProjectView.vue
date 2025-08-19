@@ -326,6 +326,7 @@ const columns: ColumnDef<ProjectSearch>[] = [
       ]);
     },
     enableHiding: true,
+    enableSorting: true, // 프로젝트명은 정렬 가능
     size: 500,
     meta: { skeleton: 'title-subtitle' },
   },
@@ -341,6 +342,7 @@ const columns: ColumnDef<ProjectSearch>[] = [
       return value.includes(String(row.getValue('type') ?? ''));
     },
     enableHiding: true,
+    enableSorting: true, // 유형은 정렬 가능
     size: 90,
   },
   {
@@ -355,6 +357,7 @@ const columns: ColumnDef<ProjectSearch>[] = [
       return h(TruncatedCell, { text: periodText, maxWidth: '14rem', className: 'text-left' });
     },
     enableHiding: true,
+    enableSorting: false, // 복합 필드는 정렬 불가
     size: 240,
   },
   {
@@ -366,6 +369,7 @@ const columns: ColumnDef<ProjectSearch>[] = [
       className: 'text-left',
     }),
     enableHiding: true,
+    enableSorting: true, // 계약일은 정렬 가능
     size: 120,
   },
   {
@@ -378,6 +382,7 @@ const columns: ColumnDef<ProjectSearch>[] = [
       return h(TruncatedCell, { text: formattedAmount, maxWidth: '8rem', className: 'text-right' });
     },
     enableHiding: true,
+    enableSorting: true, // 계약금액은 정렬 가능
     size: 140,
   },
   {
@@ -389,6 +394,7 @@ const columns: ColumnDef<ProjectSearch>[] = [
       className: 'text-left',
     }),
     enableHiding: true,
+    enableSorting: true, // 주관사는 정렬 가능
     size: 160,
   },
   {
@@ -400,6 +406,7 @@ const columns: ColumnDef<ProjectSearch>[] = [
       className: 'text-left',
     }),
     enableHiding: true,
+    enableSorting: true, // 고객사는 정렬 가능
     size: 160,
   },
   {
@@ -416,12 +423,14 @@ const columns: ColumnDef<ProjectSearch>[] = [
       return value.includes(String(row.getValue('status') ?? ''));
     },
     enableHiding: true,
+    enableSorting: false, // 상태는 정렬 불가
     size: 100,
     meta: { skeleton: 'enum-badge' },
   },
   {
     id: 'actions',
     enableHiding: false,
+    enableSorting: false, // 액션 버튼은 정렬 불가
     size: 44,
     cell: ({ row }) => {
       return h(DataTableRowActions, {

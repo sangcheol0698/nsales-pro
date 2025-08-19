@@ -292,6 +292,7 @@ const columns: ColumnDef<PartnerSearch>[] = [
       ]);
     },
     enableHiding: true,
+    enableSorting: true, // 협력사명은 정렬 가능
     size: 500,
     meta: { skeleton: 'title-subtitle' },
   },
@@ -303,6 +304,7 @@ const columns: ColumnDef<PartnerSearch>[] = [
       return value.includes(String(row.getValue('ceoName') ?? ''));
     },
     enableHiding: true,
+    enableSorting: true, // 대표자는 정렬 가능
     size: 110,
   },
   {
@@ -313,6 +315,7 @@ const columns: ColumnDef<PartnerSearch>[] = [
       return value.includes(String(row.getValue('salesRepName') ?? ''));
     },
     enableHiding: true,
+    enableSorting: true, // 영업대표는 정렬 가능
     size: 120,
   },
   {
@@ -324,6 +327,7 @@ const columns: ColumnDef<PartnerSearch>[] = [
       className: 'text-left font-mono',
     }),
     enableHiding: true,
+    enableSorting: false, // 포맷된 필드는 정렬 불가
     size: 140,
   },
   {
@@ -335,6 +339,7 @@ const columns: ColumnDef<PartnerSearch>[] = [
       className: 'font-mono',
     }),
     enableHiding: true,
+    enableSorting: false, // 포맷된 필드는 정렬 불가
     size: 200,
   },
   {
@@ -351,12 +356,14 @@ const columns: ColumnDef<PartnerSearch>[] = [
       return value.includes(String(row.getValue('grade') ?? ''));
     },
     enableHiding: true,
+    enableSorting: true, // 등급은 정렬 가능
     size: 90,
     meta: { skeleton: 'enum-badge' },
   },
   {
     id: 'actions',
     enableHiding: false,
+    enableSorting: false, // 액션 버튼은 정렬 불가
     size: 44,
     cell: ({ row }) => {
       return h(DataTableRowActions, {

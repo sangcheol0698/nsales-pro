@@ -35,13 +35,13 @@
 </template>
 
 <script setup lang="ts">
-import { Button } from '@/core/components/ui/button';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/core/components/ui/dropdown-menu';
+} from '@/components/ui/dropdown-menu';
 import { Check, Monitor, Moon, Sun } from 'lucide-vue-next';
 import { useTheme } from '@/core/composables';
 

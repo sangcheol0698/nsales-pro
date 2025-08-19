@@ -115,8 +115,8 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from 'vue'
 import { Search, X } from 'lucide-vue-next'
-import { Button } from '@/core/components/ui/button'
-import { Input } from '@/core/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import type { ChatMessage } from '../entity/ChatMessage'
 
 interface Props {

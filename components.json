@@ -3,16 +3,18 @@
   "style": "new-york",
   "typescript": true,
   "tailwind": {
-    "config": "",
+    "config": "tailwind.config.js",
     "css": "src/index.css",
     "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
   },
   "aliases": {
-    "utils": "@/shared/utils",
-    "ui": "@/core/components/ui",
-    "components": "@/core/components"
+    "components": "@/components",
+    "composables": "@/composables",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib"
   },
   "iconLibrary": "lucide"
 }

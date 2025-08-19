@@ -2,422 +2,491 @@
   <SidebarLayout>
     <main class="flex flex-col w-full h-full p-4 overflow-x-hidden">
       <div class="w-full">
-        <div class="flex items-center py-4">
-          <Input
-            class="max-w-sm"
-            placeholder="매출 검색..."
-            :model-value="table.getColumn('projectName')?.getFilterValue() as string"
-            @update:model-value="table.getColumn('projectName')?.setFilterValue($event)"
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger as-child>
-              <Button variant="outline" class="ml-auto">
-                컬럼 <ChevronDown class="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuCheckboxItem
-                v-for="column in table.getAllColumns().filter((column) => column.getCanHide())"
-                :key="column.id"
-                class="capitalize"
-                :model-value="column.getIsVisible()"
-                @update:model-value="(value) => {
-                  column.toggleVisibility(!!value)
-                }"
-              >
-                {{ getColumnLabel(column.id) }}
-              </DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        <div class="rounded-md border overflow-auto">
-          <div v-if="pagination.loading" class="flex justify-center items-center p-8">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-          <Table v-else>
-            <TableHeader>
-              <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
-                <TableHead v-for="header in headerGroup.headers" :key="header.id">
-                  <FlexRender v-if="!header.isPlaceholder" :render="header.column.columnDef.header" :props="header.getContext()" />
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <template v-if="table.getRowModel().rows?.length">
-                <template v-for="row in table.getRowModel().rows" :key="row.id">
-                  <TableRow :data-state="row.getIsSelected() && 'selected'">
-                    <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id">
-                      <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
-                    </TableCell>
-                  </TableRow>
-                  <TableRow v-if="row.getIsExpanded()">
-                    <TableCell :colspan="row.getAllCells().length">
-                      <pre>{{ JSON.stringify(row.original, null, 2) }}</pre>
-                    </TableCell>
-                  </TableRow>
-                </template>
-              </template>
-              <template v-else>
-                <TableEmpty :colspan="columns.length">
-                  <div class="flex flex-col items-center">
-                    <p class="text-lg font-medium">매출 데이터가 없습니다</p>
-                    <p class="text-sm text-muted-foreground">
-                      새 매출을 추가하거나 검색 조건을 변경해보세요
-                    </p>
-                  </div>
-                </TableEmpty>
-              </template>
-            </TableBody>
-          </Table>
-        </div>
+        <!-- 요약 카드 -->
+        <SummaryCards :cards="summaryCards" />
 
-        <div class="flex items-center justify-between space-x-2 py-4">
-          <div class="flex items-center space-x-2">
-            <p class="text-sm text-muted-foreground">
-              페이지당 행 수
-            </p>
-            <Select
-              :model-value="params.limit.toString()"
-              @update:model-value="onPageSizeChange(Number($event))"
-            >
-              <SelectTrigger class="h-8 w-[70px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5">5</SelectItem>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="20">20</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <!-- 데이터 테이블 -->
+        <DataTableWithUrl
+          :columns="columns"
+          :fetchData="fetchSales"
+          searchPlaceholder="프로젝트명 검색..."
+          searchColumnId="projectName"
+          :getColumnLabel="getColumnLabel"
+          emptyMessage="매출 데이터가 없습니다"
+          emptyDescription="새 매출을 추가하거나 검색 조건을 변경해보세요"
+          storageKey="sales-table-visibility"
+        >
+          <template #filters="{ table }">
+            <DataTableFacetedFilter
+              v-if="table.getColumn('year')"
+              :column="table.getColumn('year')"
+              title="연도"
+              :options="yearOptions"
+            />
+            <DataTableFacetedFilter
+              v-if="table.getColumn('departmentType')"
+              :column="table.getColumn('departmentType')"
+              title="부서 타입"
+              :options="departmentTypeOptions"
+            />
+          </template>
 
-          <div class="flex-1 text-sm text-muted-foreground text-center">
-            {{ table.getFilteredSelectedRowModel().rows.length }} /
-            {{ pagination.totalElements }} 행 선택됨 |
-            {{ params.page }} / {{ pagination.totalPages }} 페이지
-          </div>
-
-          <div class="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              :disabled="params.page <= 1 || pagination.loading"
-              @click="onPageChange(params.page - 1)"
-            >
-              이전
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              :disabled="params.page >= pagination.totalPages || pagination.loading"
-              @click="onPageChange(params.page + 1)"
-            >
-              다음
-            </Button>
-          </div>
-        </div>
+        </DataTableWithUrl>
       </div>
     </main>
   </SidebarLayout>
 </template>
 
 <script setup lang="ts">
-import type {
-  ColumnDef,
-  ColumnFiltersState,
-  ExpandedState,
-  SortingState,
-  VisibilityState,
-} from '@tanstack/vue-table'
+import type { ColumnDef } from '@tanstack/vue-table';
+import { computed, h, onMounted, ref } from 'vue';
+import { container } from 'tsyringe';
+import SalesRepository from '@/features/sales/repository/SalesRepository.ts';
+import type { SalesSearch } from '@/features/sales/entity/SalesSearch.ts';
+import SalesStats from '@/features/sales/entity/SalesStats.ts';
+import PageResponse from '@/core/common/PageResponse.ts';
+import { SidebarLayout } from '@/components/layout';
 import {
-  FlexRender,
-  getCoreRowModel,
-  getExpandedRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useVueTable,
-} from '@tanstack/vue-table'
-import { ArrowUpDown, ChevronDown } from 'lucide-vue-next'
-import { h, onMounted, ref } from 'vue'
-import { valueUpdater } from '@/core/components/ui/table/utils'
-import { container } from 'tsyringe'
-import SalesRepository from '@/features/sales/repository/SalesRepository.ts'
-import type { SalesSearch } from '@/features/sales/entity/SalesSearch.ts'
-import { SidebarLayout } from '@/shared/components/sidebar'
-import { useToast } from '@/core/composables'
+  DataTableColumnHeader,
+  DataTableFacetedFilter,
+  DataTableRowActions,
+  DataTableWithUrl,
+  SummaryCards,
+  TruncatedCell,
+} from '@/components/business';
+import { useToast } from '@/core/composables';
 
-import { Button } from '@/core/components/ui/button'
-import { Checkbox } from '@/core/components/ui/checkbox'
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/core/components/ui/dropdown-menu'
-import { Input } from '@/core/components/ui/input'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableEmpty,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/core/components/ui/table'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/core/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox';
+import { AlertCircle, Building2, Calendar, CheckCircle, Clock, DollarSign, User, Users } from 'lucide-vue-next';
 
-const toast = useToast()
-const SALES_REPOSITORY = container.resolve(SalesRepository)
-const data = ref<SalesSearch[]>([])
+const toast = useToast();
+const SALES_REPOSITORY = container.resolve(SalesRepository);
+
+// 요약 카드 데이터
+const salesStats = ref({
+  totalRevenue: 0,
+  collectedRevenue: 0,
+  outstandingAmount: 0,
+  averageCollectionPeriod: 0,
+});
+
+// 요약 카드 구성
+const summaryCards = computed(() => [
+  {
+    title: '총 매출액',
+    value: salesStats.value.totalRevenue,
+    previousValue: salesStats.value.totalRevenue * 0.9, // 임시로 10% 증가로 설정
+    description: '전월 대비',
+    icon: DollarSign,
+    formatType: 'currency' as const,
+  },
+  {
+    title: '수금완료 매출',
+    value: salesStats.value.collectedRevenue,
+    previousValue: salesStats.value.collectedRevenue * 0.85, // 임시로 15% 증가로 설정
+    description: '전월 대비',
+    icon: CheckCircle,
+    formatType: 'currency' as const,
+  },
+  {
+    title: '미수금',
+    value: salesStats.value.outstandingAmount,
+    previousValue: salesStats.value.outstandingAmount * 1.2, // 임시로 20% 감소로 설정
+    description: '전월 대비',
+    icon: AlertCircle,
+    formatType: 'currency' as const,
+  },
+  {
+    title: '평균 수금 기간',
+    value: salesStats.value.averageCollectionPeriod,
+    previousValue: salesStats.value.averageCollectionPeriod + 5, // 임시로 5일 단축으로 설정
+    description: '일 단위',
+    icon: Clock,
+    formatType: 'number' as const,
+  },
+]);
+
+// Filter options
+const yearOptions = [
+  { label: '2025', value: '2025', icon: Calendar },
+  { label: '2024', value: '2024', icon: Calendar },
+  { label: '2023', value: '2023', icon: Calendar },
+  { label: '2022', value: '2022', icon: Calendar },
+];
+
+const departmentTypeOptions = [
+  { label: '팀', value: '팀', icon: Users },
+  { label: '담당', value: '담당', icon: User },
+  { label: '본부', value: '본부', icon: Building2 },
+];
 
 const columns: ColumnDef<SalesSearch>[] = [
   {
     id: 'select',
-    header: ({ table }) => h(Checkbox, {
-      'modelValue': table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate'),
-      'onUpdate:modelValue': value => table.toggleAllPageRowsSelected(!!value),
-      'ariaLabel': '모두 선택',
-    }),
-    cell: ({ row }) => h(Checkbox, {
-      'modelValue': row.getIsSelected(),
-      'onUpdate:modelValue': value => row.toggleSelected(!!value),
-      'ariaLabel': '행 선택',
-    }),
+    header: ({ table }) =>
+      h(Checkbox, {
+        modelValue:
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && 'indeterminate'),
+        'onUpdate:modelValue': (value) => table.toggleAllPageRowsSelected(!!value),
+        ariaLabel: '모두 선택',
+      }),
+    cell: ({ row }) =>
+      h(Checkbox, {
+        modelValue: row.getIsSelected(),
+        'onUpdate:modelValue': (value) => row.toggleSelected(!!value),
+        ariaLabel: '행 선택',
+      }),
     enableSorting: false,
     enableHiding: false,
   },
   {
-    accessorKey: 'projectName',
-    header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['프로젝트명', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
-    },
+    accessorKey: '부서이름',
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '부서명' }),
     cell: ({ row }) => {
-      return h('div', { class: 'flex flex-col' }, [
-        h('span', { class: 'font-medium' }, row.getValue('projectName') || '-'),
-        h('span', { class: 'text-xs text-muted-foreground' }, row.original.code || '')
-      ])
+      return h('div', { class: 'flex flex-col w-40' }, [
+        h(TruncatedCell, {
+          text: String(row.getValue('부서이름') ?? '-'),
+          maxWidth: '10rem',
+          className: 'font-medium',
+        }),
+        h(TruncatedCell, {
+          text: String(row.original.부서범위 ?? ''),
+          maxWidth: '10rem',
+          className: 'text-xs text-muted-foreground',
+        }),
+      ]);
     },
+    enableHiding: true,
+    enableSorting: true, // 부서명은 정렬 가능
+    size: 180,
+    meta: { skeleton: 'title-subtitle' },
   },
   {
-    accessorKey: 'partnerName',
-    header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['협력사', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
-    },
-    cell: ({ row }) => h('div', {}, row.getValue('partnerName') || '-'),
-  },
-  {
-    accessorKey: 'amount',
-    header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['금액', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
-    },
+    accessorKey: '매출합계',
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '매출합계', align: 'right' }),
     cell: ({ row }) => {
-      const amount = row.getValue('amount') as number
-      if (!amount) return h('div', {}, '-')
-      return h('div', {}, amount.toLocaleString() + '원')
+      const amount = row.getValue('매출합계') as number;
+      const formattedAmount = amount ? amount.toLocaleString() + '원' : '-';
+
+      return h(TruncatedCell, {
+        text: formattedAmount,
+        maxWidth: '8rem',
+        className: 'text-right font-medium',
+      });
     },
+    enableHiding: true,
+    enableSorting: true, // 매출합계는 정렬 가능
+    size: 140,
   },
   {
-    accessorKey: 'totalAmount',
-    header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['총액', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
-    },
+    accessorKey: '매출목표',
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '매출목표', align: 'right' }),
     cell: ({ row }) => {
-      const amount = row.getValue('totalAmount') as number
-      if (!amount) return h('div', {}, '-')
-      return h('div', {}, amount.toLocaleString() + '원')
+      const amount = row.getValue('매출목표') as number;
+      const formattedAmount = amount ? amount.toLocaleString() + '원' : '-';
+
+      return h(TruncatedCell, {
+        text: formattedAmount,
+        maxWidth: '8rem',
+        className: 'text-right font-medium',
+      });
     },
+    enableHiding: true,
+    enableSorting: true, // 매출목표는 정렬 가능
+    size: 140,
   },
   {
-    accessorKey: 'issueDate',
-    header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['발행일', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
+    accessorKey: '달성률',
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '달성률', align: 'right' }),
+    cell: ({ row }) => {
+      const rate = row.getValue('달성률') as number;
+      const formattedRate = rate ? rate.toFixed(1) + '%' : '-';
+
+      return h(TruncatedCell, {
+        text: formattedRate,
+        maxWidth: '6rem',
+        className: 'text-right font-semibold text-primary',
+      });
     },
-    cell: ({ row }) => h('div', {}, row.getValue('issueDate') || '-'),
+    enableHiding: true,
+    enableSorting: true, // 달성률은 정렬 가능
+    size: 100,
   },
   {
-    accessorKey: 'dueDate',
-    header: '만기일',
-    cell: ({ row }) => h('div', {}, row.getValue('dueDate') || '-'),
-  },
-  {
-    accessorKey: 'paymentDate',
-    header: '결제일',
-    cell: ({ row }) => h('div', {}, row.getValue('paymentDate') || '-'),
-  },
-  {
-    accessorKey: 'status',
-    header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => ['상태', h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })])
+    accessorKey: '영업이익',
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '영업이익', align: 'right' }),
+    cell: ({ row }) => {
+      const amount = row.getValue('영업이익') as number;
+      if (!amount) {
+        return h(TruncatedCell, {
+          text: '-',
+          maxWidth: '8rem',
+          className: 'text-right font-medium',
+        });
+      }
+
+      const isNegative = amount < 0;
+      const formattedAmount = amount.toLocaleString() + '원';
+
+      return h(TruncatedCell, {
+        text: formattedAmount,
+        maxWidth: '8rem',
+        className: `text-right font-medium ${isNegative ? 'text-red-600' : 'text-green-600'}`,
+      });
     },
-    cell: ({ row }) => h('div', { class: 'capitalize' }, row.getValue('status') || '-'),
+    enableHiding: true,
+    enableSorting: true, // 영업이익은 정렬 가능
+    size: 140,
+  },
+  {
+    accessorKey: '영업이익률',
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '영업이익률', align: 'right' }),
+    cell: ({ row }) => {
+      const rate = row.getValue('영업이익률') as number;
+      if (!rate) {
+        return h(TruncatedCell, {
+          text: '-',
+          maxWidth: '6rem',
+          className: 'text-right font-medium',
+        });
+      }
+
+      const isNegative = rate < 0;
+      const formattedRate = rate.toFixed(1) + '%';
+
+      return h(TruncatedCell, {
+        text: formattedRate,
+        maxWidth: '6rem',
+        className: `text-right font-medium ${isNegative ? 'text-red-600' : 'text-green-600'}`,
+      });
+    },
+    enableHiding: true,
+    enableSorting: true, // 영업이익률은 정렬 가능
+    size: 120,
+  },
+  {
+    accessorKey: '정직원',
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '정직원', align: 'center' }),
+    cell: ({ row }) => {
+      const count = row.getValue('정직원') as number;
+      const countText = count?.toString() || '0';
+
+      return h(TruncatedCell, {
+        text: countText,
+        maxWidth: '4rem',
+        className: 'text-center font-medium',
+      });
+    },
+    enableHiding: true,
+    enableSorting: true, // 정직원은 정렬 가능
+    size: 80,
+  },
+  {
+    accessorKey: '프리랜서',
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '프리랜서', align: 'center' }),
+    cell: ({ row }) => {
+      const count = row.getValue('프리랜서') as number;
+      const countText = count?.toString() || '0';
+
+      return h(TruncatedCell, {
+        text: countText,
+        maxWidth: '5rem',
+        className: 'text-center font-medium',
+      });
+    },
+    enableHiding: true,
+    enableSorting: true, // 프리랜서는 정렬 가능
+    size: 90,
+  },
+  {
+    accessorKey: '외주',
+    header: ({ column }) => h(DataTableColumnHeader, { column, title: '외주', align: 'center' }),
+    cell: ({ row }) => {
+      const count = row.getValue('외주') as number;
+      const countText = count?.toString() || '0';
+
+      return h(TruncatedCell, {
+        text: countText,
+        maxWidth: '4rem',
+        className: 'text-center font-medium',
+      });
+    },
+    enableHiding: true,
+    enableSorting: true, // 외주는 정렬 가능
+    size: 70,
+  },
+  // Virtual columns for filtering (숨김 처리)
+  {
+    id: 'year',
+    header: () => null,
+    cell: () => null,
+    filterFn: (row, id, value) => {
+      return value.includes(new Date().getFullYear().toString());
+    },
+    enableHiding: false,
+    enableSorting: false, // 가상 컬럼은 정렬 불가
+    size: 0,
+  },
+  {
+    id: 'departmentType',
+    header: () => null,
+    cell: () => null,
+    filterFn: (row, id, value) => {
+      return value.includes('팀');
+    },
+    enableHiding: false,
+    enableSorting: false, // 가상 컬럼은 정렬 불가
+    size: 0,
+  },
+  {
+    id: 'projectType',
+    header: () => null,
+    cell: () => null,
+    filterFn: (row, id, value) => {
+      return value.includes('SI');
+    },
+    enableHiding: false,
+    enableSorting: false, // 가상 컬럼은 정렬 불가
+    size: 0,
+  },
+  {
+    id: 'personnelType',
+    header: () => null,
+    cell: () => null,
+    filterFn: (row, id, value) => {
+      return value.includes('정직원');
+    },
+    enableHiding: false,
+    size: 0,
   },
   {
     id: 'actions',
     enableHiding: false,
+    size: 44,
     cell: ({ row }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => row.toggleExpanded(!row.getIsExpanded()),
-      }, () => ['상세', h(ChevronDown, {
-        class: `ml-2 h-4 w-4 transition-transform ${row.getIsExpanded() ? 'rotate-180' : ''}`
-      })])
+      return h(DataTableRowActions, {
+        row: row.original,
+        onEdit: (sales) => onEditSales(sales),
+        onView: (sales) => onViewSales(sales),
+        onDuplicate: (sales) => onDuplicateSales(sales),
+        onDelete: (sales) => onDeleteSales(sales),
+      });
     },
   },
-]
-
-const sorting = ref<SortingState>([])
-const columnFilters = ref<ColumnFiltersState>([])
-const columnVisibility = ref<VisibilityState>({})
-const rowSelection = ref({})
-const expanded = ref<ExpandedState>({})
-
-const table = useVueTable({
-  get data() { return data.value },
-  columns,
-  manualPagination: true,
-  getCoreRowModel: getCoreRowModel(),
-  getSortedRowModel: getSortedRowModel(),
-  getFilteredRowModel: getFilteredRowModel(),
-  getExpandedRowModel: getExpandedRowModel(),
-  onSortingChange: updaterOrValue => {
-    valueUpdater(updaterOrValue, sorting)
-
-    // Update params with sorting information
-    if (sorting.value.length > 0) {
-      const sort = sorting.value[0]
-      params.value = {
-        ...params.value,
-        sort: sort.id,
-        direction: sort.desc ? 'desc' : 'asc'
-      }
-    } else if (params.value.sort) {
-      // Remove sorting if not present
-      const { sort, direction, ...rest } = params.value
-      params.value = rest
-    }
-
-    // Fetch data with new sorting
-    fetchSales()
-  },
-  onColumnFiltersChange: updaterOrValue => {
-    valueUpdater(updaterOrValue, columnFilters)
-
-    // Get the projectName filter value
-    const nameFilter = columnFilters.value.find(filter => filter.id === 'projectName')?.value as string
-
-    // Update params with the projectName filter
-    if (nameFilter) {
-      params.value = { ...params.value, projectName: nameFilter }
-    } else if (params.value.projectName) {
-      // Remove the projectName filter if it's not present
-      const { projectName, ...rest } = params.value
-      params.value = rest
-    }
-
-    // Reset to first page and fetch data
-    params.value.page = 1
-    fetchSales()
-  },
-  onColumnVisibilityChange: updaterOrValue => valueUpdater(updaterOrValue, columnVisibility),
-  onRowSelectionChange: updaterOrValue => valueUpdater(updaterOrValue, rowSelection),
-  onExpandedChange: updaterOrValue => valueUpdater(updaterOrValue, expanded),
-  state: {
-    get sorting() { return sorting.value },
-    get columnFilters() { return columnFilters.value },
-    get columnVisibility() { return columnVisibility.value },
-    get rowSelection() { return rowSelection.value },
-    get expanded() { return expanded.value },
-  },
-})
+];
 
 function getColumnLabel(columnId: string): string {
   switch (columnId) {
-    case 'projectName': return '프로젝트명'
-    case 'partnerName': return '협력사'
-    case 'amount': return '금액'
-    case 'totalAmount': return '총액'
-    case 'issueDate': return '발행일'
-    case 'dueDate': return '만기일'
-    case 'paymentDate': return '결제일'
-    case 'status': return '상태'
-    default: return columnId
+    case '부서이름':
+      return '부서명';
+    case '부서범위':
+      return '부서범위';
+    case '매출합계':
+      return '매출합계';
+    case '매출목표':
+      return '매출목표';
+    case '달성률':
+      return '달성률';
+    case '영업이익':
+      return '영업이익';
+    case '영업이익률':
+      return '영업이익률';
+    case '정직원':
+      return '정직원';
+    case '프리랜서':
+      return '프리랜서';
+    case '외주':
+      return '외주';
+    case 'year':
+      return '연도';
+    case 'departmentType':
+      return '부서타입';
+    default:
+      return columnId;
   }
 }
 
-const params = ref({
-  page: 1,
-  limit: 10,
-})
+// Function to fetch sales statistics
+async function fetchSalesStats() {
+  try {
+    // 새로운 통계 API 사용
+    const stats: SalesStats = await SALES_REPOSITORY.getSalesStats();
 
-const pagination = ref({
-  totalPages: 0,
-  totalElements: 0,
-  loading: false,
-})
+    salesStats.value.totalRevenue = stats.totalRevenue;
+    salesStats.value.collectedRevenue = stats.collectedRevenue;
+    salesStats.value.outstandingAmount = stats.outstandingAmount;
+    salesStats.value.averageCollectionPeriod = stats.averageCollectionPeriod;
+  } catch (error) {
+    console.error('Error loading sales statistics:', error);
 
-function fetchSales() {
-  pagination.value.loading = true
-  console.log('Fetching sales with params:', params.value)
+    // API 실패 시 가데이터 설정
+    salesStats.value.totalRevenue = 125000000; // 가데이터
+    salesStats.value.collectedRevenue = 100000000; // 가데이터
+    salesStats.value.outstandingAmount = 25000000; // 가데이터
+    salesStats.value.averageCollectionPeriod = 30; // 가데이터
 
-  SALES_REPOSITORY.getSales(params.value)
-    .then((response) => {
-      data.value = response.content
-      pagination.value.totalPages = response.totalPages
-      pagination.value.totalElements = response.totalElements
-      console.log('Sales loaded:', data.value)
-    })
-    .catch((error) => {
-      console.error('Error loading sales:', error)
-      // Show error message to user
-      toast.error('매출 데이터 로드 실패', {
-        description: '매출 데이터를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.',
-        position: 'bottom-right',
-      })
-    })
-    .finally(() => {
-      pagination.value.loading = false
-    })
+    toast.error('매출 통계 로드 실패', {
+      description: '매출 통계를 불러오는 중 오류가 발생했습니다.',
+      position: 'bottom-right',
+    });
+  }
 }
 
-function onPageChange(page: number) {
-  params.value.page = page
-  fetchSales()
+// Function to fetch sales data
+async function fetchSales(params: Record<string, any>): Promise<PageResponse<SalesSearch>> {
+  try {
+    console.log('Fetching sales with params:', params);
+    const response = await SALES_REPOSITORY.getSales(params);
+    console.log('Sales loaded:', response.content);
+    return response;
+  } catch (error) {
+    console.error('Error loading sales:', error);
+    toast.error('매출 데이터 로드 실패', {
+      description: '매출 데이터를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.',
+      position: 'bottom-right',
+    });
+    throw error;
+  }
 }
 
-function onPageSizeChange(size: number) {
-  params.value.limit = size
-  params.value.page = 1 // Reset to first page when changing page size
-  fetchSales()
-}
-
+// 컴포넌트 마운트 시 통계 데이터 로드
 onMounted(() => {
-  fetchSales()
-})
+  fetchSalesStats();
+});
+
+// Action handlers
+function onViewSales(sales: SalesSearch) {
+  console.log('View sales:', sales);
+  toast.info('매출 상세보기', {
+    description: `${sales.부서이름}의 상세 정보를 확인합니다.`,
+    position: 'bottom-right',
+  });
+}
+
+function onEditSales(sales: SalesSearch) {
+  console.log('Edit sales:', sales);
+  toast.info('매출 편집', {
+    description: `${sales.부서이름}의 정보를 편집합니다.`,
+    position: 'bottom-right',
+  });
+}
+
+function onDuplicateSales(sales: SalesSearch) {
+  console.log('Duplicate sales:', sales);
+  toast.info('매출 복제', {
+    description: `${sales.부서이름}의 정보를 복제합니다.`,
+    position: 'bottom-right',
+  });
+}
+
+function onDeleteSales(sales: SalesSearch) {
+  console.log('Delete sales:', sales);
+  toast.warning('매출 삭제', {
+    description: `${sales.부서이름}을(를) 삭제하시겠습니까?`,
+    position: 'bottom-right',
+  });
+}
 </script>
 
 <style scoped></style>

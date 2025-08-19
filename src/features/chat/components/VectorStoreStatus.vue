@@ -184,8 +184,8 @@ import {
   Search,
   Upload
 } from 'lucide-vue-next'
-import { Button } from '@/core/components/ui/button'
-import { Badge } from '@/core/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 
 interface Props {
   sessionId: string

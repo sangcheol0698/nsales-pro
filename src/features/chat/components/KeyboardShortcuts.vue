@@ -132,7 +132,7 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
 import { HelpCircle, X } from 'lucide-vue-next'
-import { Button } from '@/core/components/ui/button'
+import { Button } from '@/components/ui/button'
 
 const isHelpOpen = ref(false)
 

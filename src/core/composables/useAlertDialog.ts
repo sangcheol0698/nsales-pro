@@ -8,7 +8,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/core/components/ui/alert-dialog';
+} from '@/components/ui/alert-dialog';
 
 /**
  * AlertDialog 옵션 인터페이스

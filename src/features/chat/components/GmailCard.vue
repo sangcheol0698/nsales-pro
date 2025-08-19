@@ -163,8 +163,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { Mail, MailX, Clock, Paperclip, Star, ExternalLink, ChevronDown } from 'lucide-vue-next'
-import { Badge } from '@/core/components/ui/badge'
-import { Button } from '@/core/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 interface EmailMessage {
   id: string

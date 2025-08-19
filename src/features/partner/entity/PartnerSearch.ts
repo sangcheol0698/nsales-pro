@@ -11,6 +11,7 @@ export default class PartnerSearch {
   address: string;
   createdAt: string;
   updatedAt: string;
+  modifiedDateTime: string;
 
   constructor(data: {
     id: number;
@@ -23,6 +24,7 @@ export default class PartnerSearch {
     address: string;
     createdAt: string;
     updatedAt: string;
+    modifiedDateTime: string;
   }) {
     this.id = data.id;
     this.name = data.name;
@@ -34,6 +36,7 @@ export default class PartnerSearch {
     this.address = data.address;
     this.createdAt = data.createdAt;
     this.updatedAt = data.updatedAt;
+    this.modifiedDateTime = data.modifiedDateTime;
   }
 
   static fromResponse(response: any): PartnerSearch {
@@ -48,6 +51,7 @@ export default class PartnerSearch {
       address: response.address || '',
       createdAt: response.createdAt || '',
       updatedAt: response.updatedAt || '',
+      modifiedDateTime: response.modifiedDateTime || '',
     });
   }
 }

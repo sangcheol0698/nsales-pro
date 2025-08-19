@@ -1,5 +1,6 @@
 export default class PageResponse<T> {
   page: number;
+  number: number; // Spring Boot 페이징과 호환성을 위해 추가
   size: number;
   totalPages: number;
   totalElements: number;
@@ -13,6 +14,7 @@ export default class PageResponse<T> {
     content: T[];
   }) {
     this.page = data.page;
+    this.number = data.page; // number는 page와 동일한 값
     this.size = data.size;
     this.totalPages = data.totalPages;
     this.totalElements = data.totalElements;

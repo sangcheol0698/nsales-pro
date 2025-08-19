@@ -102,8 +102,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { Calendar, CalendarX, Clock, MapPin, Users, ExternalLink, ChevronDown } from 'lucide-vue-next'
-import { Badge } from '@/core/components/ui/badge'
-import { Button } from '@/core/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 interface CalendarEvent {
   id: string

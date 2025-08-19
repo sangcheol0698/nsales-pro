@@ -93,7 +93,7 @@ import { onMounted, watch } from 'vue';
 import { z } from 'zod';
 import { useField, useForm } from 'vee-validate';
 import { toTypedSchema } from '@vee-validate/zod';
-import { Button } from '@/core/components/ui/button';
+import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
@@ -101,14 +101,14 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/core/components/ui/form';
+} from '@/components/ui/form';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/core/components/ui/select';
+} from '@/components/ui/select';
 
 import { type FontName, fonts } from '@/config/fonts';
 import { useFont, useTheme } from '@/core/composables';

@@ -9,7 +9,7 @@ const routes = [
       title: '대시보드',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: true,
         },
       ],
@@ -25,7 +25,7 @@ const routes = [
       title: '내 프로필',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -88,7 +88,7 @@ const routes = [
       title: '공지사항',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -109,7 +109,7 @@ const routes = [
       title: '공지사항 등록',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -135,7 +135,7 @@ const routes = [
       title: '공지사항 상세',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -161,7 +161,7 @@ const routes = [
       title: '공지사항 수정',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -213,7 +213,7 @@ const routes = [
       title: '프로젝트 관리',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -234,12 +234,38 @@ const routes = [
       title: '구성원 관리',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
         {
           title: '구성원 관리',
+          disabled: true,
+        },
+      ],
+    },
+  },
+  {
+    path: '/employees/:id',
+    name: 'employeeDetail',
+    component: () => import('@/features/employee/views/EmployeeDetailView.vue'),
+    meta: {
+      menu: false,
+      activeIndex: 1,
+      title: '구성원 상세',
+      breadcrumbs: [
+        {
+          title: '대시보드',
+          disabled: false,
+          to: '/',
+        },
+        {
+          title: '구성원 관리',
+          disabled: false,
+          to: '/employees',
+        },
+        {
+          title: '구성원 상세',
           disabled: true,
         },
       ],
@@ -255,12 +281,38 @@ const routes = [
       title: '협력사 관리',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
         {
           title: '협력사 관리',
+          disabled: true,
+        },
+      ],
+    },
+  },
+  {
+    path: '/partners/:id',
+    name: 'partnerDetail',
+    component: () => import('@/features/partner/views/PartnerDetailView.vue'),
+    meta: {
+      menu: false,
+      activeIndex: 2,
+      title: '협력사 상세',
+      breadcrumbs: [
+        {
+          title: '대시보드',
+          disabled: false,
+          to: '/',
+        },
+        {
+          title: '협력사 관리',
+          disabled: false,
+          to: '/partners',
+        },
+        {
+          title: '협력사 상세',
           disabled: true,
         },
       ],
@@ -276,7 +328,7 @@ const routes = [
       title: '매출 관리',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -297,7 +349,7 @@ const routes = [
       title: '프로젝트 상세',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -323,7 +375,7 @@ const routes = [
       title: 'AI Assistant',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -344,7 +396,7 @@ const routes = [
       title: 'AI Assistant',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -352,53 +404,6 @@ const routes = [
           title: 'AI Assistant',
           disabled: false,
           to: '/chat',
-        },
-        {
-          title: '채팅 세션',
-          disabled: true,
-        },
-      ],
-    },
-  },
-  {
-    path: '/chat-enhanced',
-    name: 'chatEnhanced',
-    component: () => import('@/features/chat/views/ChatViewEnhanced.vue'),
-    meta: {
-      menu: false,
-      activeIndex: 4,
-      title: 'AI Assistant Enhanced',
-      breadcrumbs: [
-        {
-          title: '홈',
-          disabled: false,
-          to: '/',
-        },
-        {
-          title: 'AI Assistant Enhanced',
-          disabled: true,
-        },
-      ],
-    },
-  },
-  {
-    path: '/chat-enhanced/:sessionId',
-    name: 'chatEnhancedSession',
-    component: () => import('@/features/chat/views/ChatViewEnhanced.vue'),
-    meta: {
-      menu: false,
-      activeIndex: 4,
-      title: 'AI Assistant Enhanced',
-      breadcrumbs: [
-        {
-          title: '홈',
-          disabled: false,
-          to: '/',
-        },
-        {
-          title: 'AI Assistant Enhanced',
-          disabled: false,
-          to: '/chat-enhanced',
         },
         {
           title: '채팅 세션',
@@ -417,7 +422,7 @@ const routes = [
       title: 'Google 연동',
       breadcrumbs: [
         {
-          title: '홈',
+          title: '대시보드',
           disabled: false,
           to: '/',
         },
@@ -428,6 +433,20 @@ const routes = [
       ],
     },
   },
+  {
+    path: '/notifications',
+    name: 'notifications',
+    component: () => import('@/features/notification/views/NotificationsView.vue'),
+    meta: {
+      menu: true,
+      activeIndex: 7,
+      title: '알림',
+      breadcrumbs: [
+        { title: '대시보드', disabled: false, to: '/' },
+        { title: '알림', disabled: true },
+      ],
+    },
+  },
 ];
 
 const router = createRouter({
@@ -435,7 +454,12 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
+  // E2E 테스트용 인증 가드 우회 플래그
+  if (import.meta.env.VITE_E2E_BYPASS_AUTH === 'true') {
+    return next();
+  }
+
   // 인증이 필요하지 않은 경로 목록
   const publicPaths = ['/auths/login', '/auths/register', '/auths/forgot-password', '/auths/initialize'];
 
@@ -447,7 +471,6 @@ router.beforeEach((to, from, next) => {
     // 로그인 페이지로 리다이렉트
     next({ name: 'login' });
   } else {
-    // 그 외의 경우 정상적으로 라우팅
     next();
   }
 });

@@ -51,9 +51,9 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import Button from '@/core/components/ui/button/Button.vue';
-import Input from '@/core/components/ui/input/Input.vue';
-import Label from '@/core/components/ui/label/Label.vue';
+import Button from '@/components/ui/button/Button.vue';
+import Input from '@/components/ui/input/Input.vue';
+import Label from '@/components/ui/label/Label.vue';
 import { useToast } from '@/core/composables';
 import { container } from 'tsyringe';
 import MemberRepository from '@/features/member/repository/MemberRepository.ts';

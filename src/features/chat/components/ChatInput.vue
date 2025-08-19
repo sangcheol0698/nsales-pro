@@ -1,5 +1,5 @@
 <template>
-  <div 
+  <div
     ref="chatInputContainer"
     class="p-4 relative transition-all duration-300"
     :class="{
@@ -7,7 +7,7 @@
       'bg-background': !isDragOver
     }"
     @dragover.prevent="handleDragOver"
-    @dragleave.prevent="handleDragLeave"  
+    @dragleave.prevent="handleDragLeave"
     @drop.prevent="handleDrop"
   >
     <!-- 첨부된 파일 미리보기 -->
@@ -33,7 +33,8 @@
     </div>
 
     <!-- 드래그 앤 드롭 오버레이 -->
-    <div v-if="isDragOver" class="absolute inset-0 z-50 bg-primary/10 backdrop-blur-sm rounded-lg border-2 border-dashed border-primary flex items-center justify-center">
+    <div v-if="isDragOver"
+         class="absolute inset-0 z-50 bg-primary/10 backdrop-blur-sm rounded-lg border-2 border-dashed border-primary flex items-center justify-center">
       <div class="text-center space-y-3">
         <div class="mx-auto w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center animate-pulse">
           <Upload class="h-8 w-8 text-primary animate-bounce" />
@@ -125,18 +126,6 @@
             class="h-8 w-8 p-0 hover:bg-muted/80"
           >
             <Paperclip class="h-3 w-3" />
-          </Button>
-
-          <!-- 이모지 -->
-          <Button
-            variant="ghost"
-            size="sm"
-            @click="toggleEmojiPicker"
-            :disabled="disabled"
-            data-emoji-trigger
-            class="h-8 w-8 p-0 hover:bg-muted/80"
-          >
-            <Smile class="h-3 w-3" />
           </Button>
 
           <!-- 음성 입력 -->
@@ -300,50 +289,8 @@
       >
         <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
         <span class="text-sm text-red-700 dark:text-red-300 font-medium"
-          >음성 입력 중... (말하기를 멈추면 자동으로 전송됩니다)</span
+        >음성 입력 중... (말하기를 멈추면 자동으로 전송됩니다)</span
         >
-      </div>
-    </Transition>
-
-    <!-- 이모지 선택기 -->
-    <Transition
-      enter-active-class="transition-all duration-300 ease-out"
-      leave-active-class="transition-all duration-200 ease-in"
-      enter-from-class="opacity-0 scale-95 translate-y-4"
-      leave-to-class="opacity-0 scale-95 translate-y-4"
-    >
-      <div
-        v-if="showEmojiPicker"
-        data-modal="emoji-picker"
-        class="absolute bottom-full left-4 right-4 mb-2 bg-card border border-border rounded-xl shadow-lg p-4 z-50 backdrop-blur-sm"
-      >
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-sm font-semibold flex items-center gap-2">
-            <Smile class="h-4 w-4" />
-            이모지 선택
-          </h3>
-          <Button
-            variant="ghost"
-            size="sm"
-            @click="toggleEmojiPicker"
-            class="h-6 w-6 p-0 hover:bg-muted rounded-md"
-          >
-            <X class="h-3 w-3" />
-          </Button>
-        </div>
-
-        <div class="grid grid-cols-8 gap-2 max-h-48 overflow-y-auto">
-          <Button
-            v-for="emoji in emojiList"
-            :key="emoji.unicode"
-            variant="ghost"
-            size="sm"
-            @click="insertEmoji(emoji)"
-            class="h-8 w-8 p-0 text-lg hover:bg-muted/80 rounded-md"
-          >
-            {{ emoji.unicode }}
-          </Button>
-        </div>
       </div>
     </Transition>
 
@@ -360,23 +307,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
-import {
-  Send,
-  Paperclip,
-  Smile,
-  Mic,
-  Square,
-  X,
-  FileText,
-  Bot,
-  ChevronDown,
-  Search,
-  Wrench,
-  Upload,
-} from 'lucide-vue-next';
-import { Button } from '@/core/components/ui/button';
-import { Textarea } from '@/core/components/ui/textarea';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { Bot, ChevronDown, FileText, Mic, Paperclip, Search, Send, Square, Upload, Wrench, X } from 'lucide-vue-next';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/core/composables';
 
 interface Props {
@@ -393,12 +327,6 @@ interface Emits {
     webSearch?: boolean,
     useEnhancedAPI?: boolean,
   ];
-}
-
-interface EmojiItem {
-  unicode: string;
-  name: string;
-  category: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -429,7 +357,6 @@ const toolsEnabled = ref(localStorage.getItem('toolsEnabled') === 'true');
 
 // 새로운 기능 상태
 const attachedFiles = ref<File[]>([]);
-const showEmojiPicker = ref(false);
 const isRecording = ref(false);
 
 // 드래그 앤 드롭 상태
@@ -490,85 +417,11 @@ const filteredMentions = computed(() => {
     (mention) =>
       mention.trigger.toLowerCase().includes(query) ||
       mention.description.toLowerCase().includes(query) ||
-      mention.keywords.some((keyword) => keyword.toLowerCase().includes(query))
+      mention.keywords.some((keyword) => keyword.toLowerCase().includes(query)),
   );
 });
 const mediaRecorder = ref<MediaRecorder | null>(null);
 const recognition = ref<any>(null);
-
-// 이모지 데이터
-const emojiList: EmojiItem[] = [
-  { unicode: '😀', name: 'grinning', category: 'emotions' },
-  { unicode: '😃', name: 'grinning_big', category: 'emotions' },
-  { unicode: '😄', name: 'grinning_eyes', category: 'emotions' },
-  { unicode: '😁', name: 'grinning_sweat', category: 'emotions' },
-  { unicode: '😅', name: 'sweat_smile', category: 'emotions' },
-  { unicode: '😂', name: 'joy', category: 'emotions' },
-  { unicode: '🤣', name: 'rofl', category: 'emotions' },
-  { unicode: '😊', name: 'blush', category: 'emotions' },
-  { unicode: '😇', name: 'innocent', category: 'emotions' },
-  { unicode: '🙂', name: 'slight_smile', category: 'emotions' },
-  { unicode: '🙃', name: 'upside_down', category: 'emotions' },
-  { unicode: '😉', name: 'wink', category: 'emotions' },
-  { unicode: '😌', name: 'relieved', category: 'emotions' },
-  { unicode: '😍', name: 'heart_eyes', category: 'emotions' },
-  { unicode: '🥰', name: 'smiling_face_with_hearts', category: 'emotions' },
-  { unicode: '😘', name: 'kissing_heart', category: 'emotions' },
-  { unicode: '🤔', name: 'thinking', category: 'emotions' },
-  { unicode: '🤨', name: 'raised_eyebrow', category: 'emotions' },
-  { unicode: '😐', name: 'neutral', category: 'emotions' },
-  { unicode: '😑', name: 'expressionless', category: 'emotions' },
-  { unicode: '🙄', name: 'eye_roll', category: 'emotions' },
-  { unicode: '😏', name: 'smirk', category: 'emotions' },
-  { unicode: '😒', name: 'unamused', category: 'emotions' },
-  { unicode: '😞', name: 'disappointed', category: 'emotions' },
-  { unicode: '😔', name: 'pensive', category: 'emotions' },
-  { unicode: '😟', name: 'worried', category: 'emotions' },
-  { unicode: '😕', name: 'confused', category: 'emotions' },
-  { unicode: '🙁', name: 'slight_frown', category: 'emotions' },
-  { unicode: '😰', name: 'cold_sweat', category: 'emotions' },
-  { unicode: '😨', name: 'fearful', category: 'emotions' },
-  { unicode: '😢', name: 'cry', category: 'emotions' },
-  { unicode: '😭', name: 'sob', category: 'emotions' },
-  { unicode: '👍', name: 'thumbs_up', category: 'gestures' },
-  { unicode: '👎', name: 'thumbs_down', category: 'gestures' },
-  { unicode: '👌', name: 'ok_hand', category: 'gestures' },
-  { unicode: '✌️', name: 'peace', category: 'gestures' },
-  { unicode: '🤞', name: 'fingers_crossed', category: 'gestures' },
-  { unicode: '🤟', name: 'love_you', category: 'gestures' },
-  { unicode: '🤘', name: 'rock_on', category: 'gestures' },
-  { unicode: '👏', name: 'clap', category: 'gestures' },
-  { unicode: '🙌', name: 'raised_hands', category: 'gestures' },
-  { unicode: '👐', name: 'open_hands', category: 'gestures' },
-  { unicode: '🤲', name: 'palms_up', category: 'gestures' },
-  { unicode: '🤝', name: 'handshake', category: 'gestures' },
-  { unicode: '🙏', name: 'pray', category: 'gestures' },
-  { unicode: '💪', name: 'muscle', category: 'gestures' },
-  { unicode: '🎉', name: 'party', category: 'objects' },
-  { unicode: '🎊', name: 'confetti', category: 'objects' },
-  { unicode: '🔥', name: 'fire', category: 'objects' },
-  { unicode: '💯', name: 'hundred', category: 'objects' },
-  { unicode: '✨', name: 'sparkles', category: 'objects' },
-  { unicode: '⭐', name: 'star', category: 'objects' },
-  { unicode: '🌟', name: 'star2', category: 'objects' },
-  { unicode: '💫', name: 'dizzy', category: 'objects' },
-  { unicode: '⚡', name: 'zap', category: 'objects' },
-  { unicode: '💥', name: 'boom', category: 'objects' },
-  { unicode: '❤️', name: 'heart', category: 'objects' },
-  { unicode: '💙', name: 'blue_heart', category: 'objects' },
-  { unicode: '💚', name: 'green_heart', category: 'objects' },
-  { unicode: '💛', name: 'yellow_heart', category: 'objects' },
-  { unicode: '💜', name: 'purple_heart', category: 'objects' },
-  { unicode: '🖤', name: 'black_heart', category: 'objects' },
-  { unicode: '🤍', name: 'white_heart', category: 'objects' },
-  { unicode: '🤎', name: 'brown_heart', category: 'objects' },
-  { unicode: '💔', name: 'broken_heart', category: 'objects' },
-  { unicode: '💕', name: 'two_hearts', category: 'objects' },
-  { unicode: '💖', name: 'sparkling_heart', category: 'objects' },
-  { unicode: '💗', name: 'heartpulse', category: 'objects' },
-  { unicode: '💘', name: 'cupid', category: 'objects' },
-  { unicode: '💝', name: 'gift_heart', category: 'objects' },
-];
 
 const getCurrentModelName = () => {
   const model = availableModels.value[selectedModel.value];
@@ -610,7 +463,7 @@ const handleSubmit = () => {
     attachedFiles.value.length > 0 ? attachedFiles.value : undefined,
     finalModel,
     webSearch,
-    useEnhancedAPI
+    useEnhancedAPI,
   );
 
   inputMessage.value = '';
@@ -701,7 +554,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
       event.preventDefault();
       selectedMentionIndex.value = Math.min(
         selectedMentionIndex.value + 1,
-        filteredMentions.value.length - 1
+        filteredMentions.value.length - 1,
       );
       return;
     }
@@ -740,7 +593,6 @@ const handleKeyDown = (event: KeyboardEvent) => {
   // Escape 키로 모달 닫기
   if (event.key === 'Escape') {
     showModelSelector.value = false;
-    showEmojiPicker.value = false;
     showMentionSuggestions.value = false;
   }
 };
@@ -826,7 +678,7 @@ const removeFile = (fileToRemove: File) => {
 const handleDragOver = (event: DragEvent) => {
   if (props.disabled) return;
   isDragOver.value = true;
-  
+
   // 드래그된 파일 개수 확인
   const files = event.dataTransfer?.files;
   if (files) {
@@ -854,7 +706,7 @@ const handleDragLeave = (event: DragEvent) => {
 const handleDrop = (event: DragEvent) => {
   if (props.disabled) return;
   isDragOver.value = false;
-  
+
   const files = event.dataTransfer?.files;
   if (files) {
     const newFiles = Array.from(files);
@@ -878,32 +730,6 @@ const handleDrop = (event: DragEvent) => {
   }
 };
 
-// 이모지 관련 함수들
-const toggleEmojiPicker = () => {
-  showEmojiPicker.value = !showEmojiPicker.value;
-  showModelSelector.value = false; // 다른 모달 닫기
-};
-
-const insertEmoji = (emoji: EmojiItem) => {
-  const textarea = textareaRef.value;
-  if (textarea) {
-    const element = textarea.$el || textarea;
-    const start = element.selectionStart;
-    const end = element.selectionEnd;
-    const text = inputMessage.value;
-
-    inputMessage.value = text.slice(0, start) + emoji.unicode + text.slice(end);
-
-    nextTick(() => {
-      element.selectionStart = element.selectionEnd = start + emoji.unicode.length;
-      element.focus();
-    });
-  } else {
-    inputMessage.value += emoji.unicode;
-  }
-
-  showEmojiPicker.value = false;
-};
 
 // 음성 입력 관련 함수들
 const initSpeechRecognition = () => {
@@ -965,7 +791,6 @@ const toggleVoiceInput = () => {
     recognition.value.start();
     isRecording.value = true;
     showModelSelector.value = false;
-    showEmojiPicker.value = false;
   }
 };
 

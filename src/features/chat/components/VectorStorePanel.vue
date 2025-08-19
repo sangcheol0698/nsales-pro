@@ -147,10 +147,10 @@ import {
   Loader,
   FileText
 } from 'lucide-vue-next'
-import { Button } from '@/core/components/ui/button'
-import { Input } from '@/core/components/ui/input'
-import { Label } from '@/core/components/ui/label'
-import { Badge } from '@/core/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/core/composables'
 
 interface Props {

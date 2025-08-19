@@ -23,13 +23,14 @@
             {{ message.role === 'user' ? '나' : 'AI Assistant' }}
           </span>
           <span>{{ formatTime(message.timestamp) }}</span>
-          
+
           <!-- Tool 실행 상태 표시 -->
           <div v-if="message.toolCall" class="flex items-center gap-2 ml-2">
             <div class="h-1 w-1 bg-current rounded-full"></div>
             <div class="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium"
                  :class="getToolStatusClass(message.toolStatus)">
-              <component :is="getToolStatusIcon(message.toolStatus)" class="h-3 w-3" :class="{ 'animate-spin': message.toolStatus === 'running' }" />
+              <component :is="getToolStatusIcon(message.toolStatus)" class="h-3 w-3"
+                         :class="{ 'animate-spin': message.toolStatus === 'running' }" />
               <span>{{ message.toolCall }}</span>
               <span v-if="message.toolStatus === 'running'">실행 중...</span>
               <span v-else-if="message.toolStatus === 'completed'">완료</span>
@@ -48,10 +49,11 @@
           ]"
         >
           <!-- 이미지/문서 분석 중 인디케이터 -->
-          <div v-if="message.isAnalyzing" class="flex items-center gap-3 text-muted-foreground mb-3 p-3 bg-muted/50 rounded-lg border border-muted">
+          <div v-if="message.isAnalyzing"
+               class="flex items-center gap-3 text-muted-foreground mb-3 p-3 bg-muted/50 rounded-lg border border-muted">
             <div class="relative">
-              <component 
-                :is="message.analyzingType === 'image' ? 'Image' : 'FileText'" 
+              <component
+                :is="message.analyzingType === 'image' ? 'Image' : 'FileText'"
                 class="h-5 w-5 text-blue-500"
               />
               <div class="absolute -inset-1">
@@ -70,9 +72,9 @@
                 </div>
               </div>
               <p class="text-xs text-muted-foreground">
-                {{ message.analyzingType === 'image' 
-                    ? 'GPT-4o Vision이 이미지 내용을 분석하고 있습니다.' 
-                    : '문서 내용을 추출하고 분석하고 있습니다.' }}
+                {{ message.analyzingType === 'image'
+                ? 'GPT-4o Vision이 이미지 내용을 분석하고 있습니다.'
+                : '문서 내용을 추출하고 분석하고 있습니다.' }}
               </p>
             </div>
           </div>
@@ -89,12 +91,12 @@
 
           <!-- Assistant 메시지 -->
           <div v-else-if="message.role === 'assistant'">
-            
+
             <!-- Google Tools 결과 카드 (Collapsible) -->
             <div v-if="googleToolResult && googleToolResult.type !== 'text'" class="mb-3">
               <GoogleToolsCollapsible :google-tool-result="googleToolResult" />
             </div>
-            
+
             <!-- 일반 마크다운 내용 -->
             <div
               v-if="!googleToolResult || googleToolResult.type === 'text' || message.content.trim()"
@@ -117,7 +119,7 @@
               <!-- 이미지 파일들 -->
               <div v-if="attachedImageFiles.length > 0" class="space-y-2">
                 <div class="text-xs text-primary-foreground/70 font-medium">📷 첨부된 이미지</div>
-                <div class="grid gap-2" 
+                <div class="grid gap-2"
                      :class="{
                        'grid-cols-1': attachedImageFiles.length === 1,
                        'grid-cols-2': attachedImageFiles.length === 2,
@@ -131,7 +133,8 @@
                     <div class="w-full h-full flex items-center justify-center text-white/60">
                       <Image class="h-8 w-8" />
                     </div>
-                    <div class="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                    <div
+                      class="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                       <div class="text-white text-xs font-medium bg-black/50 px-2 py-1 rounded">
                         {{ file.name.length > 15 ? file.name.substring(0, 15) + '...' : file.name }}
                       </div>
@@ -163,7 +166,7 @@
 
             <!-- 기존 이미지 표시 (하위 호환용) -->
             <div v-else-if="attachedImages.length > 0" class="space-y-2">
-              <div class="grid gap-2" 
+              <div class="grid gap-2"
                    :class="{
                      'grid-cols-1': attachedImages.length === 1,
                      'grid-cols-2': attachedImages.length === 2,
@@ -178,7 +181,8 @@
                   <div class="w-full h-full flex items-center justify-center text-white/60">
                     <Image class="h-8 w-8" />
                   </div>
-                  <div class="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                  <div
+                    class="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                     <div class="text-white text-xs font-medium bg-black/40 px-2 py-1 rounded">
                       🖼️ 이미지 {{ index + 1 }}
                     </div>
@@ -195,7 +199,7 @@
         </div>
 
         <!-- 메시지 액션 -->
-        <div 
+        <div
           v-if="!isTyping"
           class="flex items-center gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
           role="toolbar"
@@ -211,7 +215,7 @@
             <Copy class="h-3 w-3 mr-1" />
             복사
           </Button>
-          
+
           <Button
             v-if="message.role === 'assistant'"
             variant="ghost"
@@ -223,7 +227,7 @@
             <RefreshCw class="h-3 w-3 mr-1" />
             재생성
           </Button>
-          
+
           <Button
             variant="ghost"
             size="sm"
@@ -257,7 +261,9 @@
   </div>
 
   <!-- 이미지 확대 모달 -->
-  <div v-if="selectedImageModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" @click="closeImageModal">
+  <div v-if="selectedImageModal"
+       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+       @click="closeImageModal">
     <div class="relative max-w-4xl max-h-full">
       <div class="w-full h-96 bg-muted/20 rounded-lg flex items-center justify-center text-white">
         <div class="text-center space-y-2">
@@ -280,69 +286,68 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
-import { marked } from 'marked'
-import { codeToHtml } from 'shiki'
-import he from 'he'
-import { Copy, RefreshCw, Trash2, Play, CheckCircle, XCircle, Loader2, Image, X, FileText } from 'lucide-vue-next'
-import { Avatar, AvatarFallback } from '@/core/components/ui/avatar'
-import { Button } from '@/core/components/ui/button'
-import { useToast } from '@/core/composables'
-import type { ChatMessage } from '../entity/ChatMessage'
-import GoogleToolsCollapsible from './GoogleToolsCollapsible.vue'
-import { getGoogleToolResult } from '../utils/googleToolsParser'
-import type { CalendarEvent, EmailMessage } from '../utils/googleToolsParser'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { marked } from 'marked';
+import { codeToHtml } from 'shiki';
+import he from 'he';
+import { CheckCircle, Copy, FileText, Image, Loader2, Play, RefreshCw, Trash2, X, XCircle } from 'lucide-vue-next';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/core/composables';
+import type { ChatMessage } from '../entity/ChatMessage';
+import GoogleToolsCollapsible from './GoogleToolsCollapsible.vue';
+import { getGoogleToolResult } from '../utils/googleToolsParser';
 
 interface Props {
-  message: ChatMessage
-  isTyping?: boolean
+  message: ChatMessage;
+  isTyping?: boolean;
 }
 
 interface Emits {
-  regenerate: [messageId: string]
-  delete: [messageId: string]
+  regenerate: [messageId: string];
+  delete: [messageId: string];
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  isTyping: false
-})
+  isTyping: false,
+});
 
-const emit = defineEmits<Emits>()
-const toast = useToast()
+const emit = defineEmits<Emits>();
+const toast = useToast();
 
-const showCopySuccess = ref(false)
-const selectedImageModal = ref<string | null>(null)
+const showCopySuccess = ref(false);
+const selectedImageModal = ref<string | null>(null);
 
 // Shiki 캐시를 위한 변수
-const highlightCache = new Map<string, string>()
+const highlightCache = new Map<string, string>();
 
 // 첨부된 파일들 분류
 const attachedImageFiles = computed(() => {
-  return props.message.attachedFiles?.filter(file => file.type.startsWith('image/')) || []
-})
+  return props.message.attachedFiles?.filter(file => file.type.startsWith('image/')) || [];
+});
 
 const attachedDocumentFiles = computed(() => {
-  return props.message.attachedFiles?.filter(file => !file.type.startsWith('image/')) || []
-})
+  return props.message.attachedFiles?.filter(file => !file.type.startsWith('image/')) || [];
+});
 
 // 첨부된 이미지 추출 (기존 방식, 하위 호환용)
 const attachedImages = computed(() => {
-  const content = props.message.content
-  const imagePattern = /\[첨부된 이미지: ([^\]]+)\]/g
-  const images: string[] = []
-  let match
-  
+  const content = props.message.content;
+  const imagePattern = /\[첨부된 이미지: ([^\]]+)\]/g;
+  const images: string[] = [];
+  let match;
+
   while ((match = imagePattern.exec(content)) !== null) {
-    images.push(match[1])
+    images.push(match[1]);
   }
-  
-  return images
-})
+
+  return images;
+});
 
 // 이미지 정보를 제거한 깨끗한 메시지 내용
 const cleanMessageContent = computed(() => {
-  return props.message.content.replace(/\[첨부된 이미지: [^\]]+\]/g, '').trim()
-})
+  return props.message.content.replace(/\[첨부된 이미지: [^\]]+\]/g, '').trim();
+});
 
 // Configure marked (Shiki는 비동기이므로 후처리로 사용)
 marked.setOptions({
@@ -351,145 +356,145 @@ marked.setOptions({
   langPrefix: 'language-',
   sanitize: false,
   smartypants: false,
-})
+});
 
 // 다크 모드 감지
 const isDarkMode = computed(() => {
-  return document.documentElement.classList.contains('dark')
-})
+  return document.documentElement.classList.contains('dark');
+});
 
 // Google Tools 결과 파싱
 const googleToolResult = computed(() => {
-  return getGoogleToolResult(props.message)
-})
+  return getGoogleToolResult(props.message);
+});
 
 // Shiki로 코드 하이라이트 처리하는 함수
 const highlightWithShiki = async (code: string, lang: string): Promise<string> => {
-  const cacheKey = `${lang}:${code}:${isDarkMode.value ? 'dark' : 'light'}`
+  const cacheKey = `${lang}:${code}:${isDarkMode.value ? 'dark' : 'light'}`;
   if (highlightCache.has(cacheKey)) {
-    return highlightCache.get(cacheKey)!
+    return highlightCache.get(cacheKey)!;
   }
 
   try {
-    
+
     // 언어 매핑
     const langMap: Record<string, string> = {
       'js': 'javascript',
       'ts': 'typescript',
       'py': 'python',
       'sh': 'bash',
-      'shell': 'bash'
-    }
-    
-    const shikiLang = langMap[lang.toLowerCase()] || lang.toLowerCase()
-    
+      'shell': 'bash',
+    };
+
+    const shikiLang = langMap[lang.toLowerCase()] || lang.toLowerCase();
+
     // 다크/라이트 모드에 따라 테마 선택
-    const theme = isDarkMode.value ? 'one-dark-pro' : 'github-light'
-    
+    const theme = isDarkMode.value ? 'one-dark-pro' : 'github-light';
+
     const html = await codeToHtml(code, {
       lang: shikiLang,
       theme: theme,
-      transformers: []
-    })
-    
-    console.log('✅ Shiki success:', html.includes('style=') ? 'Has styles' : 'No styles')
-    highlightCache.set(cacheKey, html)
-    return html
+      transformers: [],
+    });
+
+    console.log('✅ Shiki success:', html.includes('style=') ? 'Has styles' : 'No styles');
+    highlightCache.set(cacheKey, html);
+    return html;
   } catch (error) {
-    console.warn('⚠️ Shiki fallback to JavaScript:', error)
+    console.warn('⚠️ Shiki fallback to JavaScript:', error);
     try {
-      const theme = isDarkMode.value ? 'one-dark-pro' : 'github-light'
+      const theme = isDarkMode.value ? 'one-dark-pro' : 'github-light';
       const html = await codeToHtml(code, {
         lang: 'javascript',
-        theme: theme
-      })
-      highlightCache.set(cacheKey, html)
-      return html
+        theme: theme,
+      });
+      highlightCache.set(cacheKey, html);
+      return html;
     } catch (fallbackError) {
-      console.error('❌ Shiki complete failure:', fallbackError)
-      const fallback = `<pre><code>${he.encode(code)}</code></pre>`
-      highlightCache.set(cacheKey, fallback)
-      return fallback
+      console.error('❌ Shiki complete failure:', fallbackError);
+      const fallback = `<pre><code>${he.encode(code)}</code></pre>`;
+      highlightCache.set(cacheKey, fallback);
+      return fallback;
     }
   }
-}
+};
 
 // 유니코드 안전한 base64 인코딩/디코딩 함수
 const unicodeToBtoa = (str: string) => {
   return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => {
-    return String.fromCharCode(parseInt(p1, 16))
-  }))
-}
+    return String.fromCharCode(parseInt(p1, 16));
+  }));
+};
 
 const btoaToUnicode = (str: string) => {
   return decodeURIComponent(Array.prototype.map.call(atob(str), (c: string) => {
-    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-  }).join(''))
-}
+    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+  }).join(''));
+};
 
 // 파일 크기 포맷 함수
 const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 B'
-  
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-}
+  if (bytes === 0) return '0 B';
 
-const formattedContent = ref('')
-const isProcessing = ref(false)
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+};
+
+const formattedContent = ref('');
+const isProcessing = ref(false);
 
 // 비동기로 콘텐츠 처리
 const processContent = async () => {
   if (props.message.role !== 'assistant') {
-    formattedContent.value = props.message.content
-    return
+    formattedContent.value = props.message.content;
+    return;
   }
 
-  isProcessing.value = true
+  isProcessing.value = true;
   try {
     // Google Tools 메시지인 경우 JSON 코드 블록을 미리 제거
-    let content = props.message.content
-    const isGoogleToolsMessage = props.message.toolCall && 
+    let content = props.message.content;
+    const isGoogleToolsMessage = props.message.toolCall &&
       ['get_calendar_events', 'get_emails', 'create_calendar_event', 'send_email', 'find_free_time'].includes(props.message.toolCall) &&
-      props.message.toolStatus === 'completed'
-    
+      props.message.toolStatus === 'completed';
+
     if (isGoogleToolsMessage) {
       // JSON 마크다운 블록 패턴 제거
-      content = content.replace(/```json\s*[\s\S]*?\s*```/g, '')
+      content = content.replace(/```json\s*[\s\S]*?\s*```/g, '');
     }
-    
-    let html = marked(content)
-    
+
+    let html = marked(content);
+
     // 코드 블록 찾기
-    const codeBlockRegex = /<pre><code(?:\s+class="([^"]*)")?[^>]*>([\s\S]*?)<\/code><\/pre>/g
-    const codeBlocks: Array<{ match: string; classAttr?: string; code: string; lang: string }> = []
-    let match
-    
+    const codeBlockRegex = /<pre><code(?:\s+class="([^"]*)")?[^>]*>([\s\S]*?)<\/code><\/pre>/g;
+    const codeBlocks: Array<{ match: string; classAttr?: string; code: string; lang: string }> = [];
+    let match;
+
     while ((match = codeBlockRegex.exec(html)) !== null) {
-      const [fullMatch, classAttr, code] = match
-      const langMatch = classAttr?.match(/(?:^|\s)language-(\w+)(?:\s|$)/)
-      const lang = langMatch?.[1] || 'text'
-      
+      const [fullMatch, classAttr, code] = match;
+      const langMatch = classAttr?.match(/(?:^|\s)language-(\w+)(?:\s|$)/);
+      const lang = langMatch?.[1] || 'text';
+
       // HTML 디코딩
-      const tempDiv = document.createElement('div')
-      tempDiv.innerHTML = code
-      const plainCode = tempDiv.textContent || tempDiv.innerText || ''
-      
-      codeBlocks.push({ match: fullMatch, classAttr, code: plainCode, lang })
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = code;
+      const plainCode = tempDiv.textContent || tempDiv.innerText || '';
+
+      codeBlocks.push({ match: fullMatch, classAttr, code: plainCode, lang });
     }
-    
-    
+
+
     // 각 코드 블록을 Shiki로 처리
     for (const block of codeBlocks) {
-      const highlightedHtml = await highlightWithShiki(block.code, block.lang)
-      
+      const highlightedHtml = await highlightWithShiki(block.code, block.lang);
+
       // 복사 버튼과 함께 래핑
-      const buttonId = `copy-${Math.random().toString(36).substr(2, 9)}`
-      const encodedCode = unicodeToBtoa(block.code)
-      
+      const buttonId = `copy-${Math.random().toString(36).substr(2, 9)}`;
+      const encodedCode = unicodeToBtoa(block.code);
+
       const wrappedCode = `
         <div class="code-block-container" data-language="${block.lang}">
           <div class="code-block-header">
@@ -509,165 +514,164 @@ const processContent = async () => {
           </div>
           <div id="${buttonId}" class="shiki-wrapper">${highlightedHtml}</div>
         </div>
-      `
-      
-      html = html.replace(block.match, wrappedCode)
+      `;
+
+      html = html.replace(block.match, wrappedCode);
     }
-    
-    formattedContent.value = html
+
+    formattedContent.value = html;
   } catch (error) {
-    console.error('Content processing error:', error)
-    formattedContent.value = marked(props.message.content)
+    console.error('Content processing error:', error);
+    formattedContent.value = marked(props.message.content);
   } finally {
-    isProcessing.value = false
+    isProcessing.value = false;
   }
-}
+};
 
 // 메시지 내용이 변경될 때마다 처리
-watch(() => props.message.content, processContent, { immediate: true })
+watch(() => props.message.content, processContent, { immediate: true });
 
 // 다크 모드 변경 시 코드 하이라이트 다시 처리
 watch(isDarkMode, () => {
   if (props.message.role === 'assistant') {
     // 캐시 클리어 후 다시 처리
-    highlightCache.clear()
-    processContent()
+    highlightCache.clear();
+    processContent();
   }
-})
+});
 
 // googleToolResult가 변경될 때마다 콘텐츠 재처리
 watch(googleToolResult, () => {
   if (props.message.role === 'assistant') {
-    processContent()
+    processContent();
   }
-})
+});
 
 const formatTime = (timestamp: Date | string) => {
-  const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp
-  
+  const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+
   // 유효한 날짜인지 확인
   if (isNaN(date.getTime())) {
-    return '시간 정보 없음'
+    return '시간 정보 없음';
   }
-  
+
   return new Intl.DateTimeFormat('ko-KR', {
     hour: '2-digit',
     minute: '2-digit',
-  }).format(date)
-}
+  }).format(date);
+};
 
 // 메시지 복사 함수
 const copyMessage = async () => {
   try {
-    await navigator.clipboard.writeText(props.message.content)
-    showCopySuccess.value = true
+    await navigator.clipboard.writeText(props.message.content);
+    showCopySuccess.value = true;
     setTimeout(() => {
-      showCopySuccess.value = false
-    }, 2000)
+      showCopySuccess.value = false;
+    }, 2000);
   } catch (error) {
-    console.error('복사 실패:', error)
+    console.error('복사 실패:', error);
     toast.error('복사 실패', {
-      description: '메시지를 복사하는 중 오류가 발생했습니다.'
-    })
+      description: '메시지를 복사하는 중 오류가 발생했습니다.',
+    });
   }
-}
+};
 
 // 메시지 재생성 함수
 const regenerateMessage = () => {
-  emit('regenerate', props.message.id)
-}
+  emit('regenerate', props.message.id);
+};
 
 // 메시지 삭제 함수
 const deleteMessage = () => {
-  emit('delete', props.message.id)
-}
+  emit('delete', props.message.id);
+};
 
 // 이미지 모달 함수들
 const openImageModal = (imagePath: string) => {
-  selectedImageModal.value = imagePath
-}
+  selectedImageModal.value = imagePath;
+};
 
 const closeImageModal = () => {
-  selectedImageModal.value = null
-}
+  selectedImageModal.value = null;
+};
 
 // Tool 상태에 따른 CSS 클래스 반환
 const getToolStatusClass = (status?: string) => {
   switch (status) {
     case 'running':
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
     case 'completed':
-      return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+      return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
     case 'error':
-      return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+      return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
     default:
-      return 'bg-muted text-muted-foreground'
+      return 'bg-muted text-muted-foreground';
   }
-}
+};
 
 // Tool 상태에 따른 아이콘 반환
 const getToolStatusIcon = (status?: string) => {
   switch (status) {
     case 'running':
-      return Loader2
+      return Loader2;
     case 'completed':
-      return CheckCircle
+      return CheckCircle;
     case 'error':
-      return XCircle
+      return XCircle;
     default:
-      return Play
+      return Play;
   }
-}
+};
 
 // 코드 블록 복사 함수를 전역으로 등록
 const copyCodeBlock = (buttonId: string, button: HTMLElement) => {
-  const codeElement = document.getElementById(buttonId)
-  const codeData = button.getAttribute('data-code')
-  
+  const codeElement = document.getElementById(buttonId);
+  const codeData = button.getAttribute('data-code');
+
   if (codeData) {
     try {
-      const decodedCode = btoaToUnicode(codeData)
+      const decodedCode = btoaToUnicode(codeData);
       navigator.clipboard.writeText(decodedCode).then(() => {
-        const copyText = button.querySelector('.copy-text')
-        const originalText = copyText?.textContent
-        
+        const copyText = button.querySelector('.copy-text');
+        const originalText = copyText?.textContent;
+
         if (copyText) {
-          copyText.textContent = '복사됨!'
-          button.classList.add('copied')
-          
+          copyText.textContent = '복사됨!';
+          button.classList.add('copied');
+
           setTimeout(() => {
-            copyText.textContent = originalText
-            button.classList.remove('copied')
-          }, 2000)
+            copyText.textContent = originalText;
+            button.classList.remove('copied');
+          }, 2000);
         }
       }).catch(err => {
-        console.error('복사 실패:', err)
+        console.error('복사 실패:', err);
         toast.error('복사 실패', {
-          description: '코드를 복사하는 중 오류가 발생했습니다.'
-        })
-      })
+          description: '코드를 복사하는 중 오류가 발생했습니다.',
+        });
+      });
     } catch (err) {
-      console.error('코드 디코딩 실패:', err)
+      console.error('코드 디코딩 실패:', err);
       toast.error('디코딩 실패', {
-        description: '코드를 디코딩하는 중 오류가 발생했습니다.'
-      })
+        description: '코드를 디코딩하는 중 오류가 발생했습니다.',
+      });
     }
   }
-}
+};
 
 onMounted(() => {
   // 전역 함수로 등록
-  ;(window as any).copyCodeBlock = copyCodeBlock
-})
+  ;(window as any).copyCodeBlock = copyCodeBlock;
+});
 
 onUnmounted(() => {
   // 정리
-  delete (window as any).copyCodeBlock
-})
+  delete (window as any).copyCodeBlock;
+});
 </script>
 
 <style>
-/* Magic MCP 기반 모던 마크다운 스타일 */
 .markdown-content {
   color: hsl(var(--foreground));
   line-height: 1.7;
@@ -691,12 +695,29 @@ onUnmounted(() => {
   letter-spacing: -0.025em;
 }
 
-.markdown-content h1 { font-size: 1.75rem; }
-.markdown-content h2 { font-size: 1.5rem; }
-.markdown-content h3 { font-size: 1.25rem; }
-.markdown-content h4 { font-size: 1.125rem; }
-.markdown-content h5 { font-size: 1rem; }
-.markdown-content h6 { font-size: 0.9rem; }
+.markdown-content h1 {
+  font-size: 1.75rem;
+}
+
+.markdown-content h2 {
+  font-size: 1.5rem;
+}
+
+.markdown-content h3 {
+  font-size: 1.25rem;
+}
+
+.markdown-content h4 {
+  font-size: 1.125rem;
+}
+
+.markdown-content h5 {
+  font-size: 1rem;
+}
+
+.markdown-content h6 {
+  font-size: 0.9rem;
+}
 
 /* 첫 번째 제목의 상단 마진 제거 */
 .markdown-content h1:first-child,
@@ -1103,31 +1124,42 @@ onUnmounted(() => {
     font-size: 0.9rem;
     line-height: 1.6;
   }
-  
-  .markdown-content h1 { font-size: 1.5rem; }
-  .markdown-content h2 { font-size: 1.35rem; }
-  .markdown-content h3 { font-size: 1.2rem; }
-  .markdown-content h4 { font-size: 1.1rem; }
-  
+
+  .markdown-content h1 {
+    font-size: 1.5rem;
+  }
+
+  .markdown-content h2 {
+    font-size: 1.35rem;
+  }
+
+  .markdown-content h3 {
+    font-size: 1.2rem;
+  }
+
+  .markdown-content h4 {
+    font-size: 1.1rem;
+  }
+
   .markdown-content pre {
     padding: 1rem;
     margin: 1rem 0;
     font-size: 0.8rem;
   }
-  
+
   .markdown-content code {
     font-size: 0.8rem;
   }
-  
+
   .markdown-content blockquote {
     padding: 1rem;
     margin: 1rem 0;
   }
-  
+
   .markdown-content table {
     font-size: 0.85rem;
   }
-  
+
   .markdown-content th,
   .markdown-content td {
     padding: 0.625rem 0.75rem;

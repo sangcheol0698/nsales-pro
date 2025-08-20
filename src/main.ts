@@ -6,6 +6,11 @@ import '@/index.css';
 import App from './App.vue';
 import router from './core/router';
 
+// 개발환경 인증 유틸리티
+import '@/core/utils/auth-dev';
+// 개발환경 사용자 설정 유틸리티
+import '@/core/utils/dev-user-setup';
+
 const app = createApp(App);
 
 app.use(createPinia());

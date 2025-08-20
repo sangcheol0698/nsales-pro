@@ -76,14 +76,14 @@
     <CommandPalette
       :open="isCommandPaletteOpen"
       @update:open="isCommandPaletteOpen = $event"
-      :onOpenSettings="openSettingsDialog"
+      :onOpenSettings="openProfileDialog"
     />
 
-    <!-- Settings Dialog -->
-    <SettingsDialog
+    <!-- Settings Dialog (사용 안함 - ProfileDialog로 통합) -->
+    <!-- <SettingsDialog
       :open="isSettingsDialogOpen"
       @update:open="isSettingsDialogOpen = $event"
-    />
+    /> -->
 
     <!-- Notifications Sheet -->
     <NotificationsSheet :open="isNotificationsOpen" @update:open="isNotificationsOpen = $event"/>
@@ -106,7 +106,7 @@
     BreadcrumbSeparator,
   } from '@/components/ui/breadcrumb';
   import ThemeToggle from '@/core/theme/ThemeToggle.vue';
-  import { ProfileDialog, SettingsDialog } from '@/components/business';
+  import { ProfileDialog } from '@/components/business';
   import AppSidebar from '@/components/business/AppSidebar.vue';
   import CommandPalette from '@/components/business/CommandPalette.vue';
   import NotificationsSheet from '@/components/business/NotificationsSheet.vue';
@@ -115,7 +115,6 @@
   const route = useRoute();
   const isProfileDialogOpen = ref(false);
   const isCommandPaletteOpen = ref(false);
-  const isSettingsDialogOpen = ref(false);
   const isNotificationsOpen = ref(false);
 
   const notificationsStore = useNotificationsStore();
@@ -145,9 +144,6 @@
     isNotificationsOpen.value = true;
   }
 
-  function openSettingsDialog() {
-    isSettingsDialogOpen.value = true;
-  }
 
   // Command + K 단축키 처리
   function handleKeydown(event: KeyboardEvent) {

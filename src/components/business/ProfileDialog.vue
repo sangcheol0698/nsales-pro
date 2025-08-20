@@ -1,7 +1,8 @@
 <template>
   <Dialog :open="open" @update:open="$emit('update:open', $event)">
     <DialogContent
-      class="w-[85vw] sm:w-[80vw] md:w-[75vw] lg:w-[70vw] xl:w-[65vw] 2xl:w-[60vw] !max-w-[900px] sm:!max-w-[80vw] md:!max-w-[75vw] lg:!max-w-[70vw] xl:!max-w-[65vw] 2xl:!max-w-[60vw] h-[95vh] sm:h-[90vh] md:h-[85vh] flex flex-col p-0">
+      class="w-[85vw] sm:w-[80vw] md:w-[75vw] lg:w-[70vw] xl:w-[65vw] 2xl:w-[60vw] !max-w-[900px] sm:!max-w-[80vw] md:!max-w-[75vw] lg:!max-w-[70vw] xl:!max-w-[65vw] 2xl:!max-w-[60vw] h-[95vh] sm:h-[90vh] md:h-[85vh] flex flex-col p-0"
+    >
       <DialogHeader class="px-6 sm:px-8 lg:px-10 xl:px-12 pt-6 sm:pt-8 pb-6 border-b flex-shrink-0">
         <DialogTitle class="text-xl sm:text-2xl">설정</DialogTitle>
         <DialogDescription class="text-sm sm:text-base">
@@ -134,57 +135,67 @@
                 <h4 class="text-base sm:text-lg font-medium">개인 정보</h4>
                 <div class="space-y-4">
                   <!-- Responsive grid: mobile stacked, desktop side-by-side -->
-                  <div class="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4 items-start sm:items-center">
+                  <div
+                    class="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4 items-start sm:items-center"
+                  >
                     <Label class="text-sm font-medium sm:text-right">이름</Label>
                     <div class="col-span-3 w-full">
                       <Input
                         disabled
-                        :value="employee?.name || member?.name"
+                        v-model="employeeForm.name"
                         class="h-10 sm:h-11 text-sm sm:text-base bg-muted"
                       />
                     </div>
                   </div>
-                  <div class="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4 items-start sm:items-center">
+                  <div
+                    class="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4 items-start sm:items-center"
+                  >
                     <Label class="text-sm font-medium sm:text-right">이메일</Label>
                     <div class="col-span-3 w-full">
                       <Input
                         disabled
-                        :value="employee?.email || member?.username"
+                        v-model="employeeForm.email"
                         class="h-10 sm:h-11 text-sm sm:text-base bg-muted"
                       />
                     </div>
                   </div>
 
-                  <div class="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4 items-start sm:items-center">
+                  <div
+                    class="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4 items-start sm:items-center"
+                  >
                     <Label class="text-sm font-medium sm:text-right">전화번호</Label>
                     <div class="col-span-3 w-full">
                       <Input
                         disabled
-                        :value="employee?.phone"
+                        v-model="employeeForm.phone"
                         placeholder="등록된 전화번호가 없습니다"
                         class="h-10 sm:h-11 text-sm sm:text-base bg-muted"
                       />
                     </div>
                   </div>
 
-                  <div class="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4 items-start sm:items-center">
+                  <div
+                    class="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4 items-start sm:items-center"
+                  >
                     <Label class="text-sm font-medium sm:text-right">생년월일</Label>
                     <div class="col-span-3 w-full">
                       <Input
                         disabled
-                        :value="employee?.birthDate"
+                        v-model="employeeForm.birthDate"
                         placeholder="등록된 생년월일이 없습니다"
                         class="h-10 sm:h-11 text-sm sm:text-base bg-muted"
                       />
                     </div>
                   </div>
-                  
-                  <div class="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4 items-start sm:items-center">
+
+                  <div
+                    class="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4 items-start sm:items-center"
+                  >
                     <Label class="text-sm font-medium sm:text-right">입사일</Label>
                     <div class="col-span-3 w-full">
                       <Input
                         disabled
-                        :value="employee?.joinDate"
+                        v-model="employeeForm.joinDate"
                         placeholder="등록된 입사일이 없습니다"
                         class="h-10 sm:h-11 text-sm sm:text-base bg-muted"
                       />
@@ -198,12 +209,14 @@
               <div class="space-y-4">
                 <h4 class="text-base sm:text-lg font-medium">직원 정보</h4>
                 <div class="space-y-4">
-                  <div class="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4 items-start sm:items-center">
+                  <div
+                    class="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4 items-start sm:items-center"
+                  >
                     <Label class="text-sm font-medium sm:text-right">부서</Label>
                     <div class="col-span-3 w-full">
                       <Input
                         disabled
-                        :value="employee?.teamName"
+                        v-model="employeeForm.teamName"
                         placeholder="등록된 부서가 없습니다"
                         class="h-10 sm:h-11 text-sm sm:text-base bg-muted"
                       />
@@ -237,15 +250,20 @@
                     @click="setTheme(themeOption.value)"
                     :class="[
                       'border rounded-lg p-3 sm:p-4 cursor-pointer transition-all hover:scale-105',
-                      theme === themeOption.value 
-                        ? 'border-primary bg-primary/10 ring-2 ring-primary/20' 
-                        : 'border-border hover:border-primary/50 hover:bg-accent/50'
+                      theme === themeOption.value
+                        ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+                        : 'border-border hover:border-primary/50 hover:bg-accent/50',
                     ]"
                   >
                     <div class="flex items-center space-x-2 sm:space-x-3">
-                      <component :is="themeOption.icon" class="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                      <component
+                        :is="themeOption.icon"
+                        class="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0"
+                      />
                       <div class="min-w-0">
-                        <span class="text-sm sm:text-base font-medium block">{{ themeOption.name }}</span>
+                        <span class="text-sm sm:text-base font-medium block">{{
+                          themeOption.name
+                        }}</span>
                         <p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
                           {{ themeOption.description }}
                         </p>
@@ -268,25 +286,32 @@
                 </p>
                 <!-- Responsive grid: 1 column on mobile, 2 on tablet, 2 on desktop for fonts -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div 
+                  <div
                     v-for="fontOption in fontOptions"
                     :key="fontOption.value"
                     @click="changeFont(fontOption.value)"
                     :class="[
                       'border rounded-lg p-3 sm:p-4 cursor-pointer transition-all hover:scale-105',
-                      font === fontOption.value 
-                        ? 'border-primary bg-primary/10 ring-2 ring-primary/20' 
-                        : 'border-border hover:border-primary/50 hover:bg-accent/50'
+                      font === fontOption.value
+                        ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+                        : 'border-border hover:border-primary/50 hover:bg-accent/50',
                     ]"
                   >
                     <div class="flex items-center space-x-2 sm:space-x-3">
                       <div class="min-w-0 flex-1">
-                        <span class="text-sm sm:text-base font-medium block" :style="{ fontFamily: fontOption.value }">{{ fontOption.name }}</span>
+                        <span
+                          class="text-sm sm:text-base font-medium block"
+                          :style="{ fontFamily: fontOption.value }"
+                          >{{ fontOption.name }}</span
+                        >
                         <p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
                           {{ fontOption.description }}
                         </p>
                         <!-- Font sample -->
-                        <p class="text-xs text-muted-foreground mt-1 truncate" :style="{ fontFamily: fontOption.value }">
+                        <p
+                          class="text-xs text-muted-foreground mt-1 truncate"
+                          :style="{ fontFamily: fontOption.value }"
+                        >
                           가나다라 ABCD 1234
                         </p>
                       </div>
@@ -305,14 +330,18 @@
           <div v-else-if="selectedCategory === 'security'" class="space-y-6">
             <div class="space-y-2">
               <h3 class="text-lg sm:text-xl font-medium">보안 설정</h3>
-              <p class="text-sm sm:text-base text-muted-foreground">계정 보안 관련 설정을 관리합니다.</p>
+              <p class="text-sm sm:text-base text-muted-foreground">
+                계정 보안 관련 설정을 관리합니다.
+              </p>
             </div>
 
             <div class="space-y-6">
               <div class="space-y-4">
                 <h4 class="text-base sm:text-lg font-medium">비밀번호 변경</h4>
                 <div class="space-y-4">
-                  <div class="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4 items-start sm:items-center">
+                  <div
+                    class="flex flex-col sm:grid sm:grid-cols-4 gap-2 sm:gap-4 items-start sm:items-center"
+                  >
                     <Label class="text-sm font-medium sm:text-right">비밀번호</Label>
                     <div class="col-span-3 w-full flex flex-col sm:flex-row gap-2 sm:gap-3">
                       <Input
@@ -348,7 +377,9 @@
                   >
                     다른 기기에서 로그아웃
                   </Button>
-                  <p class="text-xs sm:text-sm text-muted-foreground">이 기능은 현재 개발 중입니다.</p>
+                  <p class="text-xs sm:text-sm text-muted-foreground">
+                    이 기능은 현재 개발 중입니다.
+                  </p>
                 </div>
               </div>
             </div>
@@ -368,13 +399,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { Monitor, Moon, Sun } from 'lucide-vue-next';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { useTheme, useToast, useFont } from '@/core/composables';
+import { useFont, useTheme, useToast } from '@/core/composables';
 import { container } from 'tsyringe';
 import MemberRepository from '@/features/member/repository/MemberRepository';
 import EmployeeRepository from '@/features/employee/repository/EmployeeRepository';
@@ -465,6 +496,15 @@ const profileForm = ref({
   bio: '',
 });
 
+const employeeForm = ref({
+  name: '',
+  teamName: '',
+  email: '',
+  phone: '',
+  birthDate: '',
+  joinDate: '',
+});
+
 // 사용자 정보 로드 함수
 async function loadUserInfo() {
   loading.value = true;
@@ -478,23 +518,23 @@ async function loadUserInfo() {
     // API에서 최신 사용자 정보 가져오기
     const myInfo = await MEMBER_REPOSITORY.getMyInfo();
     member.value = myInfo;
+    localStorage.setItem('user', JSON.stringify(myInfo));
 
     // Employee 정보도 가져오기 (있는 경우에만)
-    try {
-      const myEmployee = await EMPLOYEE_REPOSITORY.getMyEmployee();
-      employee.value = myEmployee;
-      localStorage.setItem('employee', JSON.stringify(myEmployee));
-    } catch (employeeError) {
-      console.log('Employee info not available:', employeeError);
-      // Employee 정보가 없어도 계속 진행
-    }
-
-    // 로컬 스토리지 업데이트
-    localStorage.setItem('user', JSON.stringify(myInfo));
+    const myEmployee = await EMPLOYEE_REPOSITORY.getMyEmployee();
+    employee.value = myEmployee;
+    localStorage.setItem('employee', JSON.stringify(myEmployee));
 
     // ProfileForm에 초기 데이터 설정
     profileForm.value.username = myInfo.name || '';
     profileForm.value.email = myInfo.username || '';
+
+    employeeForm.value.name = myEmployee.name || '';
+    employeeForm.value.teamName = myEmployee.teamName || '';
+    employeeForm.value.email = myEmployee.email || '';
+    employeeForm.value.phone = myEmployee.phone || '';
+    employeeForm.value.birthDate = myEmployee.birthDate || '';
+    employeeForm.value.joinDate = myEmployee.joinDate || '';
   } catch (error) {
     console.error('Error loading user info:', error);
     toast.error('프로필 정보 로드 실패', {
@@ -523,11 +563,11 @@ function handleChangePassword() {
 
 // 폰트 변경 함수
 function changeFont(fontValue: string) {
-  const selectedFontOption = fontOptions.find(f => f.value === fontValue);
+  const selectedFontOption = fontOptions.find((f) => f.value === fontValue);
   if (selectedFontOption) {
     // useFont composable을 사용하여 폰트 변경
     setFont(fontValue as any);
-    
+
     toast.success('폰트 변경 완료', {
       description: `${selectedFontOption.name} 폰트로 변경되었습니다.`,
       position: 'bottom-right',
@@ -548,34 +588,34 @@ onMounted(() => {
 
 <style scoped>
 /* Force override shadcn-vue dialog max-width constraints */
-:deep([data-slot="dialog-content"]) {
+:deep([data-slot='dialog-content']) {
   max-width: min(80vw, 900px) !important;
   width: 80vw !important;
 }
 
 @media (min-width: 640px) {
-  :deep([data-slot="dialog-content"]) {
+  :deep([data-slot='dialog-content']) {
     max-width: min(75vw, 900px) !important;
     width: 75vw !important;
   }
 }
 
 @media (min-width: 768px) {
-  :deep([data-slot="dialog-content"]) {
+  :deep([data-slot='dialog-content']) {
     max-width: min(70vw, 900px) !important;
     width: 70vw !important;
   }
 }
 
 @media (min-width: 1024px) {
-  :deep([data-slot="dialog-content"]) {
+  :deep([data-slot='dialog-content']) {
     max-width: min(65vw, 900px) !important;
     width: 65vw !important;
   }
 }
 
 @media (min-width: 1280px) {
-  :deep([data-slot="dialog-content"]) {
+  :deep([data-slot='dialog-content']) {
     max-width: min(60vw, 900px) !important;
     width: 60vw !important;
   }

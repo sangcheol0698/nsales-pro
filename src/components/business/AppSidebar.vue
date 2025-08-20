@@ -24,6 +24,7 @@
 
     <SidebarContent>
       <NavMain :items="data.navMain" />
+      <NavMain :items="data.navSecondary" />
     </SidebarContent>
 
     <SidebarFooter>
@@ -54,6 +55,7 @@ import {
   MessageCircle,
   Users,
   Wallet,
+  Bell,
 } from 'lucide-vue-next';
 import NavMain from './NavMain.vue';
 import NavUser from './NavUser.vue';
@@ -145,6 +147,13 @@ const data = {
       title: 'AI Assistant',
       url: '/chat',
       icon: MessageCircle,
+    },
+  ],
+  navSecondary: [
+    {
+      title: '공지사항',
+      url: '/notices',
+      icon: Bell,
     },
   ],
 };

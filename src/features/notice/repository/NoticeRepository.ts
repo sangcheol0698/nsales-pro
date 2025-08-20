@@ -9,7 +9,7 @@ export default class NoticeRepository extends HttpRepository {
   // private readonly BASE_URL = '/api/notices';
 
   async getNotices(
-    params: any
+    params: any = {}
   ): Promise<PageResponse<NoticeSearch>> {
     // 실제 애플리케이션에서는 API 호출이 이루어질 것입니다
     // 현재는 목업 데이터를 반환합니다
@@ -131,7 +131,7 @@ export default class NoticeRepository extends HttpRepository {
     return Notice.fromResponse(responseData);
   }
 
-  async deleteNotice(): Promise<void> {
+  async deleteNotice(id: string): Promise<void> {
     // 실제 애플리케이션에서는 API 호출이 이루어질 것입니다.
     // 지금은 반환만 합니다.
     return;

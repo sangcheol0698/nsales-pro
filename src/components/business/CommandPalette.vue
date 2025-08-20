@@ -104,7 +104,7 @@ const quickActions: CommandAction[] = [
     icon: Settings,
     shortcut: '⌘,',
     action: () => props.onOpenSettings?.(),
-    keywords: ['설정', 'settings', 'config', 'preferences'],
+    keywords: ['설정', 'settings', 'config', 'preferences', '계정', 'account', '프로필', 'profile'],
   },
   {
     title: '도움말',

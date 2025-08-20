@@ -26,7 +26,9 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-blue-600">{{ salesStats.totalRevenue - salesStats.collectedRevenue > 0 ? '+' : '' }}{{ formatCurrency(salesStats.totalRevenue - salesStats.collectedRevenue) }}</p>
+            <p class="text-2xl font-bold text-blue-600">
+              {{ salesStats.totalRevenue - salesStats.collectedRevenue > 0 ? '+' : ''
+              }}{{ formatCurrency(salesStats.totalRevenue - salesStats.collectedRevenue) }}</p>
             <p class="text-sm text-muted-foreground">수주예정</p>
             <div class="flex items-center justify-center mt-2">
               <TrendingUp class="h-4 w-4 text-green-500 mr-1" />
@@ -39,7 +41,8 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-purple-600">{{ Math.round((salesStats.collectedRevenue / salesStats.totalRevenue) * 100) }}%</p>
+            <p class="text-2xl font-bold text-purple-600">
+              {{ Math.round((salesStats.collectedRevenue / salesStats.totalRevenue) * 100) }}%</p>
             <p class="text-sm text-muted-foreground">수금률</p>
             <Progress :value="(salesStats.collectedRevenue / salesStats.totalRevenue) * 100" class="mt-2" />
           </div>
@@ -89,12 +92,9 @@
           </div>
         </CardHeader>
         <CardContent>
-          <div class="h-64 bg-muted/20 rounded-lg flex items-center justify-center">
-            <div class="text-center">
-              <BarChart3 class="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-              <p class="text-muted-foreground">매출 트렌드 차트</p>
-              <p class="text-sm text-muted-foreground">차트 라이브러리 연동 예정</p>
-            </div>
+          <!-- 차트 컨테이너 -->
+          <div class="h-64">
+            <LineChart :labels="revenueLabels" :datasets="revenueDatasets" />
           </div>
         </CardContent>
       </Card>
@@ -135,7 +135,7 @@
         </CardHeader>
         <CardContent>
           <div class="space-y-3">
-            <div v-for="item in topOutstanding" :key="item.id" 
+            <div v-for="item in topOutstanding" :key="item.id"
                  class="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
               <div>
                 <p class="font-medium">{{ item.clientName }}</p>
@@ -143,7 +143,8 @@
               </div>
               <div class="text-right">
                 <p class="font-bold text-orange-600">{{ formatCurrency(item.amount) }}</p>
-                <Badge variant="outline" :class="item.daysPast > 30 ? 'border-red-500 text-red-600' : 'border-orange-500 text-orange-600'">
+                <Badge variant="outline"
+                       :class="item.daysPast > 30 ? 'border-red-500 text-red-600' : 'border-orange-500 text-orange-600'">
                   {{ item.daysPast }}일
                 </Badge>
               </div>
@@ -173,7 +174,7 @@
               <p class="text-lg font-bold text-blue-600">{{ formatCurrency(predictedCollection) }}</p>
             </div>
           </div>
-          
+
           <div class="flex items-start gap-3">
             <div class="h-10 w-10 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
               <Target class="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -187,7 +188,7 @@
               </div>
             </div>
           </div>
-          
+
           <div class="flex items-start gap-3">
             <div class="h-10 w-10 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center">
               <AlertTriangle class="h-5 w-5 text-orange-600 dark:text-orange-400" />
@@ -208,28 +209,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { 
-  TrendingUp, 
-  FileText, 
-  BarChart3, 
-  Brain,
-  Target,
-  AlertTriangle
-} from 'lucide-vue-next'
+import { computed, onMounted, ref } from 'vue';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { AlertTriangle, Brain, FileText, Target, TrendingUp } from 'lucide-vue-next';
+// 차트 컴포넌트
+import { LineChart } from '@/components/ui/chart';
 
 // Mock 데이터 (추후 실제 API 연동)
 const salesStats = ref({
   totalRevenue: 2450000000,
   collectedRevenue: 1980000000,
   outstandingAmount: 470000000,
-  averageCollectionPeriod: 28
-})
+  averageCollectionPeriod: 28,
+});
 
 const mockOutstanding = ref([
   { id: 1, clientName: 'ABC 기업', projectName: 'ERP 구축', amount: 85000000, daysPast: 45 },
@@ -241,23 +237,23 @@ const mockOutstanding = ref([
   { id: 7, clientName: 'QRS 솔루션', projectName: '빅데이터 분석', amount: 34000000, daysPast: 21 },
   { id: 8, clientName: 'TUV 시스템즈', projectName: '웹 포털 구축', amount: 29000000, daysPast: 8 },
   { id: 9, clientName: 'WXY 인더스트리', projectName: '보안 솔루션', amount: 25000000, daysPast: 55 },
-  { id: 10, clientName: 'ZAB 네트웍스', projectName: '네트워크 구축', amount: 22000000, daysPast: 14 }
-])
+  { id: 10, clientName: 'ZAB 네트웍스', projectName: '네트워크 구축', amount: 22000000, daysPast: 14 },
+]);
 
 // Computed 속성들
-const collectionRate = computed(() => 
-  (salesStats.value.collectedRevenue / salesStats.value.totalRevenue) * 100
-)
+const collectionRate = computed(() =>
+  (salesStats.value.collectedRevenue / salesStats.value.totalRevenue) * 100,
+);
 
-const topOutstanding = computed(() => 
-  mockOutstanding.value.slice(0, 7)
-)
+const topOutstanding = computed(() =>
+  mockOutstanding.value.slice(0, 7),
+);
 
-const predictedCollection = computed(() => 125000000)
+const predictedCollection = computed(() => 125000000);
 
-const criticalOutstanding = computed(() => 
-  mockOutstanding.value.filter(item => item.daysPast > 60).length
-)
+const criticalOutstanding = computed(() =>
+  mockOutstanding.value.filter(item => item.daysPast > 60).length,
+);
 
 // 헬퍼 함수
 const formatCurrency = (amount: number) => {
@@ -265,17 +261,31 @@ const formatCurrency = (amount: number) => {
     style: 'currency',
     currency: 'KRW',
     notation: 'compact',
-    maximumFractionDigits: 1
-  }).format(amount)
-}
+    maximumFractionDigits: 1,
+  }).format(amount);
+};
+
+// 월별 매출 트렌드용 라벨/데이터 (데모용)
+const revenueLabels = computed(() => ['10월', '11월', '12월', '1월', '2월', '3월']);
+const revenueDatasets = computed(() => [
+  {
+    label: '총 매출',
+    data: [380, 420, 460, 510, 540, 600],
+    // 색상/배경은 LineChart에서 테마 기준으로 자동 설정
+    fill: true,
+  },
+  {
+    label: '수금액',
+    data: [320, 360, 400, 455, 490, 530],
+    fill: true,
+  },
+]);
 
 // 데이터 로딩
 onMounted(async () => {
   // TODO: 실제 SalesRepository를 통한 데이터 로딩
-  // const salesRepo = container.resolve(SalesRepository)
-  // salesStats.value = await salesRepo.getStats()
-  console.log('Sales Analytics Dashboard 로드됨')
-})
+  console.log('Sales Analytics Dashboard 로드됨');
+});
 </script>
 
 <style scoped>

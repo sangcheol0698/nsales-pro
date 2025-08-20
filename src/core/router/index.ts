@@ -447,6 +447,20 @@ const routes = [
       ],
     },
   },
+  {
+    path: '/dashboard',
+    name: 'dashboard',
+    component: () => import('@/views/Dashboard.vue'),
+    meta: {
+      menu: true,
+      activeIndex: 8,
+      title: 'Analytics Dashboard',
+      breadcrumbs: [
+        { title: '대시보드', disabled: false, to: '/' },
+        { title: 'Analytics Dashboard', disabled: true },
+      ],
+    },
+  },
 ];
 
 const router = createRouter({

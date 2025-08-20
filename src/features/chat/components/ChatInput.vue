@@ -80,7 +80,7 @@
           :disabled="disabled"
           class="h-8 px-3 text-xs font-medium hover:bg-muted/50 transition-all duration-200"
           :class="{
-            'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800':
+            'bg-primary/10 text-primary border-primary/30':
               webSearchEnabled,
             'border-dashed': !webSearchEnabled,
           }"
@@ -89,7 +89,7 @@
           Web 검색
           <span
             v-if="webSearchEnabled"
-            class="ml-1.5 w-2 h-2 bg-blue-500 rounded-full animate-pulse"
+            class="ml-1.5 w-2 h-2 bg-primary rounded-full animate-pulse"
           ></span>
         </Button>
 
@@ -101,7 +101,7 @@
           :disabled="disabled"
           class="h-8 px-3 text-xs font-medium hover:bg-muted/50 transition-all duration-200"
           :class="{
-            'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800':
+            'bg-secondary/50 text-secondary-foreground border-secondary':
               toolsEnabled,
             'border-dashed': !toolsEnabled,
           }"
@@ -111,7 +111,7 @@
           AI Tools
           <span
             v-if="toolsEnabled"
-            class="ml-1.5 w-2 h-2 bg-emerald-500 rounded-full animate-pulse"
+            class="ml-1.5 w-2 h-2 bg-secondary rounded-full animate-pulse"
           ></span>
         </Button>
 
@@ -135,7 +135,7 @@
             @click="toggleVoiceInput"
             :disabled="disabled"
             class="h-8 w-8 p-0 hover:bg-muted/80 transition-all duration-200"
-            :class="{ 'bg-red-500 text-white hover:bg-red-600': isRecording }"
+            :class="{ 'bg-destructive text-destructive-foreground hover:bg-destructive/90': isRecording }"
           >
             <Mic v-if="!isRecording" class="h-3 w-3" />
             <Square v-else class="h-3 w-3" />
@@ -252,7 +252,7 @@
                 <span class="font-medium text-sm">{{ model.name }}</span>
                 <span
                   v-if="model.supports_web_search"
-                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 font-medium"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary font-medium"
                 >
                   <Search class="h-2.5 w-2.5" />
                   Web
@@ -285,10 +285,10 @@
     >
       <div
         v-if="isRecording"
-        class="flex items-center gap-3 mt-3 p-3 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800"
+        class="flex items-center gap-3 mt-3 p-3 bg-destructive/10 rounded-lg border border-destructive/20"
       >
-        <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-        <span class="text-sm text-red-700 dark:text-red-300 font-medium"
+        <div class="w-3 h-3 bg-destructive rounded-full animate-pulse"></div>
+        <span class="text-sm text-destructive font-medium"
         >음성 입력 중... (말하기를 멈추면 자동으로 전송됩니다)</span
         >
       </div>

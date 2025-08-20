@@ -5,7 +5,7 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-blue-600">{{ projectStats.totalProjects }}</p>
+            <p class="text-2xl font-bold text-primary">{{ projectStats.totalProjects }}</p>
             <p class="text-sm text-muted-foreground">전체 프로젝트</p>
             <div class="flex justify-center mt-2">
               <Badge variant="secondary">{{ new Date().getFullYear() }}년</Badge>
@@ -17,7 +17,7 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-green-600">{{ projectStats.activeProjects }}</p>
+            <p class="text-2xl font-bold text-primary">{{ projectStats.activeProjects }}</p>
             <p class="text-sm text-muted-foreground">진행중</p>
             <Progress :value="projectProgressRate" class="mt-2" />
             <p class="text-xs text-muted-foreground mt-1">{{ projectProgressRate.toFixed(1) }}%</p>
@@ -28,11 +28,11 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-purple-600">{{ formatCurrency(projectStats.totalValue) }}</p>
+            <p class="text-2xl font-bold text-primary">{{ formatCurrency(projectStats.totalValue) }}</p>
             <p class="text-sm text-muted-foreground">총 프로젝트 가치</p>
             <div class="flex items-center justify-center mt-2">
-              <TrendingUp class="h-4 w-4 text-green-500 mr-1" />
-              <span class="text-sm text-green-600">+15.3%</span>
+              <TrendingUp class="h-4 w-4 text-primary mr-1" />
+              <span class="text-sm text-primary">+15.3%</span>
             </div>
           </div>
         </CardContent>
@@ -41,7 +41,7 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-orange-600">{{ projectStats.completionRate.toFixed(1) }}%</p>
+            <p class="text-2xl font-bold text-primary">{{ projectStats.completionRate.toFixed(1) }}%</p>
             <p class="text-sm text-muted-foreground">평균 완료율</p>
             <Progress :value="projectStats.completionRate" class="mt-2" />
           </div>
@@ -204,24 +204,24 @@
       <Card>
         <CardHeader>
           <CardTitle class="flex items-center gap-2">
-            <AlertTriangle class="h-5 w-5 text-orange-500" />
+            <AlertTriangle class="h-5 w-5 text-destructive" />
             프로젝트 리스크 분석
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div class="space-y-4">
             <div class="grid grid-cols-3 gap-4 mb-4">
-              <div class="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                <p class="text-xl font-bold text-red-600">{{ riskAnalysis.high }}</p>
-                <p class="text-xs text-red-600">고위험</p>
+              <div class="text-center p-3 bg-destructive/10 rounded-lg">
+                <p class="text-xl font-bold text-destructive">{{ riskAnalysis.high }}</p>
+                <p class="text-xs text-destructive">고위험</p>
               </div>
-              <div class="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                <p class="text-xl font-bold text-orange-600">{{ riskAnalysis.medium }}</p>
-                <p class="text-xs text-orange-600">중위험</p>
+              <div class="text-center p-3 bg-secondary/50 rounded-lg">
+                <p class="text-xl font-bold text-secondary-foreground">{{ riskAnalysis.medium }}</p>
+                <p class="text-xs text-secondary-foreground">중위험</p>
               </div>
-              <div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <p class="text-xl font-bold text-green-600">{{ riskAnalysis.low }}</p>
-                <p class="text-xs text-green-600">저위험</p>
+              <div class="text-center p-3 bg-primary/10 rounded-lg">
+                <p class="text-xl font-bold text-primary">{{ riskAnalysis.low }}</p>
+                <p class="text-xs text-primary">저위험</p>
               </div>
             </div>
 
@@ -271,11 +271,11 @@ const projectStats = ref({
 });
 
 const projectStatusDetail = ref([
-  { name: '기획', count: 3, color: 'text-blue-600', bgColor: 'bg-blue-500' },
-  { name: '개발', count: 12, color: 'text-green-600', bgColor: 'bg-green-500' },
-  { name: '테스트', count: 6, color: 'text-orange-600', bgColor: 'bg-orange-500' },
-  { name: '배포', count: 3, color: 'text-purple-600', bgColor: 'bg-purple-500' },
-  { name: '완료', count: 8, color: 'text-gray-600', bgColor: 'bg-gray-500' },
+  { name: '기획', count: 3, color: 'text-primary', bgColor: 'bg-primary' },
+  { name: '개발', count: 12, color: 'text-primary', bgColor: 'bg-primary' },
+  { name: '테스트', count: 6, color: 'text-secondary-foreground', bgColor: 'bg-secondary' },
+  { name: '배포', count: 3, color: 'text-primary', bgColor: 'bg-primary' },
+  { name: '완료', count: 8, color: 'text-muted-foreground', bgColor: 'bg-muted' },
 ]);
 
 const activeProjects = ref([
@@ -364,11 +364,11 @@ const statusDatasets = computed(() => [
     label: '프로젝트 수',
     data: projectStatusDetail.value.map(s => s.count),
     backgroundColor: [
-      'rgba(59,130,246,0.7)',  // 기획 - blue
-      'rgba(34,197,94,0.7)',   // 개발 - green
-      'rgba(249,115,22,0.7)',  // 테스트 - orange
-      'rgba(147,51,234,0.7)',  // 배포 - purple
-      'rgba(107,114,128,0.7)', // 완료 - gray
+      'hsl(var(--primary))',     // 기획
+      'hsl(var(--primary))',     // 개발
+      'hsl(var(--secondary))',   // 테스트
+      'hsl(var(--primary))',     // 배포
+      'hsl(var(--muted))',       // 완료
     ],
     borderColor: 'rgba(0,0,0,0.05)',
     borderWidth: 1,
@@ -416,11 +416,11 @@ const getUtilizationStatus = (utilization: number) => {
 
 const getRiskColor = (level: string) => {
   const colors = {
-    '고위험': 'bg-red-500',
-    '중위험': 'bg-orange-500',
-    '저위험': 'bg-green-500',
+    '고위험': 'bg-destructive',
+    '중위험': 'bg-secondary',
+    '저위험': 'bg-primary',
   };
-  return colors[level] || 'bg-gray-500';
+  return colors[level] || 'bg-muted';
 };
 
 const getRiskVariant = (level: string) => {

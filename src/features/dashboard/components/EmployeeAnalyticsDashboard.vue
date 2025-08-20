@@ -5,11 +5,11 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-blue-600">{{ employeeStats.totalEmployees }}</p>
+            <p class="text-2xl font-bold text-primary">{{ employeeStats.totalEmployees }}</p>
             <p class="text-sm text-muted-foreground">전체 직원</p>
             <div class="flex items-center justify-center mt-2">
-              <UserPlus class="h-4 w-4 text-green-500 mr-1" />
-              <span class="text-sm text-green-600">+{{ employeeStats.newHires }}명</span>
+              <UserPlus class="h-4 w-4 text-primary mr-1" />
+              <span class="text-sm text-primary">+{{ employeeStats.newHires }}명</span>
             </div>
           </div>
         </CardContent>
@@ -18,7 +18,7 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-green-600">{{ employeeStats.activeEmployees }}</p>
+            <p class="text-2xl font-bold text-primary">{{ employeeStats.activeEmployees }}</p>
             <p class="text-sm text-muted-foreground">활성 직원</p>
             <Progress :value="(employeeStats.activeEmployees / employeeStats.totalEmployees) * 100" class="mt-2" />
           </div>
@@ -28,7 +28,7 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-purple-600">{{ employeeStats.averageTenure }}</p>
+            <p class="text-2xl font-bold text-primary">{{ employeeStats.averageTenure }}</p>
             <p class="text-sm text-muted-foreground">평균 재직기간 (개월)</p>
             <Badge variant="outline" class="mt-2">안정적</Badge>
           </div>
@@ -38,7 +38,7 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-orange-600">{{ turnoverRate.toFixed(1) }}%</p>
+            <p class="text-2xl font-bold text-secondary-foreground">{{ turnoverRate.toFixed(1) }}%</p>
             <p class="text-sm text-muted-foreground">이직률</p>
             <Badge :variant="turnoverRate > 10 ? 'destructive' : 'secondary'" class="mt-2">
               {{ turnoverRate > 10 ? '주의' : '양호' }}
@@ -143,21 +143,21 @@
       </CardHeader>
       <CardContent>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div class="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <Calendar class="h-8 w-8 text-blue-600 mx-auto mb-2" />
-            <p class="text-2xl font-bold text-blue-600">{{ trainingStats.ongoing }}</p>
+          <div class="text-center p-4 bg-primary/10 rounded-lg">
+            <Calendar class="h-8 w-8 text-primary mx-auto mb-2" />
+            <p class="text-2xl font-bold text-primary">{{ trainingStats.ongoing }}</p>
             <p class="text-sm text-muted-foreground">진행중인 교육</p>
           </div>
           
-          <div class="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-            <GraduationCap class="h-8 w-8 text-green-600 mx-auto mb-2" />
-            <p class="text-2xl font-bold text-green-600">{{ trainingStats.completed }}</p>
+          <div class="text-center p-4 bg-primary/10 rounded-lg">
+            <GraduationCap class="h-8 w-8 text-primary mx-auto mb-2" />
+            <p class="text-2xl font-bold text-primary">{{ trainingStats.completed }}</p>
             <p class="text-sm text-muted-foreground">완료된 교육 (이번 달)</p>
           </div>
           
-          <div class="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-            <Target class="h-8 w-8 text-purple-600 mx-auto mb-2" />
-            <p class="text-2xl font-bold text-purple-600">{{ trainingStats.planned }}</p>
+          <div class="text-center p-4 bg-primary/10 rounded-lg">
+            <Target class="h-8 w-8 text-primary mx-auto mb-2" />
+            <p class="text-2xl font-bold text-primary">{{ trainingStats.planned }}</p>
             <p class="text-sm text-muted-foreground">계획된 교육</p>
           </div>
         </div>

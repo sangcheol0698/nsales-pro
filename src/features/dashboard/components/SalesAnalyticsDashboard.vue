@@ -5,7 +5,7 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-green-600">{{ formatCurrency(salesStats.collectedRevenue) }}</p>
+            <p class="text-2xl font-bold text-primary">{{ formatCurrency(salesStats.collectedRevenue) }}</p>
             <p class="text-sm text-muted-foreground">수금완료</p>
             <Progress :value="collectionRate" class="mt-2" />
             <p class="text-xs text-muted-foreground mt-1">{{ collectionRate.toFixed(1) }}% 달성</p>
@@ -16,7 +16,7 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-orange-600">{{ formatCurrency(salesStats.outstandingAmount) }}</p>
+            <p class="text-2xl font-bold text-secondary-foreground">{{ formatCurrency(salesStats.outstandingAmount) }}</p>
             <p class="text-sm text-muted-foreground">미수금</p>
             <Badge variant="secondary" class="mt-2">{{ salesStats.averageCollectionPeriod }}일</Badge>
           </div>
@@ -26,13 +26,13 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-blue-600">
+            <p class="text-2xl font-bold text-primary">
               {{ salesStats.totalRevenue - salesStats.collectedRevenue > 0 ? '+' : ''
               }}{{ formatCurrency(salesStats.totalRevenue - salesStats.collectedRevenue) }}</p>
             <p class="text-sm text-muted-foreground">수주예정</p>
             <div class="flex items-center justify-center mt-2">
-              <TrendingUp class="h-4 w-4 text-green-500 mr-1" />
-              <span class="text-sm text-green-600">+8.2%</span>
+              <TrendingUp class="h-4 w-4 text-primary mr-1" />
+              <span class="text-sm text-primary">+8.2%</span>
             </div>
           </div>
         </CardContent>
@@ -41,7 +41,7 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-purple-600">
+            <p class="text-2xl font-bold text-primary">
               {{ Math.round((salesStats.collectedRevenue / salesStats.totalRevenue) * 100) }}%</p>
             <p class="text-sm text-muted-foreground">수금률</p>
             <Progress :value="(salesStats.collectedRevenue / salesStats.totalRevenue) * 100" class="mt-2" />
@@ -142,9 +142,9 @@
                 <p class="text-sm text-muted-foreground">{{ item.projectName }}</p>
               </div>
               <div class="text-right">
-                <p class="font-bold text-orange-600">{{ formatCurrency(item.amount) }}</p>
+                <p class="font-bold text-secondary-foreground">{{ formatCurrency(item.amount) }}</p>
                 <Badge variant="outline"
-                       :class="item.daysPast > 30 ? 'border-red-500 text-red-600' : 'border-orange-500 text-orange-600'">
+                       :class="item.daysPast > 30 ? 'border-destructive text-destructive' : 'border-secondary text-secondary-foreground'">
                   {{ item.daysPast }}일
                 </Badge>
               </div>
@@ -158,26 +158,26 @@
     <Card>
       <CardHeader>
         <CardTitle class="flex items-center gap-2">
-          <Brain class="h-5 w-5 text-blue-500" />
+          <Brain class="h-5 w-5 text-primary" />
           AI 매출 분석 인사이트
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div class="flex items-start gap-3">
-            <div class="h-10 w-10 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
-              <TrendingUp class="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div class="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
+              <TrendingUp class="h-5 w-5 text-primary" />
             </div>
             <div>
               <p class="font-medium text-sm">수금 예측</p>
               <p class="text-xs text-muted-foreground mb-2">다음 주 예상 수금액</p>
-              <p class="text-lg font-bold text-blue-600">{{ formatCurrency(predictedCollection) }}</p>
+              <p class="text-lg font-bold text-primary">{{ formatCurrency(predictedCollection) }}</p>
             </div>
           </div>
 
           <div class="flex items-start gap-3">
-            <div class="h-10 w-10 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
-              <Target class="h-5 w-5 text-green-600 dark:text-green-400" />
+            <div class="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
+              <Target class="h-5 w-5 text-primary" />
             </div>
             <div>
               <p class="font-medium text-sm">목표 달성률</p>
@@ -190,8 +190,8 @@
           </div>
 
           <div class="flex items-start gap-3">
-            <div class="h-10 w-10 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center">
-              <AlertTriangle class="h-5 w-5 text-orange-600 dark:text-orange-400" />
+            <div class="h-10 w-10 bg-destructive/10 rounded-full flex items-center justify-center">
+              <AlertTriangle class="h-5 w-5 text-destructive" />
             </div>
             <div>
               <p class="font-medium text-sm">주의 항목</p>

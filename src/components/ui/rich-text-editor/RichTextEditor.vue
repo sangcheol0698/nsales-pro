@@ -1,9 +1,9 @@
 <template>
   <div class="rich-text-editor">
     <!-- 툴바 -->
-    <div class="toolbar border-b border-gray-200 bg-gray-50 p-2 flex flex-wrap gap-1 dark:border-gray-700 dark:bg-gray-800/20">
+    <div class="toolbar border-b border-border bg-muted/50 p-2 flex flex-wrap gap-1">
       <!-- 텍스트 포맷팅 -->
-      <div class="flex gap-1 border-r border-gray-200 pr-2 mr-2 dark:border-gray-700">
+      <div class="flex gap-1 border-r border-border pr-2 mr-2">
         <ToolbarButton
           @click="editor?.chain().focus().toggleBold().run()"
           :is-active="editor?.isActive('bold')"
@@ -38,7 +38,7 @@
       </div>
 
       <!-- 헤딩 -->
-      <div class="flex gap-1 border-r border-gray-200 dark:border-gray-700 pr-2 mr-2">
+      <div class="flex gap-1 border-r border-border pr-2 mr-2">
         <ToolbarButton
           @click="editor?.chain().focus().toggleHeading({ level: 1 }).run()"
           :is-active="editor?.isActive('heading', { level: 1 })"
@@ -65,7 +65,7 @@
       </div>
 
       <!-- 목록 -->
-      <div class="flex gap-1 border-r border-gray-200 dark:border-gray-700 pr-2 mr-2">
+      <div class="flex gap-1 border-r border-border pr-2 mr-2">
         <ToolbarButton
           @click="editor?.chain().focus().toggleBulletList().run()"
           :is-active="editor?.isActive('bulletList')"
@@ -84,7 +84,7 @@
       </div>
 
       <!-- 기타 -->
-      <div class="flex gap-1 border-r border-gray-200 dark:border-gray-700 pr-2 mr-2">
+      <div class="flex gap-1 border-r border-border pr-2 mr-2">
         <ToolbarButton
           @click="editor?.chain().focus().toggleBlockquote().run()"
           :is-active="editor?.isActive('blockquote')"
@@ -110,7 +110,7 @@
       </div>
 
       <!-- 테이블 기능 임시 비활성화 -->
-      <!-- <div class="flex gap-1 border-r border-gray-200 dark:border-gray-700 pr-2 mr-2">
+      <!-- <div class="flex gap-1 border-r border-border pr-2 mr-2">
         <ToolbarButton
           @click="insertTable"
           title="Insert Table"

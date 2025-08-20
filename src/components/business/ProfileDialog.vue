@@ -78,7 +78,7 @@
                     class="h-10 sm:h-11 text-sm sm:text-base"
                   />
                   <p class="text-xs sm:text-sm text-muted-foreground">
-                    공개적으로 표시되는 이름입니다. 실명이나 가명을 사용할 수 있습니다.
+                    공개적으로 표시되는 이름입니다.
                   </p>
                 </div>
 
@@ -105,7 +105,7 @@
                     class="min-h-[100px] sm:min-h-[120px] text-sm sm:text-base resize-none"
                   />
                   <p class="text-xs sm:text-sm text-muted-foreground">
-                    @멘션을 사용하여 다른 사용자나 조직을 언급할 수 있습니다.
+                    다른 사용자에게 보여지는 자기소개입니다. 최대 500자까지 입력할 수 있습니다.
                   </p>
                 </div>
 
@@ -307,13 +307,6 @@
                         <p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
                           {{ fontOption.description }}
                         </p>
-                        <!-- Font sample -->
-                        <p
-                          class="text-xs text-muted-foreground mt-1 truncate"
-                          :style="{ fontFamily: fontOption.value }"
-                        >
-                          가나다라 ABCD 1234
-                        </p>
                       </div>
                       <!-- Selection indicator -->
                       <div v-if="font === fontOption.value" class="flex-shrink-0">
@@ -399,7 +392,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { Monitor, Moon, Sun } from 'lucide-vue-next';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -482,11 +481,6 @@ const fontOptions = [
     value: 'Roboto Mono',
     name: 'Roboto Mono',
     description: 'Google 모노스페이스 폰트',
-  },
-  {
-    value: 'Courier New',
-    name: 'Courier New',
-    description: '시스템 모노스페이스 폰트',
   },
 ];
 

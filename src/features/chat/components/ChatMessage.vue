@@ -54,21 +54,21 @@
             <div class="relative">
               <component
                 :is="message.analyzingType === 'image' ? 'Image' : 'FileText'"
-                class="h-5 w-5 text-blue-500"
+                class="h-5 w-5 text-primary"
               />
               <div class="absolute -inset-1">
-                <div class="w-7 h-7 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+                <div class="w-7 h-7 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
               </div>
             </div>
             <div class="flex-1">
               <div class="flex items-center gap-2 mb-1">
-                <span class="text-sm font-medium text-blue-600 dark:text-blue-400">
+                <span class="text-sm font-medium text-primary">
                   {{ message.analyzingType === 'image' ? '🖼️ 이미지 분석 중...' : '📄 문서 분석 중...' }}
                 </span>
                 <div class="flex gap-1">
-                  <div class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></div>
-                  <div class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-                  <div class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                  <div class="w-1.5 h-1.5 bg-primary rounded-full animate-bounce"></div>
+                  <div class="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                  <div class="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
                 </div>
               </div>
               <p class="text-xs text-muted-foreground">
@@ -673,7 +673,7 @@ onUnmounted(() => {
 
 <style>
 .markdown-content {
-  color: hsl(var(--foreground));
+  color: var(--foreground);
   line-height: 1.7;
   font-size: 0.95rem;
 }
@@ -685,7 +685,7 @@ onUnmounted(() => {
 .markdown-content h4,
 .markdown-content h5,
 .markdown-content h6 {
-  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)/0.8) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, color-mix(in oklch, var(--primary), transparent 20%) 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -731,22 +731,22 @@ onUnmounted(() => {
 
 /* 강조 텍스트 */
 .markdown-content strong {
-  color: hsl(var(--foreground));
+  color: var(--foreground);
   font-weight: 650;
-  background: hsl(var(--primary)/0.1);
+  background: color-mix(in oklch, var(--primary), transparent 90%);
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
 }
 
 .markdown-content em {
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
   font-style: italic;
 }
 
 /* 문단 스타일 */
 .markdown-content p {
   margin: 1em 0;
-  color: hsl(var(--foreground));
+  color: var(--foreground);
   line-height: 1.7;
 }
 
@@ -782,7 +782,7 @@ onUnmounted(() => {
   top: 0.7em;
   width: 6px;
   height: 6px;
-  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)/0.7) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, color-mix(in oklch, var(--primary), transparent 30%) 100%);
   border-radius: 50%;
   transform: translateY(-50%);
 }
@@ -798,7 +798,7 @@ onUnmounted(() => {
 }
 
 .markdown-content ol li::marker {
-  color: hsl(var(--primary));
+  color: var(--primary);
   font-weight: 600;
 }
 
@@ -823,13 +823,13 @@ onUnmounted(() => {
   position: relative;
   margin: 1.5em 0;
   padding: 1.25rem 1.5rem;
-  background: hsl(var(--muted)/0.5);
+  background: color-mix(in oklch, var(--muted), transparent 50%);
   backdrop-filter: blur(8px);
-  border-left: 4px solid hsl(var(--primary));
+  border-left: 4px solid var(--primary);
   border-radius: 0 0.75rem 0.75rem 0;
   font-style: italic;
-  color: hsl(var(--muted-foreground));
-  box-shadow: 0 4px 6px -1px hsl(var(--primary)/0.1), 0 2px 4px -1px hsl(var(--primary)/0.06);
+  color: var(--muted-foreground);
+  box-shadow: var(--shadow-md);
 }
 
 .markdown-content blockquote::before {
@@ -838,7 +838,7 @@ onUnmounted(() => {
   top: -0.5rem;
   left: 1rem;
   font-size: 2rem;
-  color: hsl(var(--primary)/0.6);
+  color: color-mix(in oklch, var(--primary), transparent 40%);
   font-weight: bold;
 }
 
@@ -855,27 +855,44 @@ onUnmounted(() => {
 }
 
 /* 인라인 코드 - 더 예쁜 배경과 타이포그래피 */
-.markdown-content code {
-  background: linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--muted)/0.8) 100%);
-  color: hsl(var(--primary));
+.markdown-content code:not(pre code) {
+  background: linear-gradient(135deg, var(--muted) 0%, color-mix(in oklch, var(--muted), transparent 20%) 100%);
+  color: var(--primary);
   padding: 0.2rem 0.4rem;
   border-radius: 0.375rem;
   font-size: 0.875rem;
-  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-family: var(--font-mono);
   font-weight: 500;
-  border: 1px solid hsl(var(--border)/0.5);
-  box-shadow: 0 1px 2px hsl(var(--foreground)/0.05);
+  border: 1px solid color-mix(in oklch, var(--border), transparent 50%);
+  box-shadow: var(--shadow-xs);
+}
+
+/* 헤더 내 인라인 코드 - 가독성 개선 */
+.markdown-content h1 code:not(pre code),
+.markdown-content h2 code:not(pre code),
+.markdown-content h3 code:not(pre code),
+.markdown-content h4 code:not(pre code),
+.markdown-content h5 code:not(pre code),
+.markdown-content h6 code:not(pre code) {
+  -webkit-text-fill-color: var(--background) !important;
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  border: 1px solid color-mix(in oklch, var(--primary), transparent 30%) !important;
+  font-weight: 600;
+  display: inline-block;
+  vertical-align: baseline;
+  margin: 0 0.125rem;
 }
 
 /* 코드 블록 컨테이너 - 모던한 디자인과 복사 기능 */
 .markdown-content .code-block-container {
   position: relative;
   margin: 1.5em 0;
-  background: linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--muted)/0.9) 100%);
-  border: 1px solid hsl(var(--border));
+  background: color-mix(in oklch, var(--background), var(--foreground) 3%);
+  border: 1px solid color-mix(in oklch, var(--border), var(--foreground) 20%);
   border-radius: 0.75rem;
   overflow: hidden;
-  box-shadow: 0 4px 6px -1px hsl(var(--foreground)/0.1), 0 2px 4px -1px hsl(var(--foreground)/0.06);
+  box-shadow: 0 4px 6px -1px color-mix(in oklch, var(--foreground), transparent 90%), 0 2px 4px -1px color-mix(in oklch, var(--foreground), transparent 94%);
   backdrop-filter: blur(8px);
 }
 
@@ -884,15 +901,15 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 1rem;
-  background: hsl(var(--muted)/0.3);
-  border-bottom: 1px solid hsl(var(--border)/0.5);
+  background: color-mix(in oklch, var(--background), var(--foreground) 5%);
+  border-bottom: 1px solid color-mix(in oklch, var(--border), var(--foreground) 30%);
   backdrop-filter: blur(4px);
 }
 
 .markdown-content .code-language {
   font-size: 0.75rem;
   font-weight: 600;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -902,10 +919,10 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.375rem;
   padding: 0.375rem 0.75rem;
-  background: hsl(var(--background));
-  border: 1px solid hsl(var(--border));
+  background: var(--background);
+  border: 1px solid var(--border);
   border-radius: 0.375rem;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
   font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
@@ -914,17 +931,17 @@ onUnmounted(() => {
 }
 
 .markdown-content .copy-code-btn:hover {
-  background: hsl(var(--muted));
-  color: hsl(var(--foreground));
-  border-color: hsl(var(--border));
+  background: var(--muted);
+  color: var(--foreground);
+  border-color: var(--border);
   transform: translateY(-1px);
-  box-shadow: 0 2px 4px hsl(var(--foreground)/0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .markdown-content .copy-code-btn.copied {
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  border-color: hsl(var(--primary));
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
 }
 
 .markdown-content .copy-code-btn svg {
@@ -944,6 +961,9 @@ onUnmounted(() => {
   border: none;
   border-radius: 0;
   box-shadow: none;
+  tab-size: 4;
+  -moz-tab-size: 4;
+  -o-tab-size: 4;
 }
 
 .markdown-content .code-block-container pre code {
@@ -951,9 +971,12 @@ onUnmounted(() => {
   padding: 0;
   border: none;
   font-size: 0.875rem;
-  color: hsl(var(--foreground));
+  color: var(--foreground);
   box-shadow: none;
-  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-family: var(--font-mono);
+  tab-size: 4;
+  -moz-tab-size: 4;
+  -o-tab-size: 4;
 }
 
 /* Shiki 래퍼 스타일 - Shiki는 인라인 스타일을 사용하므로 래퍼만 설정 */
@@ -969,9 +992,11 @@ onUnmounted(() => {
   border: none !important;
   border-radius: 0 !important;
   overflow-x: auto !important;
-  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace !important;
+  font-family: var(--font-mono) !important;
   line-height: 1.5 !important;
   tab-size: 4 !important;
+  -moz-tab-size: 4 !important;
+  -o-tab-size: 4 !important;
 }
 
 .markdown-content .shiki-wrapper code {
@@ -984,12 +1009,32 @@ onUnmounted(() => {
 
 /* 다크 테마에서 더 잘 보이도록 배경색 조정 */
 .dark .markdown-content .code-block-container {
-  background: linear-gradient(135deg, #1e1e1e 0%, #252526 100%);
+  background: color-mix(in oklch, var(--background), var(--foreground) 8%);
+  border-color: color-mix(in oklch, var(--border), var(--foreground) 40%);
 }
 
 .dark .markdown-content .code-block-header {
-  background: rgba(30, 30, 30, 0.8);
-  border-bottom-color: #3e3e42;
+  background: color-mix(in oklch, var(--background), var(--foreground) 12%);
+  border-bottom-color: color-mix(in oklch, var(--border), var(--foreground) 50%);
+}
+
+/* 다크 모드 테이블 스타일 강화 */
+.dark .markdown-content table {
+  border-color: color-mix(in oklch, var(--border), var(--foreground) 40%);
+}
+
+.dark .markdown-content th {
+  background: color-mix(in oklch, var(--background), var(--foreground) 15%);
+  border-bottom-color: color-mix(in oklch, var(--border), var(--foreground) 50%);
+}
+
+.dark .markdown-content td {
+  background: color-mix(in oklch, var(--background), var(--foreground) 5%);
+  border-bottom-color: color-mix(in oklch, var(--border), var(--foreground) 40%);
+}
+
+.dark .markdown-content tr:hover td {
+  background: color-mix(in oklch, var(--background), var(--foreground) 10%);
 }
 
 /* 기존 pre 스타일은 코드 블록 컨테이너가 없는 경우를 위해 유지 */
@@ -997,17 +1042,21 @@ onUnmounted(() => {
   position: relative;
   margin: 1.5em 0;
   padding: 1.5rem;
-  background: linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--muted)/0.9) 100%);
-  border: 1px solid hsl(var(--border));
+  background: linear-gradient(135deg, var(--muted) 0%, color-mix(in oklch, var(--muted), transparent 10%) 100%);
+  border: 1px solid var(--border);
   border-radius: 0.75rem;
   overflow-x: auto;
-  box-shadow: 0 4px 6px -1px hsl(var(--foreground)/0.1), 0 2px 4px -1px hsl(var(--foreground)/0.06);
+  box-shadow: 0 4px 6px -1px color-mix(in oklch, var(--foreground), transparent 90%), 0 2px 4px -1px color-mix(in oklch, var(--foreground), transparent 94%);
   backdrop-filter: blur(8px);
+  font-family: var(--font-mono);
+  tab-size: 4;
+  -moz-tab-size: 4;
+  -o-tab-size: 4;
 }
 
 /* 링크 - 호버 효과와 애니메이션 */
 .markdown-content a {
-  color: hsl(var(--primary));
+  color: var(--primary);
   text-decoration: none;
   position: relative;
   font-weight: 500;
@@ -1021,12 +1070,12 @@ onUnmounted(() => {
   left: 0;
   width: 0;
   height: 2px;
-  background: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--primary)/0.6) 100%);
+  background: linear-gradient(90deg, var(--primary) 0%, color-mix(in oklch, var(--primary), transparent 40%) 100%);
   transition: width 0.3s ease;
 }
 
 .markdown-content a:hover {
-  color: hsl(var(--primary)/0.8);
+  color: color-mix(in oklch, var(--primary), transparent 20%);
 }
 
 .markdown-content a:hover::after {
@@ -1041,31 +1090,32 @@ onUnmounted(() => {
   border-spacing: 0;
   border-radius: 0.75rem;
   overflow: hidden;
-  box-shadow: 0 4px 6px -1px hsl(var(--foreground)/0.1), 0 2px 4px -1px hsl(var(--foreground)/0.06);
+  box-shadow: 0 4px 6px -1px color-mix(in oklch, var(--foreground), transparent 90%), 0 2px 4px -1px color-mix(in oklch, var(--foreground), transparent 94%);
+  border: 1px solid color-mix(in oklch, var(--border), var(--foreground) 20%);
 }
 
 .markdown-content th,
 .markdown-content td {
   padding: 0.875rem 1rem;
   text-align: left;
-  border-bottom: 1px solid hsl(var(--border));
+  border-bottom: 1px solid color-mix(in oklch, var(--border), var(--foreground) 30%);
 }
 
 .markdown-content th {
-  background: linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--muted)/0.8) 100%);
+  background: color-mix(in oklch, var(--background), var(--foreground) 8%);
   font-weight: 650;
-  color: hsl(var(--foreground));
+  color: var(--foreground);
   text-transform: uppercase;
   font-size: 0.8rem;
   letter-spacing: 0.05em;
 }
 
 .markdown-content td {
-  background: hsl(var(--card));
+  background: color-mix(in oklch, var(--background), var(--foreground) 2%);
 }
 
 .markdown-content tr:hover td {
-  background: hsl(var(--muted)/0.3);
+  background: color-mix(in oklch, var(--background), var(--foreground) 5%);
 }
 
 .markdown-content tr:last-child td {
@@ -1112,7 +1162,7 @@ onUnmounted(() => {
 .dark .markdown-content h4,
 .dark .markdown-content h5,
 .dark .markdown-content h6 {
-  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)/0.9) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, color-mix(in oklch, var(--primary), transparent 10%) 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

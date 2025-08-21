@@ -65,8 +65,8 @@
                   필터
                   <Badge
                     v-if="activeFilters.length > 0"
-                    variant="secondary"
-                    class="ml-1 h-3 w-3 p-0 text-xs"
+                    variant="default"
+                    class="ml-1 h-3 w-3 p-0 text-xs bg-primary text-primary-foreground"
                   >
                     {{ activeFilters.length }}
                   </Badge>
@@ -151,15 +151,15 @@
             <Badge
               v-for="filter in activeFilters"
               :key="filter.key"
-              variant="secondary"
-              class="text-xs px-2 py-0.5 h-5"
+              variant="outline"
+              class="text-xs px-2 py-0.5 h-5 bg-background/50 border-border text-foreground font-medium"
             >
               {{ filter.label }}
               <Button
                 variant="ghost"
                 size="sm"
                 @click="removeFilter(filter.key)"
-                class="h-3 w-3 p-0 ml-1 hover:bg-destructive/20"
+                class="h-3 w-3 p-0 ml-1 hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
               >
                 <X class="h-2 w-2" />
               </Button>
@@ -209,8 +209,8 @@
                     </div>
                     <Badge
                       v-if="session.messageCount > 0"
-                      variant="secondary"
-                      class="text-xs px-1.5 py-0.5 h-4 ml-auto flex-shrink-0"
+                      variant="outline"
+                      class="text-xs px-1.5 py-0.5 h-4 ml-auto flex-shrink-0 bg-muted/50 border-muted-foreground/30 text-muted-foreground"
                     >
                       {{ session.messageCount }}
                     </Badge>

@@ -3,10 +3,10 @@
     <!-- 캘린더 이벤트 결과 -->
     <div v-if="isCalendarTool" class="space-y-3">
       <div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-        <Calendar class="h-4 w-4 text-blue-500" />
+        <Calendar class="h-4 w-4 text-primary" />
         <span>검색된 일정</span>
         <div class="h-px bg-border flex-1"></div>
-        <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full dark:bg-blue-950/50 dark:text-blue-300">
+        <span class="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
           {{ calendarEvents.length }}개
         </span>
       </div>
@@ -23,7 +23,7 @@
                 {{ event.summary || '제목 없음' }}
               </h4>
               <p class="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                <span class="inline-flex h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                <span class="inline-flex h-1.5 w-1.5 rounded-full bg-primary"></span>
                 {{ formatEventDate(event) }}
               </p>
               <p v-if="event.location" class="text-xs text-muted-foreground mt-1 opacity-75">
@@ -31,8 +31,8 @@
               </p>
             </div>
             <div class="flex items-center gap-1">
-              <div class="h-8 w-1 rounded-full bg-gradient-to-b from-blue-500 to-blue-400"></div>
-              <span class="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full dark:bg-blue-950/50 dark:text-blue-300">
+              <div class="h-8 w-1 rounded-full bg-gradient-to-b from-primary to-primary/80"></div>
+              <span class="text-[10px] font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">
                 EVENT
               </span>
             </div>

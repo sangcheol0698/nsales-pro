@@ -6,7 +6,7 @@
         <div class="mb-8">
           <div class="flex items-center gap-3 mb-4">
             <div
-              class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+              class="w-12 h-12 bg-gradient-to-r from-primary to-secondary rounded-xl flex items-center justify-center">
               <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
                 <path
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -45,8 +45,8 @@
                 <!-- 캘린더 기능 -->
                 <div class="space-y-4">
                   <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
-                      <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 24 24">
+                    <div class="w-8 h-8 bg-muted/50 rounded-lg flex items-center justify-center">
+                      <svg class="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 24 24">
                         <path
                           d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" />
                       </svg>
@@ -64,8 +64,8 @@
                 <!-- 이메일 기능 -->
                 <div class="space-y-4">
                   <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
-                      <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                    <div class="w-8 h-8 bg-muted/50 rounded-lg flex items-center justify-center">
+                      <svg class="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 24 24">
                         <path
                           d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
                       </svg>
@@ -93,7 +93,7 @@
                 <!-- 캘린더 예시 -->
                 <div>
                   <h3 class="font-medium text-foreground mb-3 flex items-center gap-2">
-                    <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                    <span class="w-2 h-2 bg-primary rounded-full"></span>
                     캘린더 관련
                   </h3>
                   <div class="grid gap-2">
@@ -112,7 +112,7 @@
                 <!-- 이메일 예시 -->
                 <div>
                   <h3 class="font-medium text-foreground mb-3 flex items-center gap-2">
-                    <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                    <span class="w-2 h-2 bg-primary rounded-full"></span>
                     이메일 관련
                   </h3>
                   <div class="grid gap-2">
@@ -131,7 +131,7 @@
                 <!-- 통합 작업 예시 -->
                 <div>
                   <h3 class="font-medium text-foreground mb-3 flex items-center gap-2">
-                    <span class="w-2 h-2 bg-purple-500 rounded-full"></span>
+                    <span class="w-2 h-2 bg-primary rounded-full"></span>
                     통합 작업
                   </h3>
                   <div class="grid gap-2">
@@ -204,7 +204,7 @@
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-muted-foreground">Google API</span>
                   <span
-                    class="text-xs px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 rounded-full">
+                    class="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
                 활성
               </span>
                 </div>
@@ -212,7 +212,7 @@
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-muted-foreground">캘린더 권한</span>
                   <span
-                    class="text-xs px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 rounded-full">
+                    class="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
                 허용됨
               </span>
                 </div>
@@ -220,7 +220,7 @@
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-muted-foreground">Gmail 권한</span>
                   <span
-                    class="text-xs px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 rounded-full">
+                    class="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
                 허용됨
               </span>
                 </div>

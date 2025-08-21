@@ -6,7 +6,7 @@
       size="sm"
       @click="toggleHelp"
       class="h-8 w-8 p-0"
-      :aria-label="$t ? $t('chat.keyboardShortcuts') : '키보드 단축키'"
+      aria-label="키보드 단축키"
     >
       <HelpCircle class="h-4 w-4" />
     </Button>
@@ -16,7 +16,7 @@
       v-if="isHelpOpen"
       class="absolute top-full right-0 mt-2 w-80 bg-card border border-border rounded-lg shadow-lg p-4 z-50"
       role="dialog"
-      :aria-label="$t ? $t('chat.keyboardShortcutsDialog') : '키보드 단축키 도움말'"
+      aria-label="키보드 단축키 도움말"
     >
       <div class="space-y-4">
         <!-- 헤더 -->

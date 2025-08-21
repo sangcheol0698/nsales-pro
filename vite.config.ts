@@ -11,14 +11,15 @@ const viteConfig = defineConfig({
     vue({
       script: {
         defineModel: true,
-        propsDestructure: true
-      }
-    }), 
+        propsDestructure: true,
+      },
+    }),
     tailwindcss(),
     babel({
-      include: ['src/**/*.ts'],
-      exclude: ['node_modules/**']
-    })
+      include: ['src/**/*.ts', 'src/**/*.vue'],
+      exclude: ['node_modules/**'],
+      extensions: ['.ts', '.vue'],
+    }),
   ],
   resolve: {
     alias: {
@@ -30,6 +31,18 @@ const viteConfig = defineConfig({
   },
   esbuild: {
     target: 'es2022',
+  },
+  optimizeDeps: {
+    include: ['class-variance-authority'],
+    exclude: ['echo-editor'],
+    esbuildOptions: {
+      tsconfigRaw: {
+        compilerOptions: {
+          experimentalDecorators: true,
+          emitDecoratorMetadata: true,
+        },
+      },
+    },
   },
 });
 

@@ -5,10 +5,10 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <div class="h-12 w-12 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-2">
-              <Brain class="h-6 w-6 text-green-600 dark:text-green-400" />
+            <div class="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-2">
+              <Brain class="h-6 w-6 text-primary" />
             </div>
-            <p class="text-2xl font-bold text-green-600">활성</p>
+            <p class="text-2xl font-bold text-primary">활성</p>
             <p class="text-sm text-muted-foreground">AI 시스템 상태</p>
             <Badge variant="secondary" class="mt-2">99.8% 가동률</Badge>
           </div>
@@ -18,11 +18,11 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-blue-600">{{ aiMetrics.totalQueries }}</p>
+            <p class="text-2xl font-bold text-primary">{{ aiMetrics.totalQueries }}</p>
             <p class="text-sm text-muted-foreground">오늘 AI 질의</p>
             <div class="flex items-center justify-center mt-2">
-              <TrendingUp class="h-4 w-4 text-green-500 mr-1" />
-              <span class="text-sm text-green-600">+23%</span>
+              <TrendingUp class="h-4 w-4 text-primary mr-1" />
+              <span class="text-sm text-primary">+23%</span>
             </div>
           </div>
         </CardContent>
@@ -31,7 +31,7 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-purple-600">{{ aiMetrics.accuracy }}%</p>
+            <p class="text-2xl font-bold text-primary">{{ aiMetrics.accuracy }}%</p>
             <p class="text-sm text-muted-foreground">예측 정확도</p>
             <Progress :value="aiMetrics.accuracy" class="mt-2" />
           </div>
@@ -41,7 +41,7 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-orange-600">{{ aiMetrics.responseTime }}ms</p>
+            <p class="text-2xl font-bold text-primary">{{ aiMetrics.responseTime }}ms</p>
             <p class="text-sm text-muted-foreground">평균 응답시간</p>
             <Badge variant="outline" class="mt-2">최적화됨</Badge>
           </div>
@@ -56,7 +56,7 @@
         <CardHeader>
           <div class="flex items-center justify-between">
             <CardTitle class="flex items-center gap-2">
-              <Lightbulb class="h-5 w-5 text-yellow-500" />
+              <Lightbulb class="h-5 w-5 text-primary" />
               AI 비즈니스 인사이트
             </CardTitle>
             <Sheet>
@@ -126,7 +126,7 @@
       <Card>
         <CardHeader>
           <CardTitle class="flex items-center gap-2">
-            <BarChart3 class="h-5 w-5 text-blue-500" />
+            <BarChart3 class="h-5 w-5 text-primary" />
             AI 예측 분석
           </CardTitle>
         </CardHeader>
@@ -143,19 +143,19 @@
                   <span>보수적 예측</span>
                   <span class="font-medium">{{ formatCurrency(predictions.revenue.conservative) }}</span>
                 </div>
-                <Progress :value="75" class="bg-red-100 dark:bg-red-900/20" />
+                <Progress :value="75" class="bg-destructive/20" />
                 
                 <div class="flex justify-between text-sm">
                   <span>현실적 예측</span>
-                  <span class="font-medium text-blue-600">{{ formatCurrency(predictions.revenue.realistic) }}</span>
+                  <span class="font-medium text-primary">{{ formatCurrency(predictions.revenue.realistic) }}</span>
                 </div>
-                <Progress :value="85" class="bg-blue-100 dark:bg-blue-900/20" />
+                <Progress :value="85" class="bg-primary/20" />
                 
                 <div class="flex justify-between text-sm">
                   <span>낙관적 예측</span>
                   <span class="font-medium">{{ formatCurrency(predictions.revenue.optimistic) }}</span>
                 </div>
-                <Progress :value="95" class="bg-green-100 dark:bg-green-900/20" />
+                <Progress :value="95" class="bg-primary/20" />
               </div>
             </div>
 
@@ -165,13 +165,13 @@
             <div class="space-y-3">
               <h4 class="font-medium text-sm">프로젝트 성공률 예측</h4>
               <div class="grid grid-cols-2 gap-4">
-                <div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <p class="text-xl font-bold text-green-600">{{ predictions.project.successRate }}%</p>
-                  <p class="text-xs text-green-600">성공률</p>
+                <div class="text-center p-3 bg-primary/10 rounded-lg">
+                  <p class="text-xl font-bold text-primary">{{ predictions.project.successRate }}%</p>
+                  <p class="text-xs text-primary">성공률</p>
                 </div>
-                <div class="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                  <p class="text-xl font-bold text-orange-600">{{ predictions.project.riskProjects }}</p>
-                  <p class="text-xs text-orange-600">리스크 프로젝트</p>
+                <div class="text-center p-3 bg-secondary/50 rounded-lg">
+                  <p class="text-xl font-bold text-secondary-foreground">{{ predictions.project.riskProjects }}</p>
+                  <p class="text-xs text-secondary-foreground">리스크 프로젝트</p>
                 </div>
               </div>
             </div>
@@ -201,15 +201,15 @@
     <Card>
       <CardHeader>
         <CardTitle class="flex items-center gap-2">
-          <MessageCircle class="h-5 w-5 text-blue-500" />
+          <MessageCircle class="h-5 w-5 text-primary" />
           AI 비서와 대화하기
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div class="bg-muted/20 rounded-lg p-6 text-center">
           <div class="space-y-4">
-            <div class="h-16 w-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto">
-              <Bot class="h-8 w-8 text-blue-600 dark:text-blue-400" />
+            <div class="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+              <Bot class="h-8 w-8 text-primary" />
             </div>
             <div>
               <p class="font-medium">비즈니스 데이터에 대해 궁금한 것이 있나요?</p>
@@ -259,7 +259,7 @@
       <Card>
         <CardHeader>
           <CardTitle class="flex items-center gap-2">
-            <Zap class="h-5 w-5 text-yellow-500" />
+            <Zap class="h-5 w-5 text-primary" />
             AI 자동화 현황
           </CardTitle>
         </CardHeader>
@@ -268,7 +268,7 @@
             <div v-for="automation in automationStatus" :key="automation.id"
                  class="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
               <div class="flex items-center gap-3">
-                <div class="h-2 w-2 rounded-full" :class="automation.active ? 'bg-green-500' : 'bg-gray-400'"></div>
+                <div class="h-2 w-2 rounded-full" :class="automation.active ? 'bg-primary' : 'bg-muted-foreground'"></div>
                 <div>
                   <p class="font-medium text-sm">{{ automation.name }}</p>
                   <p class="text-xs text-muted-foreground">{{ automation.description }}</p>
@@ -285,7 +285,7 @@
       <Card>
         <CardHeader>
           <CardTitle class="flex items-center gap-2">
-            <Bell class="h-5 w-5 text-blue-500" />
+            <Bell class="h-5 w-5 text-primary" />
             스마트 알림
           </CardTitle>
         </CardHeader>
@@ -351,11 +351,11 @@ const businessInsights = ref([
     impact: '+15% 매출 예상',
     timeAgo: '2시간 전',
     icon: DollarSign,
-    iconBg: 'bg-green-100 dark:bg-green-900/20',
-    iconColor: 'text-green-600',
-    borderColor: 'border-l-green-500',
+    iconBg: 'bg-primary/10',
+    iconColor: 'text-primary',
+    borderColor: 'border-l-primary',
     badgeVariant: 'destructive',
-    impactColor: 'text-green-600'
+    impactColor: 'text-primary'
   },
   {
     id: 2,
@@ -365,11 +365,11 @@ const businessInsights = ref([
     impact: '-5일 지연 예상',
     timeAgo: '4시간 전',
     icon: AlertTriangle,
-    iconBg: 'bg-orange-100 dark:bg-orange-900/20',
-    iconColor: 'text-orange-600',
-    borderColor: 'border-l-orange-500',
+    iconBg: 'bg-destructive/10',
+    iconColor: 'text-destructive',
+    borderColor: 'border-l-destructive',
     badgeVariant: 'default',
-    impactColor: 'text-orange-600'
+    impactColor: 'text-destructive'
   },
   {
     id: 3,
@@ -379,11 +379,11 @@ const businessInsights = ref([
     impact: '+20% 효율성',
     timeAgo: '6시간 전',
     icon: Target,
-    iconBg: 'bg-blue-100 dark:bg-blue-900/20',
-    iconColor: 'text-blue-600',
-    borderColor: 'border-l-blue-500',
+    iconBg: 'bg-primary/10',
+    iconColor: 'text-primary',
+    borderColor: 'border-l-primary',
     badgeVariant: 'secondary',
-    impactColor: 'text-blue-600'
+    impactColor: 'text-primary'
   }
 ])
 
@@ -400,10 +400,10 @@ const predictions = ref({
 })
 
 const marketTrends = ref([
-  { category: 'AI/ML 솔루션', change: '+24%', icon: TrendingUp, color: 'text-green-600' },
-  { category: '클라우드 서비스', change: '+18%', icon: TrendingUp, color: 'text-green-600' },
-  { category: '레거시 시스템', change: '-8%', icon: TrendingDown, color: 'text-red-600' },
-  { category: '모바일 앱', change: '+12%', icon: TrendingUp, color: 'text-green-600' }
+  { category: 'AI/ML 솔루션', change: '+24%', icon: TrendingUp, color: 'text-primary' },
+  { category: '클라우드 서비스', change: '+18%', icon: TrendingUp, color: 'text-primary' },
+  { category: '레거시 시스템', change: '-8%', icon: TrendingDown, color: 'text-destructive' },
+  { category: '모바일 앱', change: '+12%', icon: TrendingUp, color: 'text-primary' }
 ])
 
 const automationStatus = ref([
@@ -452,18 +452,18 @@ const formatCurrency = (amount: number) => {
 
 const getAlertBorderClass = (severity: string) => {
   const classes = {
-    'high': 'border-red-200 bg-red-50/50 dark:border-red-900/30 dark:bg-red-900/10',
-    'medium': 'border-orange-200 bg-orange-50/50 dark:border-orange-900/30 dark:bg-orange-900/10',
-    'low': 'border-green-200 bg-green-50/50 dark:border-green-900/30 dark:bg-green-900/10'
+    'high': 'border-destructive/20 bg-destructive/10',
+    'medium': 'border-secondary/50 bg-secondary/20',
+    'low': 'border-primary/20 bg-primary/10'
   }
   return classes[severity] || classes['low']
 }
 
 const getAlertDotClass = (severity: string) => {
   const classes = {
-    'high': 'bg-red-500',
-    'medium': 'bg-orange-500', 
-    'low': 'bg-green-500'
+    'high': 'bg-destructive',
+    'medium': 'bg-secondary', 
+    'low': 'bg-primary'
   }
   return classes[severity] || classes['low']
 }

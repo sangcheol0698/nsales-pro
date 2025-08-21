@@ -1,5 +1,5 @@
 <template>
-  <Sidebar v-bind="props">
+  <Sidebar v-bind="props" variant="floating">
     <SidebarHeader>
       <SidebarMenu>
         <SidebarMenuItem>
@@ -24,6 +24,7 @@
 
     <SidebarContent>
       <NavMain :items="data.navMain" />
+      <NavMain :items="data.navSecondary" />
     </SidebarContent>
 
     <SidebarFooter>
@@ -47,6 +48,7 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar';
 import {
+  Bell,
   Building2,
   FileText,
   GalleryVerticalEnd,
@@ -59,13 +61,17 @@ import NavMain from './NavMain.vue';
 import NavUser from './NavUser.vue';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 
-const props = withDefaults(defineProps<SidebarProps & {
-  onOpenProfileDialog?: () => void;
-}>(), {
-  collapsible: 'icon',
-  onOpenProfileDialog: () => {
-  },
-});
+const props = withDefaults(
+  defineProps<
+    SidebarProps & {
+      onOpenProfileDialog?: () => void;
+    }
+  >(),
+  {
+    collapsible: 'icon',
+    onOpenProfileDialog: () => {},
+  }
+);
 
 // 사용자 정보: localStorage에서 로드
 const user = ref<{ name: string; email: string; avatar: string }>({
@@ -81,7 +87,11 @@ function loadUserFromStorage() {
     const parsed = JSON.parse(raw);
 
     // 다양한 필드 네이밍을 고려한 안전 추출
-    const name = parsed.name || parsed.username || [parsed.firstName, parsed.lastName].filter(Boolean).join(' ') || 'User';
+    const name =
+      parsed.name ||
+      parsed.username ||
+      [parsed.firstName, parsed.lastName].filter(Boolean).join(' ') ||
+      'User';
     const email = parsed.email || parsed.username || parsed.userId || 'user@example.com';
     const avatar = parsed.avatarUrl || parsed.avatar || '';
 
@@ -145,6 +155,13 @@ const data = {
       title: 'AI Assistant',
       url: '/chat',
       icon: MessageCircle,
+    },
+  ],
+  navSecondary: [
+    {
+      title: '공지사항',
+      url: '/notices',
+      icon: Bell,
     },
   ],
 };

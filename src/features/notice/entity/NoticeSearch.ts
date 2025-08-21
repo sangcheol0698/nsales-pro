@@ -1,4 +1,4 @@
-import { Notice } from './Notice';
+import Notice from './Notice';
 
 export default class NoticeSearch extends Notice {
   // Additional fields for search results if needed

@@ -15,34 +15,49 @@
         <!-- 테마 설정 -->
         <div class="space-y-3">
           <h3 class="text-sm font-medium">테마</h3>
-          <div class="flex items-center space-x-4">
-            <Button
-              variant="outline"
-              size="sm"
-              @click="setTheme('light')"
-              :class="currentTheme === 'light' ? 'bg-primary text-primary-foreground' : ''"
-            >
-              <Sun class="mr-2 h-4 w-4" />
-              라이트
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              @click="setTheme('dark')"
-              :class="currentTheme === 'dark' ? 'bg-primary text-primary-foreground' : ''"
-            >
-              <Moon class="mr-2 h-4 w-4" />
-              다크
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              @click="setTheme('system')"
-              :class="currentTheme === 'system' ? 'bg-primary text-primary-foreground' : ''"
-            >
-              <Monitor class="mr-2 h-4 w-4" />
-              시스템
-            </Button>
+          
+          <!-- 테마 컬러 선택 -->
+          <div class="space-y-2">
+            <label class="text-xs text-muted-foreground">컬러 테마</label>
+            <Select v-model="selectedTheme">
+              <SelectTrigger class="w-48">
+                <SelectValue placeholder="테마를 선택하세요" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem 
+                  v-for="option in themeOptions" 
+                  :key="option.value" 
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <!-- 다크/라이트 모드 -->
+          <div class="space-y-2">
+            <label class="text-xs text-muted-foreground">모드</label>
+            <div class="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                @click="setDarkMode(false)"
+                :class="!isDark ? 'bg-primary text-primary-foreground' : ''"
+              >
+                <Sun class="mr-2 h-4 w-4" />
+                라이트
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                @click="setDarkMode(true)"
+                :class="isDark ? 'bg-primary text-primary-foreground' : ''"
+              >
+                <Moon class="mr-2 h-4 w-4" />
+                다크
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -144,7 +159,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useTheme } from '@/core/composables/useTheme';
 import {
   Dialog,
@@ -158,7 +173,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Monitor, Moon, Settings, Sun } from 'lucide-vue-next';
+import { Moon, Settings, Sun } from 'lucide-vue-next';
 
 interface Props {
   open: boolean;
@@ -169,16 +184,26 @@ const emit = defineEmits<{
   'update:open': [open: boolean];
 }>();
 
-const { theme, setTheme } = useTheme();
-
-// 현재 테마 상태
-const currentTheme = computed(() => theme.value);
+const { 
+  isDark, 
+  currentTheme, 
+  currentThemeName, 
+  themeOptions, 
+  setTheme, 
+  setDarkMode 
+} = useTheme();
 
 // 설정 상태
+const selectedTheme = ref(currentTheme.value);
 const selectedLanguage = ref('ko');
 const desktopNotifications = ref(true);
 const emailNotifications = ref(false);
 const autoCollapseSidebar = ref(true);
+
+// 테마 변경 감지
+watch(selectedTheme, (newTheme) => {
+  setTheme(newTheme);
+});
 
 // 설정 로드
 onMounted(() => {
@@ -191,6 +216,7 @@ function loadSettings() {
   if (settings) {
     try {
       const parsed = JSON.parse(settings);
+      selectedTheme.value = parsed.theme || currentTheme.value;
       selectedLanguage.value = parsed.language || 'ko';
       desktopNotifications.value = parsed.desktopNotifications ?? true;
       emailNotifications.value = parsed.emailNotifications ?? false;
@@ -204,11 +230,11 @@ function loadSettings() {
 // 설정 저장
 function saveSettings() {
   const settings = {
+    theme: selectedTheme.value,
     language: selectedLanguage.value,
     desktopNotifications: desktopNotifications.value,
     emailNotifications: emailNotifications.value,
     autoCollapseSidebar: autoCollapseSidebar.value,
-    theme: currentTheme.value,
   };
 
   localStorage.setItem('nsales-settings', JSON.stringify(settings));

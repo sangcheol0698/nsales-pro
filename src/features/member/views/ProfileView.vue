@@ -10,11 +10,8 @@
         <div class="space-y-4">
           <div class="grid w-full items-center gap-1.5">
             <Label htmlFor="username">사용자 이름</Label>
-            <Input id="username" v-model="profileForm.username" placeholder="이름" />
-            <p class="text-sm text-muted-foreground mt-1">
-              공개적으로 표시되는 이름입니다. 실명이나 가명을 사용할 수 있습니다. 30일에 한 번만
-              변경할 수 있습니다.
-            </p>
+            <Input id="username" v-model="profileForm.username" placeholder="이름" disabled />
+            <p class="text-sm text-muted-foreground mt-1">공개적으로 표시되는 이름입니다.</p>
           </div>
 
           <div class="grid w-full items-center gap-1.5">
@@ -27,19 +24,6 @@
             />
             <p class="text-sm text-muted-foreground mt-1">
               이메일 설정에서 인증된 이메일 주소를 관리할 수 있습니다.
-            </p>
-          </div>
-
-          <div class="grid w-full items-center gap-1.5">
-            <Label htmlFor="bio">자기소개</Label>
-            <textarea
-              id="bio"
-              v-model="profileForm.bio"
-              placeholder="여기에 메시지를 입력하세요."
-              class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            ></textarea>
-            <p class="text-sm text-muted-foreground mt-1">
-              @멘션을 사용하여 다른 사용자나 조직을 언급할 수 있습니다.
             </p>
           </div>
         </div>

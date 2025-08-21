@@ -10,19 +10,12 @@
 
       <div class="grid gap-4 py-4">
         <!-- 샘플 다운로드 섹션 -->
-        <div class="border-2 border-dashed border-gray-200 rounded-lg p-4">
+        <div class="border-2 border-dashed rounded-lg p-4">
           <div class="text-center">
             <FileSpreadsheet class="mx-auto h-8 w-8 text-gray-400 mb-2" />
-            <h4 class="text-sm font-medium text-gray-900 mb-1">샘플 파일 다운로드</h4>
-            <p class="text-xs text-gray-500 mb-3">
-              업로드 형식에 맞는 샘플 파일을 다운로드하세요
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              @click="downloadSample"
-              :disabled="isDownloading"
-            >
+            <h4 class="text-sm font-medium mb-1">샘플 파일 다운로드</h4>
+            <p class="text-xs text-gray-500 mb-3">업로드 형식에 맞는 샘플 파일을 다운로드하세요</p>
+            <Button variant="outline" size="sm" @click="downloadSample" :disabled="isDownloading">
               <Download class="h-4 w-4 mr-2" />
               {{ isDownloading ? '다운로드 중...' : '샘플 다운로드' }}
             </Button>
@@ -70,12 +63,7 @@
                 <div class="flex items-center justify-center gap-2">
                   <FileSpreadsheet class="h-4 w-4" />
                   <span>{{ selectedFile.name }}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    @click="clearFile"
-                    class="h-6 w-6 p-0"
-                  >
+                  <Button variant="ghost" size="sm" @click="clearFile" class="h-6 w-6 p-0">
                     <X class="h-3 w-3" />
                   </Button>
                 </div>
@@ -111,13 +99,8 @@
       </div>
 
       <DialogFooter>
-        <Button variant="outline" @click="closeDialog" :disabled="isUploading">
-          취소
-        </Button>
-        <Button
-          @click="uploadFile"
-          :disabled="!selectedFile || isUploading"
-        >
+        <Button variant="outline" @click="closeDialog" :disabled="isUploading"> 취소 </Button>
+        <Button @click="uploadFile" :disabled="!selectedFile || isUploading">
           <Upload class="h-4 w-4 mr-2" />
           {{ isUploading ? '업로드 중...' : '업로드' }}
         </Button>
@@ -267,7 +250,8 @@ async function downloadSample() {
   try {
     await props.onDownloadSample();
   } catch (error) {
-    const message = error instanceof Error ? error.message : '샘플 다운로드 중 오류가 발생했습니다.';
+    const message =
+      error instanceof Error ? error.message : '샘플 다운로드 중 오류가 발생했습니다.';
     errorMessage.value = message;
     emit('error', message);
   } finally {

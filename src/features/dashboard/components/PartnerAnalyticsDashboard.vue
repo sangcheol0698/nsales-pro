@@ -5,11 +5,11 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-blue-600">{{ partnerStats.totalPartners }}</p>
+            <p class="text-2xl font-bold text-primary">{{ partnerStats.totalPartners }}</p>
             <p class="text-sm text-muted-foreground">전체 파트너</p>
             <div class="flex items-center justify-center mt-2">
-              <TrendingUp class="h-4 w-4 text-green-500 mr-1" />
-              <span class="text-sm text-green-600">+{{ newPartners }}개</span>
+              <TrendingUp class="h-4 w-4 text-primary mr-1" />
+              <span class="text-sm text-primary">+{{ newPartners }}개</span>
             </div>
           </div>
         </CardContent>
@@ -18,7 +18,7 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-green-600">{{ partnerStats.activePartners }}</p>
+            <p class="text-2xl font-bold text-primary">{{ partnerStats.activePartners }}</p>
             <p class="text-sm text-muted-foreground">활성 파트너</p>
             <Progress :value="activePartnerRate" class="mt-2" />
             <p class="text-xs text-muted-foreground mt-1">{{ activePartnerRate.toFixed(1) }}%</p>
@@ -29,7 +29,7 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-purple-600">{{ partnerStats.averageGrade }}</p>
+            <p class="text-2xl font-bold text-primary">{{ partnerStats.averageGrade }}</p>
             <p class="text-sm text-muted-foreground">평균 등급</p>
             <Badge variant="default" class="mt-2">우수</Badge>
           </div>
@@ -39,11 +39,11 @@
       <Card>
         <CardContent class="p-4">
           <div class="text-center">
-            <p class="text-2xl font-bold text-orange-600">{{ formatCurrency(partnerStats.revenueContribution) }}</p>
+            <p class="text-2xl font-bold text-primary">{{ formatCurrency(partnerStats.revenueContribution) }}</p>
             <p class="text-sm text-muted-foreground">매출 기여도</p>
             <div class="flex items-center justify-center mt-2">
-              <DollarSign class="h-4 w-4 text-green-500 mr-1" />
-              <span class="text-sm text-green-600">+18%</span>
+              <DollarSign class="h-4 w-4 text-primary mr-1" />
+              <span class="text-sm text-primary">+18%</span>
             </div>
           </div>
         </CardContent>
@@ -144,7 +144,7 @@
                 <p class="text-sm text-muted-foreground">{{ partner.category }}</p>
               </div>
               <div class="text-right">
-                <p class="font-bold text-blue-600">{{ formatCurrency(partner.revenue) }}</p>
+                <p class="font-bold text-primary">{{ formatCurrency(partner.revenue) }}</p>
                 <Badge :variant="getGradeBadgeVariant(partner.grade)">{{ partner.grade }}급</Badge>
               </div>
             </div>
@@ -182,17 +182,17 @@
             <div>
               <h4 class="font-medium mb-3">계약 갱신 현황</h4>
               <div class="grid grid-cols-3 gap-4">
-                <div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <p class="text-lg font-bold text-green-600">{{ contractStatus.renewed }}</p>
-                  <p class="text-xs text-green-600">갱신완료</p>
+                <div class="text-center p-3 bg-primary/10 rounded-lg">
+                  <p class="text-lg font-bold text-primary">{{ contractStatus.renewed }}</p>
+                  <p class="text-xs text-primary">갱신완료</p>
                 </div>
-                <div class="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                  <p class="text-lg font-bold text-orange-600">{{ contractStatus.pending }}</p>
-                  <p class="text-xs text-orange-600">갱신대기</p>
+                <div class="text-center p-3 bg-secondary/50 rounded-lg">
+                  <p class="text-lg font-bold text-secondary-foreground">{{ contractStatus.pending }}</p>
+                  <p class="text-xs text-secondary-foreground">갱신대기</p>
                 </div>
-                <div class="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                  <p class="text-lg font-bold text-red-600">{{ contractStatus.expiring }}</p>
-                  <p class="text-xs text-red-600">만료예정</p>
+                <div class="text-center p-3 bg-destructive/10 rounded-lg">
+                  <p class="text-lg font-bold text-destructive">{{ contractStatus.expiring }}</p>
+                  <p class="text-xs text-destructive">만료예정</p>
                 </div>
               </div>
             </div>
@@ -205,15 +205,15 @@
     <Card>
       <CardHeader>
         <CardTitle class="flex items-center gap-2">
-          <Brain class="h-5 w-5 text-blue-500" />
+          <Brain class="h-5 w-5 text-primary" />
           AI 파트너 인사이트
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div class="flex items-start gap-3">
-            <div class="h-10 w-10 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
-              <TrendingUp class="h-5 w-5 text-green-600 dark:text-green-400" />
+            <div class="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
+              <TrendingUp class="h-5 w-5 text-primary" />
             </div>
             <div>
               <p class="font-medium text-sm">성장 파트너 예측</p>
@@ -221,19 +221,19 @@
               <div class="space-y-1">
                 <div class="flex justify-between text-xs">
                   <span>테크솔루션</span>
-                  <span class="font-medium text-green-600">+45%</span>
+                  <span class="font-medium text-primary">+45%</span>
                 </div>
                 <div class="flex justify-between text-xs">
                   <span>디지털웨이브</span>
-                  <span class="font-medium text-green-600">+32%</span>
+                  <span class="font-medium text-primary">+32%</span>
                 </div>
               </div>
             </div>
           </div>
 
           <div class="flex items-start gap-3">
-            <div class="h-10 w-10 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center">
-              <AlertTriangle class="h-5 w-5 text-orange-600 dark:text-orange-400" />
+            <div class="h-10 w-10 bg-destructive/10 rounded-full flex items-center justify-center">
+              <AlertTriangle class="h-5 w-5 text-destructive" />
             </div>
             <div>
               <p class="font-medium text-sm">관계 개선 필요</p>
@@ -252,8 +252,8 @@
           </div>
 
           <div class="flex items-start gap-3">
-            <div class="h-10 w-10 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
-              <Target class="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div class="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
+              <Target class="h-5 w-5 text-primary" />
             </div>
             <div>
               <p class="font-medium text-sm">신규 기회</p>
@@ -261,11 +261,11 @@
               <div class="space-y-1">
                 <div class="flex justify-between text-xs">
                   <span>AI 솔루션 분야</span>
-                  <span class="font-medium text-blue-600">3개사</span>
+                  <span class="font-medium text-primary">3개사</span>
                 </div>
                 <div class="flex justify-between text-xs">
                   <span>클라우드 인프라</span>
-                  <span class="font-medium text-blue-600">2개사</span>
+                  <span class="font-medium text-primary">2개사</span>
                 </div>
               </div>
             </div>
@@ -304,10 +304,10 @@ const partnerStats = ref({
 const newPartners = ref(5)
 
 const gradeDistribution = ref([
-  { level: 'A', count: 8, percentage: 25, description: 'VIP 파트너', color: 'bg-yellow-500' },
-  { level: 'B', count: 12, percentage: 37.5, description: '우수 파트너', color: 'bg-blue-500' },
-  { level: 'C', count: 9, percentage: 28.1, description: '일반 파트너', color: 'bg-green-500' },
-  { level: 'D', count: 3, percentage: 9.4, description: '신규 파트너', color: 'bg-gray-500' }
+  { level: 'A', count: 8, percentage: 25, description: 'VIP 파트너', color: 'bg-primary' },
+  { level: 'B', count: 12, percentage: 37.5, description: '우수 파트너', color: 'bg-primary' },
+  { level: 'C', count: 9, percentage: 28.1, description: '일반 파트너', color: 'bg-secondary' },
+  { level: 'D', count: 3, percentage: 9.4, description: '신규 파트너', color: 'bg-muted' }
 ])
 
 const monthlyPerformance = ref([

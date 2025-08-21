@@ -6,7 +6,7 @@
       size="sm"
       @click="toggleSearch"
       class="h-8 w-8 p-0"
-      :aria-label="$t ? $t('chat.searchMessages') : '메시지 검색'"
+      aria-label="메시지 검색"
     >
       <Search class="h-4 w-4" />
     </Button>
@@ -16,7 +16,7 @@
       v-if="isSearchOpen"
       class="absolute top-full right-0 mt-2 w-80 bg-card border border-border rounded-lg shadow-lg p-4 z-50"
       role="dialog"
-      :aria-label="$t ? $t('chat.messageSearchDialog') : '메시지 검색 다이얼로그'"
+      aria-label="메시지 검색 다이얼로그"
     >
       <div class="space-y-3">
         <!-- 검색 헤더 -->

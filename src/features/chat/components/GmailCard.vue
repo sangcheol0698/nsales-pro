@@ -62,14 +62,14 @@
             <!-- 읽음 상태 -->
             <div 
               class="h-2 w-2 rounded-full flex-shrink-0"
-              :class="email.isRead ? 'bg-gray-400' : 'bg-blue-500'"
+              :class="email.isRead ? 'bg-muted-foreground' : 'bg-primary'"
               :title="email.isRead ? '읽음' : '읽지 않음'"
             />
             
             <!-- 중요 표시 -->
             <Star 
               v-if="email.isImportant"
-              class="h-3 w-3 text-yellow-500 fill-yellow-500"
+              class="h-3 w-3 text-secondary fill-secondary"
               title="중요"
             />
             

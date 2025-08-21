@@ -237,39 +237,81 @@
             </div>
 
             <div class="space-y-6">
+              <!-- 컬러 테마 선택 -->
               <div class="space-y-4">
-                <h4 class="text-base sm:text-lg font-medium">테마</h4>
+                <h4 class="text-base sm:text-lg font-medium">컬러 테마</h4>
                 <p class="text-sm sm:text-base text-muted-foreground">
-                  인터페이스 테마를 선택하세요.
+                  인터페이스 컬러 스킴을 선택하세요.
                 </p>
-                <!-- Responsive grid: 1 column on mobile, 2 on tablet, 3 on desktop -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   <div
-                    v-for="themeOption in themeOptions"
-                    :key="themeOption.value"
-                    @click="setTheme(themeOption.value)"
+                    v-for="colorOption in colorThemeOptions"
+                    :key="colorOption.value"
+                    @click="setTheme(colorOption.value)"
                     :class="[
                       'border rounded-lg p-3 sm:p-4 cursor-pointer transition-all hover:scale-105',
-                      theme === themeOption.value
+                      currentTheme === colorOption.value
                         ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
                         : 'border-border hover:border-primary/50 hover:bg-accent/50',
                     ]"
                   >
                     <div class="flex items-center space-x-2 sm:space-x-3">
                       <component
-                        :is="themeOption.icon"
+                        :is="colorOption.icon"
                         class="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0"
                       />
                       <div class="min-w-0">
                         <span class="text-sm sm:text-base font-medium block">{{
-                          themeOption.name
+                          colorOption.label
                         }}</span>
                         <p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
-                          {{ themeOption.description }}
+                          컬러 스킴: {{ colorOption.label }}
                         </p>
                       </div>
                       <!-- Selection indicator -->
-                      <div v-if="theme === themeOption.value" class="flex-shrink-0">
+                      <div v-if="currentTheme === colorOption.value" class="flex-shrink-0">
+                        <div class="w-2 h-2 bg-primary rounded-full"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <!-- 다크/라이트 모드 선택 -->
+              <div class="space-y-4">
+                <h4 class="text-base sm:text-lg font-medium">모드</h4>
+                <p class="text-sm sm:text-base text-muted-foreground">
+                  밝기 모드를 선택하세요.
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div
+                    v-for="modeOption in modeOptions"
+                    :key="modeOption.value"
+                    @click="setDarkMode(modeOption.value)"
+                    :class="[
+                      'border rounded-lg p-3 sm:p-4 cursor-pointer transition-all hover:scale-105',
+                      isDark === modeOption.value
+                        ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+                        : 'border-border hover:border-primary/50 hover:bg-accent/50',
+                    ]"
+                  >
+                    <div class="flex items-center space-x-2 sm:space-x-3">
+                      <component
+                        :is="modeOption.icon"
+                        class="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0"
+                      />
+                      <div class="min-w-0">
+                        <span class="text-sm sm:text-base font-medium block">{{
+                          modeOption.name
+                        }}</span>
+                        <p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                          {{ modeOption.description }}
+                        </p>
+                      </div>
+                      <!-- Selection indicator -->
+                      <div v-if="isDark === modeOption.value" class="flex-shrink-0">
                         <div class="w-2 h-2 bg-primary rounded-full"></div>
                       </div>
                     </div>
@@ -422,7 +464,14 @@ defineEmits<{
 }>();
 
 const toast = useToast();
-const { theme, setTheme } = useTheme();
+const { 
+  isDark, 
+  currentTheme, 
+  currentThemeName, 
+  themeOptions: allThemeOptions, 
+  setTheme, 
+  setDarkMode 
+} = useTheme();
 const { font, setFont, availableFonts } = useFont();
 const MEMBER_REPOSITORY = container.resolve(MemberRepository);
 const EMPLOYEE_REPOSITORY = container.resolve(EmployeeRepository);
@@ -440,24 +489,25 @@ const categories = [
   { key: 'security', name: '보안설정' },
 ];
 
-const themeOptions = [
+// 색상 테마 옵션 (컬러 스킴)
+const colorThemeOptions = allThemeOptions.value.map(option => ({
+  ...option,
+  icon: Sun, // 기본 아이콘
+}));
+
+// 다크/라이트 모드 옵션
+const modeOptions = [
   {
-    value: 'light',
+    value: false,
     name: '라이트',
-    description: '밝은 테마',
+    description: '밝은 모드',
     icon: Sun,
   },
   {
-    value: 'dark',
+    value: true,
     name: '다크',
-    description: '어두운 테마',
+    description: '어두운 모드',
     icon: Moon,
-  },
-  {
-    value: 'system',
-    name: '시스템',
-    description: '시스템 설정 따름',
-    icon: Monitor,
   },
 ];
 
